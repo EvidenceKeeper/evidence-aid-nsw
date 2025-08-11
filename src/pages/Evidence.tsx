@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { SEO } from "@/components/SEO";
+import { supabase } from "@/integrations/supabase/client";
 
 const categories = [
   { name: "Police report", color: "bg-[hsl(var(--category-police))]/15 text-[hsl(var(--category-police))]" },
@@ -15,14 +16,39 @@ const categories = [
 ];
 
 export default function Evidence() {
-  const onDrop = useCallback((files: File[]) => {
-    toast.info("Connect Supabase to enable secure uploads.", {
-      action: {
-        label: "How?",
-        onClick: () => window.open("https://docs.lovable.dev/integrations/supabase/", "_blank"),
-      },
-    });
-    console.log("Selected files:", files.map(f => f.name));
+  const onDrop = useCallback(async (files: File[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast.error("Please log in to upload securely.");
+        return;
+      }
+
+      const userId = session.user.id;
+      const results = await Promise.all(
+        files.map(async (file) => {
+          const path = `${userId}/${Date.now()}-${file.name}`;
+          const { error } = await supabase.storage.from("evidence").upload(path, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type || "application/octet-stream",
+          });
+          if (error) {
+            console.error("Upload failed:", file.name, error);
+            return { ok: false, name: file.name };
+          }
+          return { ok: true, name: file.name, path };
+        })
+      );
+
+      const success = results.filter((r) => r.ok).length;
+      const failed = results.length - success;
+      if (success) toast.success(`Uploaded ${success} file(s).`);
+      if (failed) toast.error(`Failed to upload ${failed} file(s).`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Unexpected upload error");
+    }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
@@ -42,9 +68,9 @@ export default function Evidence() {
       >
         <input {...getInputProps()} />
         {isDragActive ? (
-          <p>Drop files to upload (requires Supabase connection)...</p>
+          <p>Drop files to upload securely.</p>
         ) : (
-          <p>Drag and drop files here, or click to select (uploads will start after connecting Supabase)</p>
+          <p>Drag and drop files here, or click to select. You must be logged in.</p>
         )}
       </section>
 
