@@ -67,7 +67,7 @@ export default function Evidence() {
       if (paths.length) {
         const { data: signed, error: signErr } = await supabase.storage
           .from("evidence")
-          .createSignedUrls(paths, 600);
+          .createSignedUrls(paths, 300);
         if (signErr) {
           console.error("Failed to sign URLs", signErr);
         } else if (signed) {
@@ -97,7 +97,7 @@ export default function Evidence() {
     loadFiles();
   }, [loadFiles]);
 
-  const onDrop = useCallback(async (files: File[]) => {
+  const onDrop = useCallback(async (dropped: File[]) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
@@ -105,29 +105,53 @@ export default function Evidence() {
         return;
       }
 
-      const userId = session.user.id;
-      const results = await Promise.all(
-        files.map(async (file) => {
-          const path = `${userId}/${Date.now()}-${file.name}`;
+      const uid = session.user.id;
+      const MAX_SIZE = 25 * 1024 * 1024; // 25MB
+      const allowed = [
+        "application/pdf",
+        "image/",
+        "text/plain",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "audio/",
+        "video/",
+      ];
+      const isAllowed = (type: string) => allowed.some((t) => (t.endsWith("/") ? type.startsWith(t) : type === t));
+
+      const invalid = dropped.filter((f) => !isAllowed(f.type) || f.size > MAX_SIZE);
+      if (invalid.length) {
+        const names = invalid.map((f) => f.name).join(", ");
+        toast.error(`Skipped ${invalid.length} invalid file(s): ${names}`);
+      }
+
+      const valid = dropped.filter((f) => !invalid.includes(f));
+      if (!valid.length) return;
+
+      const uploadWithRetry = async (file: File, attempts = 3) => {
+        const path = `${uid}/${Date.now()}-${file.name}`;
+        for (let i = 0; i < attempts; i++) {
           const { error } = await supabase.storage.from("evidence").upload(path, file, {
             cacheControl: "3600",
             upsert: false,
             contentType: file.type || "application/octet-stream",
           });
-          if (error) {
+          if (!error) return { ok: true as const, name: file.name, path };
+          if (i === attempts - 1) {
             console.error("Upload failed:", file.name, error);
-            return { ok: false, name: file.name };
+            return { ok: false as const, name: file.name };
           }
-          return { ok: true, name: file.name, path };
-        })
-      );
+          await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+        }
+        return { ok: false as const, name: file.name };
+      };
+
+      const results = await Promise.all(valid.map((file) => uploadWithRetry(file)));
 
       const success = results.filter((r) => r.ok).length;
       const failed = results.length - success;
       if (success) toast.success(`Uploaded ${success} file(s).`);
       if (failed) toast.error(`Failed to upload ${failed} file(s).`);
 
-      // Refresh list after uploads
       await loadFiles();
     } catch (err: any) {
       console.error(err);
@@ -135,14 +159,35 @@ export default function Evidence() {
     }
   }, [loadFiles]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    multiple: true,
+    maxSize: 25 * 1024 * 1024,
+    accept: {
+      'image/*': [],
+      'application/pdf': [],
+      'text/plain': [],
+      'application/msword': [],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [],
+      'audio/*': [],
+      'video/*': [],
+    },
+  });
 
   const handleDelete = async (path: string) => {
     try {
-      const { error } = await supabase.storage.from("evidence").remove([path]);
-      if (error) throw error;
-      toast.success("File deleted");
-      await loadFiles();
+      for (let i = 0; i < 2; i++) {
+        const { error } = await supabase.storage.from("evidence").remove([path]);
+        if (!error) {
+          toast.success("File deleted");
+          await loadFiles();
+          return;
+        }
+        if (i === 1) {
+          throw error;
+        }
+        await new Promise((r) => setTimeout(r, 300));
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Failed to delete file");

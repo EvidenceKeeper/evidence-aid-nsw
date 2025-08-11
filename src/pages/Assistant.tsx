@@ -20,11 +20,18 @@ export default function Assistant() {
       const { data, error } = await supabase.functions.invoke("assistant-chat", {
         body: { prompt: input.trim() },
       });
-      if (error) throw error;
+      if (error) {
+        const msg = String(error.message ?? "");
+        if (msg.toLowerCase().includes("rate limit")) {
+          toast({ title: "Too many requests", description: "Please wait a minute and try again.", variant: "destructive" });
+        } else if (msg.toLowerCase().includes("unauthorized")) {
+          toast({ title: "Please sign in", description: "Login is required to use the assistant.", variant: "destructive" });
+        } else {
+          toast({ title: "Request failed", description: msg || "Unexpected error", variant: "destructive" });
+        }
+        return;
+      }
       setAnswer(data?.generatedText || "");
-    } catch (e: any) {
-      console.error(e);
-      toast({ title: "Request failed", description: e.message ?? "Unexpected error", variant: "destructive" });
     } finally {
       setLoading(false);
     }
