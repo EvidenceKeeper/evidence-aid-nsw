@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Files, MessageCircleQuestion, CalendarClock, FileText, Search, LifeBuoy, Settings, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -14,6 +15,7 @@ const navItems = [
 ];
 
 export default function AppLayout() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="grid grid-cols-1 md:grid-cols-[260px_1fr]">
@@ -41,6 +43,14 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
+          <div className="p-3 border-t mt-2">
+            <button
+              className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+              onClick={async () => { await supabase.auth.signOut(); navigate("/auth"); }}
+            >
+              Sign out
+            </button>
+          </div>
         </aside>
         <main className="min-h-screen">
           <Outlet />

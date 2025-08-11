@@ -14,6 +14,8 @@ import SearchPage from "@/pages/Search";
 import FindHelp from "@/pages/FindHelp";
 import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
+import AuthPage from "@/pages/Auth";
+import AuthGate from "@/components/auth/AuthGate";
 
 const queryClient = new QueryClient();
 
@@ -24,19 +26,22 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<AppLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="evidence" element={<Evidence />} />
-              <Route path="timeline" element={<Timeline />} />
-              <Route path="forms" element={<Forms />} />
-              <Route path="assistant" element={<Assistant />} />
-              <Route path="search" element={<SearchPage />} />
-              <Route path="find-help" element={<FindHelp />} />
-              <Route path="settings" element={<Settings />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+            <Routes>
+              <Route path="/auth" element={<AuthPage />} />
+              <Route element={<AuthGate />}>
+                <Route path="/" element={<AppLayout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="evidence" element={<Evidence />} />
+                  <Route path="timeline" element={<Timeline />} />
+                  <Route path="forms" element={<Forms />} />
+                  <Route path="assistant" element={<Assistant />} />
+                  <Route path="search" element={<SearchPage />} />
+                  <Route path="find-help" element={<FindHelp />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </HelmetProvider>
