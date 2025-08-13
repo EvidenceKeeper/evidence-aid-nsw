@@ -93,14 +93,76 @@ serve(async (req) => {
     });
     insertPromise.then(({ error }) => error && console.error("Log insert error", error));
 
-    // Build messages for Chat Completions
+    // Build messages and perform lightweight retrieval from user's indexed chunks
+    const lastUserText = Array.isArray(messages)
+      ? [...messages].reverse().find((m: any) => m.role === "user")?.content
+      : null;
+    const queryText = String(prompt ?? lastUserText ?? "").slice(0, 500);
+
+    // Retrieve relevant chunks using full-text search (if any exist)
+    let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any }> = [];
+    let contextBlocks: string[] = [];
+
+    if (queryText) {
+      const { data: chunkRows, error: chunkErr } = await supabase
+        .from("chunks")
+        .select("id, file_id, seq, text, meta")
+        .textSearch("tsv", queryText, { type: "websearch" })
+        .limit(12);
+
+      if (!chunkErr && chunkRows && chunkRows.length) {
+        const fileIds = Array.from(new Set(chunkRows.map((c: any) => c.file_id)));
+        const { data: fileRows } = await supabase
+          .from("files")
+          .select("id, name")
+          .in("id", fileIds);
+        const nameById: Record<string, string> = {};
+        fileRows?.forEach((f: any) => (nameById[f.id] = f.name));
+
+        // Round-robin across files to improve diversity, cap at 6
+        const byFile: Record<string, any[]> = {};
+        for (const c of chunkRows) {
+          (byFile[c.file_id] ||= []).push(c);
+        }
+        const selected: any[] = [];
+        let layer = 0;
+        while (selected.length < 6) {
+          let advanced = false;
+          for (const fid of Object.keys(byFile)) {
+            const arr = byFile[fid];
+            if (arr[layer]) {
+              selected.push(arr[layer]);
+              advanced = true;
+              if (selected.length >= 6) break;
+            }
+          }
+          if (!advanced) break;
+          layer++;
+        }
+        const finalSel = selected.length ? selected : chunkRows.slice(0, 6);
+
+        citations = finalSel.map((c: any, i: number) => ({
+          index: i + 1,
+          file_id: c.file_id,
+          file_name: nameById[c.file_id] ?? "File",
+          seq: c.seq,
+          excerpt: String(c.text ?? '').slice(0, 400),
+          meta: c.meta ?? {},
+        }));
+        contextBlocks = citations.map((c) => `[CITATION ${c.index}] ${c.file_name}#${c.seq}: ${c.excerpt}`);
+      }
+    }
+
+    const baseSystem = {
+      role: "system",
+      content:
+        "You are a careful Australian legal assistant for New South Wales (NSW). You provide general information (not legal advice) and include a disclaimer. When context excerpts are provided, ground your answer in them and reference them with [CITATION n]. Do not fabricate citations. Keep answers concise and practical.",
+    };
+
     const chatMessages = messages ?? [
-      {
-        role: "system",
-        content:
-          "You are a careful Australian legal assistant for New South Wales (NSW). You provide general information, cite NSW sources when possible, and clearly state you are not a lawyer. Keep answers concise and practical.",
-      },
-      { role: "user", content: String(prompt) },
+      baseSystem,
+      ...(contextBlocks.length ? [{ role: "system", content: `Context excerpts:\n${contextBlocks.join("\n\n")}` }] : []),
+      { role: "user", content: String(queryText || prompt) },
     ];
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -128,7 +190,7 @@ serve(async (req) => {
     const data = await response.json();
     const generatedText = data?.choices?.[0]?.message?.content ?? "";
 
-    return new Response(JSON.stringify({ generatedText }), {
+    return new Response(JSON.stringify({ generatedText, citations }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

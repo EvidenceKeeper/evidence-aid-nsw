@@ -29,6 +29,7 @@ export default function Evidence() {
   const [files, setFiles] = useState<EvidenceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [indexing, setIndexing] = useState<string | null>(null);
 
   const formatBytes = (bytes?: number) => {
     if (bytes === undefined || bytes === null) return "";
@@ -191,6 +192,44 @@ export default function Evidence() {
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Failed to delete file");
+    }
+  };
+
+  const handleIndexText = async (item: EvidenceItem) => {
+    if (!item?.path) return;
+    if (!item.mimeType?.startsWith("text/")) {
+      toast.error("Only plain text files can be indexed in this step.");
+      return;
+    }
+    try {
+      setIndexing(item.path);
+      // Refresh signed URL for safety
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("evidence")
+        .createSignedUrl(item.path, 300);
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Failed to create signed URL");
+
+      const res = await fetch(signed.signedUrl);
+      if (!res.ok) throw new Error("Failed to fetch file content");
+      const text = await res.text();
+
+      const { data, error } = await supabase.functions.invoke("ingest-text", {
+        body: {
+          name: item.name,
+          storage_path: item.path,
+          mime_type: item.mimeType,
+          size: item.size,
+          text,
+          meta: { source: "storage://evidence" },
+        },
+      });
+      if (error) throw error;
+      toast.success(`Indexed ${item.name}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Indexing failed");
+    } finally {
+      setIndexing(null);
     }
   };
 

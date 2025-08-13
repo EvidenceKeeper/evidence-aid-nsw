@@ -35,6 +35,140 @@ export type Database = {
         }
         Relationships: []
       }
+      case_memory: {
+        Row: {
+          facts: string | null
+          id: string
+          issues: Json | null
+          parties: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          facts?: string | null
+          id?: string
+          issues?: Json | null
+          parties?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          facts?: string | null
+          id?: string
+          issues?: Json | null
+          parties?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chunks: {
+        Row: {
+          created_at: string
+          file_id: string
+          id: string
+          meta: Json
+          seq: number
+          text: string
+          tsv: unknown | null
+        }
+        Insert: {
+          created_at?: string
+          file_id: string
+          id?: string
+          meta?: Json
+          seq: number
+          text: string
+          tsv?: unknown | null
+        }
+        Update: {
+          created_at?: string
+          file_id?: string
+          id?: string
+          meta?: Json
+          seq?: number
+          text?: string
+          tsv?: unknown | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chunks_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      files: {
+        Row: {
+          created_at: string
+          id: string
+          meta: Json
+          mime_type: string | null
+          name: string
+          size: number | null
+          status: string
+          storage_path: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meta?: Json
+          mime_type?: string | null
+          name: string
+          size?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meta?: Json
+          mime_type?: string | null
+          name?: string
+          size?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          citations: Json
+          content: string
+          created_at: string
+          id: string
+          role: string
+          thread_id: string | null
+          user_id: string
+        }
+        Insert: {
+          citations?: Json
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          thread_id?: string | null
+          user_id: string
+        }
+        Update: {
+          citations?: Json
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          thread_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

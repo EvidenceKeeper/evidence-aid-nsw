@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Assistant() {
   const [input, setInput] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
+  const [citations, setCitations] = useState<Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any }>>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -16,6 +17,7 @@ export default function Assistant() {
     if (!input.trim()) return;
     setLoading(true);
     setAnswer(null);
+    setCitations([]);
     try {
       const { data, error } = await supabase.functions.invoke("assistant-chat", {
         body: { prompt: input.trim() },
@@ -32,6 +34,7 @@ export default function Assistant() {
         return;
       }
       setAnswer(data?.generatedText || "");
+      setCitations(Array.isArray(data?.citations) ? data.citations : []);
     } finally {
       setLoading(false);
     }
@@ -68,10 +71,24 @@ export default function Assistant() {
             <CardHeader>
               <CardTitle>Assistant response</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="grid gap-4">
               <article className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                 {answer}
               </article>
+
+              {citations.length > 0 && (
+                <section aria-label="Citations" className="rounded-md border p-3 bg-muted/30">
+                  <h3 className="text-sm font-medium mb-2">Citations</h3>
+                  <ul className="space-y-2">
+                    {citations.map((c) => (
+                      <li key={`${c.file_id}-${c.seq}`} className="text-sm">
+                        <span className="font-medium">[{c.index}] {c.file_name}#{c.seq}</span>
+                        <span className="text-muted-foreground"> — {c.excerpt}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </CardContent>
           </Card>
         )}
