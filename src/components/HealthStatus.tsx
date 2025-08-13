@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface HealthData {
   ok?: boolean;
@@ -33,16 +34,34 @@ export default function HealthStatus() {
       const sameOrigin = `${window.location.origin}/api/health`;
       const devOrigin = `${window.location.protocol}//${window.location.hostname}:3001/api/health`;
 
+      let baseData: HealthData | null = null;
+
       try {
         const d = await tryFetch(sameOrigin);
+        baseData = d;
         setData(d);
       } catch (_) {
         try {
           const d = await tryFetch(devOrigin);
+          baseData = d;
           setData(d);
         } catch (e: any) {
           setError(e?.message || "Unavailable");
         }
+      }
+
+      // Non-blocking: try to enrich with OpenAI status from edge function
+      try {
+        const { data: ai, error: aiErr } = await supabase.functions.invoke("ai-health");
+        if (!aiErr && ai) {
+          setData((prev) => {
+            const prevVal = prev ?? baseData ?? { services: {} as Record<string, unknown> };
+            const services = { ...(prevVal.services as Record<string, unknown>), OpenAI: (ai as any).ok ? "ok" : (ai as any).status ?? "degraded" };
+            return { ...prevVal, services };
+          });
+        }
+      } catch {
+        // ignore
       } finally {
         clearTimeout(timeout);
       }
