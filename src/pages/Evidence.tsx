@@ -195,6 +195,24 @@ export default function Evidence() {
     }
   };
 
+  const handleIndex = async (item: EvidenceItem) => {
+    if (!item?.path) return;
+    try {
+      setIndexing(item.path);
+      const { error } = await supabase.functions.invoke("ingest-file", {
+        body: { path: item.path },
+      });
+      if (error) throw error;
+      toast.success(`Indexed ${item.name}`);
+      await loadFiles();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? "Indexing failed");
+    } finally {
+      setIndexing(null);
+    }
+  };
+
   const handleIndexText = async (item: EvidenceItem) => {
     if (!item?.path) return;
     if (!item.mimeType?.startsWith("text/")) {
@@ -297,6 +315,14 @@ export default function Evidence() {
                   <p className="text-xs text-muted-foreground">{formatBytes(item.size)}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleIndex(item)}
+                    disabled={indexing === item.path}
+                  >
+                    {indexing === item.path ? "Indexing…" : "Index"}
+                  </Button>
                   <Button
                     variant="secondary"
                     size="sm"

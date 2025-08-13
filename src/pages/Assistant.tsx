@@ -13,6 +13,29 @@ export default function Assistant() {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const openCitation = async (c: { file_id: string; meta?: any }) => {
+    try {
+      const { data: fileData, error: fileErr } = await supabase
+        .from("files")
+        .select("storage_path, mime_type, name")
+        .eq("id", c.file_id)
+        .single();
+      if (fileErr || !fileData?.storage_path) throw fileErr ?? new Error("File not found");
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("evidence")
+        .createSignedUrl(String(fileData.storage_path), 300);
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Failed to create signed URL");
+
+      const page = Number(c?.meta?.page || 1);
+      const url = fileData.mime_type === "application/pdf" ? `${signed.signedUrl}#page=${page}` : signed.signedUrl;
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      console.error("Open citation failed", e);
+      toast({ title: "Unable to open citation", description: e?.message ?? "Unknown error", variant: "destructive" });
+    }
+  };
+
   const ask = async () => {
     if (!input.trim()) return;
     setLoading(true);
@@ -33,8 +56,22 @@ export default function Assistant() {
         }
         return;
       }
-      setAnswer(data?.generatedText || "");
-      setCitations(Array.isArray(data?.citations) ? data.citations : []);
+      const text = data?.generatedText || "";
+      const cites = Array.isArray(data?.citations) ? data.citations : [];
+      setAnswer(text);
+      setCitations(cites);
+
+      // Persist messages (best-effort)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const uid = sessionData?.session?.user?.id;
+      if (uid) {
+        const inserts = [
+          { user_id: uid, role: "user", content: input.trim() },
+          { user_id: uid, role: "assistant", content: text, citations: cites },
+        ];
+        const { error: insertErr } = await supabase.from("messages").insert(inserts);
+        if (insertErr) console.warn("message insert failed", insertErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -82,7 +119,12 @@ export default function Assistant() {
                   <ul className="space-y-2">
                     {citations.map((c) => (
                       <li key={`${c.file_id}-${c.seq}`} className="text-sm">
-                        <span className="font-medium">[{c.index}] {c.file_name}#{c.seq}</span>
+                        <button
+                          onClick={() => openCitation(c)}
+                          className="underline underline-offset-2 hover:no-underline"
+                        >
+                          <span className="font-medium">[{c.index}] {c.file_name}#{c.seq}</span>
+                        </button>
                         <span className="text-muted-foreground"> — {c.excerpt}</span>
                       </li>
                     ))}
