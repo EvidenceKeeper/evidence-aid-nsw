@@ -1,14 +1,17 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Files, MessageCircleQuestion, CalendarClock, FileText, Search, LifeBuoy, Settings, LayoutDashboard } from "lucide-react";
+import DisclaimerBanner from "@/components/DisclaimerBanner";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/evidence", label: "Evidence", icon: Files },
+  { to: "/", label: "Home", icon: LayoutDashboard },
+  { to: "/workspace", label: "Workspace", icon: LayoutDashboard },
+  { to: "/evidence", label: "Library", icon: Files },
+  { to: "/assistant", label: "Chat", icon: MessageCircleQuestion },
   { to: "/timeline", label: "Timeline", icon: CalendarClock },
   { to: "/forms", label: "Forms", icon: FileText },
-  { to: "/assistant", label: "Legal Assistant", icon: MessageCircleQuestion },
+  { to: "/taskboard", label: "Taskboard", icon: FileText },
   { to: "/search", label: "Search", icon: Search },
   { to: "/find-help", label: "Find Help", icon: LifeBuoy },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -53,6 +56,7 @@ export default function AppLayout() {
           </div>
         </aside>
         <main className="min-h-screen">
+          <DisclaimerBanner />
           <Outlet />
         </main>
       </div>

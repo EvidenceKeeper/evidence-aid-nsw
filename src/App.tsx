@@ -16,6 +16,8 @@ import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 import AuthPage from "@/pages/Auth";
 import AuthGate from "@/components/auth/AuthGate";
+import Workspace from "@/pages/Workspace";
+import Taskboard from "@/pages/Taskboard";
 
 const queryClient = new QueryClient();
 
@@ -31,12 +33,15 @@ const App = () => (
               <Route element={<AuthGate />}>
                 <Route path="/" element={<AppLayout />}>
                   <Route index element={<Dashboard />} />
+                  <Route path="workspace" element={<Workspace />} />
                   <Route path="evidence" element={<Evidence />} />
                   <Route path="timeline" element={<Timeline />} />
                   <Route path="forms" element={<Forms />} />
                   <Route path="assistant" element={<Assistant />} />
+                  <Route path="chat" element={<Assistant />} />
                   <Route path="search" element={<SearchPage />} />
                   <Route path="find-help" element={<FindHelp />} />
+                  <Route path="taskboard" element={<Taskboard />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
               </Route>
