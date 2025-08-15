@@ -83,18 +83,55 @@ export default function Assistant() {
       <h1 className="text-2xl font-semibold tracking-tight mb-2">NSW Coercive Control Legal Assistant</h1>
       <p className="text-muted-foreground mb-4">Specialized legal assistant for NSW coercive control matters. Analyzes your evidence and provides NSW-specific legal guidance.</p>
       
-      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
-        <h2 className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">How I can help:</h2>
-        <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
-          <li>• Analyze patterns of coercive control in your evidence</li>
-          <li>• Explain NSW Crimes Act provisions and court procedures</li>
-          <li>• Guide evidence collection and documentation</li>
-          <li>• Connect you with NSW support services and legal aid</li>
-          <li>• Review your uploaded documents for legal relevance</li>
-        </ul>
-        <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 font-medium">
-          This is not legal advice. Always consult with a qualified NSW lawyer for your specific situation.
+      <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+        <h2 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">🎯 My Goal-Oriented Approach:</h2>
+        <div className="grid md:grid-cols-2 gap-4 text-sm text-blue-700 dark:text-blue-300">
+          <div>
+            <h3 className="font-medium mb-1">Evidence Analysis</h3>
+            <ul className="space-y-1 text-xs">
+              <li>• Find specific patterns in your communications</li>
+              <li>• Quote exact examples with legal explanations</li>
+              <li>• Rate evidence strength for court</li>
+              <li>• Identify gaps and suggest improvements</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-medium mb-1">Strategic Guidance</h3>
+            <ul className="space-y-1 text-xs">
+              <li>• Establish your specific legal objective</li>
+              <li>• Provide prioritized next steps</li>
+              <li>• Teach NSW law and court procedures</li>
+              <li>• Connect evidence to legal outcomes</li>
+            </ul>
+          </div>
+        </div>
+        <p className="text-xs text-blue-600 dark:text-blue-400 mt-3 font-medium">
+          This is legal information, not advice. Consult Legal Aid NSW or a specialist lawyer for your case.
         </p>
+      </div>
+
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
+        <h2 className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">💡 Quick Start Prompts:</h2>
+        <div className="grid gap-2">
+          <button 
+            onClick={() => setInput("I need help establishing my legal goal. What are my options under NSW law for dealing with coercive control?")}
+            className="text-left text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 p-2 rounded bg-amber-100/50 dark:bg-amber-900/20 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 transition-colors"
+          >
+            🎯 "I need help establishing my legal goal. What are my options under NSW law?"
+          </button>
+          <button 
+            onClick={() => setInput("Please analyze my uploaded evidence for patterns of coercive control. Look for specific examples I can use in court.")}
+            className="text-left text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 p-2 rounded bg-amber-100/50 dark:bg-amber-900/20 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 transition-colors"
+          >
+            📋 "Analyze my evidence for coercive control patterns with specific examples"
+          </button>
+          <button 
+            onClick={() => setInput("Explain Section 54D of the NSW Crimes Act and how my evidence relates to it.")}
+            className="text-left text-xs text-amber-700 dark:text-amber-300 hover:text-amber-900 dark:hover:text-amber-100 p-2 rounded bg-amber-100/50 dark:bg-amber-900/20 hover:bg-amber-200/50 dark:hover:bg-amber-900/40 transition-colors"
+          >
+            📚 "Explain Section 54D and how my evidence relates to NSW coercive control law"
+          </button>
+        </div>
       </div>
 
       <section aria-label="Ask a legal question" className="grid gap-4">
@@ -106,7 +143,7 @@ export default function Assistant() {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Describe your situation, ask about NSW laws, or request analysis of your uploaded evidence..."
+              placeholder="Ask me to: analyze your evidence patterns • establish your legal goals • explain NSW coercive control laws • provide strategic next steps • teach you about court procedures..."
               className="min-h-32"
             />
             <div className="flex justify-end">
