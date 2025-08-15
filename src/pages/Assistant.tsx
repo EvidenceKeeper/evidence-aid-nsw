@@ -52,7 +52,22 @@ export default function Assistant() {
     setLoading(true);
     setAnswer(null);
     setCitations([]);
+    
     try {
+      // Check authentication state first
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !sessionData.session) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to use the assistant.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log("Session valid, making request to assistant-chat...");
+      
       const {
         data,
         error
@@ -90,9 +105,6 @@ export default function Assistant() {
       setCitations(cites);
 
       // Persist messages (best-effort)
-      const {
-        data: sessionData
-      } = await supabase.auth.getSession();
       const uid = sessionData?.session?.user?.id;
       if (uid) {
         const inserts = [{

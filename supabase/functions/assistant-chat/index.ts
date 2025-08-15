@@ -34,8 +34,20 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
+    console.log("Auth header received:", authHeader?.substring(0, 20) + "...");
+    
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.error("No authorization header provided");
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check if it's the anon key (shouldn't be)
+    if (authHeader.includes(SUPABASE_ANON_KEY)) {
+      console.error("Anon key detected instead of JWT token");
+      return new Response(JSON.stringify({ error: "Invalid token: anon key detected" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -46,10 +58,13 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    console.log("User data retrieval:", userData?.user?.id ? "success" : "failed", userError?.message);
+    
     const user = userData?.user;
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      console.error("No user found with provided token:", userError?.message);
+      return new Response(JSON.stringify({ error: "Invalid user token", details: userError?.message }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
