@@ -63,6 +63,21 @@ serve(async (req) => {
       );
     }
 
+    // Get user's email for personalized greeting
+    const userEmail = user.email;
+    const userName = userEmail ? userEmail.split('@')[0] : 'there';
+
+    // Check for recently uploaded files
+    const { data: recentFiles, error: filesError } = await supabase
+      .from("files")
+      .select("name, created_at, status")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const hasRecentUploads = recentFiles && recentFiles.length > 0;
+    const newlyProcessedFiles = recentFiles?.filter(f => f.status === 'processed') || [];
+
     // Simple per-user rate limit: 10 requests per minute
     const windowMs = 60_000;
     const limit = 10;
@@ -99,16 +114,34 @@ serve(async (req) => {
       : null;
     const queryText = String(prompt ?? lastUserText ?? "").slice(0, 500);
 
-    // Retrieve relevant chunks using full-text search (if any exist)
-    let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any }> = [];
+    // Enhanced retrieval: user files + NSW legal resources
+    let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any; type?: string }> = [];
     let contextBlocks: string[] = [];
+    let nswLegalContext: string[] = [];
 
     if (queryText) {
+      // Expanded search terms for coercive control patterns
+      const coerciveControlTerms = [
+        queryText,
+        queryText + " coercive control domestic violence",
+        queryText + " emotional abuse financial control",
+        queryText + " intimidation stalking threats",
+        "pattern behaviour isolation monitoring"
+      ];
+
+      // Search user's uploaded chunks (increased limit for comprehensive analysis)
       const { data: chunkRows, error: chunkErr } = await supabase
         .from("chunks")
         .select("id, file_id, seq, text, meta")
-        .textSearch("tsv", queryText, { type: "websearch" })
-        .limit(12);
+        .textSearch("tsv", coerciveControlTerms.join(" | "), { type: "websearch" })
+        .limit(20);
+
+      // Search NSW legal resources for relevant law and procedures
+      const { data: legalRows, error: legalErr } = await supabase
+        .from("nsw_legal_resources")
+        .select("id, title, content, category, reference, url")
+        .textSearch("tsv", queryText + " coercive control domestic violence", { type: "websearch" })
+        .limit(8);
 
       if (!chunkErr && chunkRows && chunkRows.length) {
         const fileIds = Array.from(new Set(chunkRows.map((c: any) => c.file_id)));
@@ -119,44 +152,103 @@ serve(async (req) => {
         const nameById: Record<string, string> = {};
         fileRows?.forEach((f: any) => (nameById[f.id] = f.name));
 
-        // Round-robin across files to improve diversity, cap at 6
+        // Prioritize more chunks for comprehensive analysis (increased from 6 to 15)
         const byFile: Record<string, any[]> = {};
         for (const c of chunkRows) {
           (byFile[c.file_id] ||= []).push(c);
         }
         const selected: any[] = [];
         let layer = 0;
-        while (selected.length < 6) {
+        while (selected.length < 15) {
           let advanced = false;
           for (const fid of Object.keys(byFile)) {
             const arr = byFile[fid];
             if (arr[layer]) {
               selected.push(arr[layer]);
               advanced = true;
-              if (selected.length >= 6) break;
+              if (selected.length >= 15) break;
             }
           }
           if (!advanced) break;
           layer++;
         }
-        const finalSel = selected.length ? selected : chunkRows.slice(0, 6);
+        const finalSel = selected.length ? selected : chunkRows.slice(0, 15);
 
         citations = finalSel.map((c: any, i: number) => ({
           index: i + 1,
           file_id: c.file_id,
           file_name: nameById[c.file_id] ?? "File",
           seq: c.seq,
-          excerpt: String(c.text ?? '').slice(0, 400),
+          excerpt: String(c.text ?? '').slice(0, 500),
           meta: c.meta ?? {},
+          type: "user_file"
         }));
         contextBlocks = citations.map((c) => `[CITATION ${c.index}] ${c.file_name}#${c.seq}: ${c.excerpt}`);
+      }
+
+      // Add NSW legal resources to context
+      if (!legalErr && legalRows && legalRows.length) {
+        const legalCitations = legalRows.map((legal: any, i: number) => ({
+          index: citations.length + i + 1,
+          file_id: legal.id,
+          file_name: `NSW Legal Resource: ${legal.title}`,
+          seq: 1,
+          excerpt: `${legal.content} ${legal.reference ? `(Reference: ${legal.reference})` : ''}`,
+          meta: { category: legal.category, url: legal.url },
+          type: "legal_resource"
+        }));
+        
+        citations = [...citations, ...legalCitations];
+        nswLegalContext = legalCitations.map((c) => `[CITATION ${c.index}] ${c.file_name}: ${c.excerpt}`);
+        contextBlocks = [...contextBlocks, ...nswLegalContext];
+      }
+    }
+
+    // Create personalized greeting and file acknowledgment
+    let fileAcknowledgment = "";
+    if (hasRecentUploads) {
+      if (newlyProcessedFiles.length > 0) {
+        fileAcknowledgment = `\n\nI can see you've uploaded ${newlyProcessedFiles.map(f => f.name).join(', ')} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
+      } else if (recentFiles && recentFiles.length > 0) {
+        fileAcknowledgment = `\n\nI can see you have files uploaded (${recentFiles.map(f => f.name).join(', ')}). I'll analyze the content that's been indexed to provide specific insights about your situation.`;
       }
     }
 
     const baseSystem = {
       role: "system",
-      content:
-        "You are a careful Australian legal assistant for New South Wales (NSW). You provide general information (not legal advice) and include a disclaimer. When context excerpts are provided, ground your answer in them and reference them with [CITATION n]. Do not fabricate citations. Keep answers concise and practical.",
+      content: `You are a specialized NSW coercive control and domestic violence legal expert. Your role is to:
+
+1. **PERSONAL ENGAGEMENT**: Always greet ${userName} personally and acknowledge their specific situation with empathy and understanding.
+
+2. **ANALYZE UPLOADED EVIDENCE**: Prioritize analysis of the user's uploaded content over generic advice. Look for:
+   - Patterns of coercive control and emotional abuse
+   - Escalation in threatening or controlling language
+   - Evidence of financial, social, or digital control
+   - Isolation tactics and manipulation techniques
+   - Power and control dynamics in communications
+   - Frequency and timing patterns that show systematic abuse
+
+3. **NSW LEGAL EXPERTISE**: Reference specific NSW legislation including:
+   - Section 54D Crimes Act 1900 (NSW) - Coercive Control offences
+   - Crimes (Domestic and Personal Violence) Act 2007 - ADVO provisions
+   - NSW Police procedures for coercive control investigations
+   - Recent NSW case law and legal precedents
+
+4. **EVIDENCE-BASED RESPONSES**: When analyzing uploaded content:
+   - Quote specific examples from the uploaded files [CITATION n]
+   - Identify concerning patterns with specific references
+   - Explain how these patterns relate to NSW coercive control laws
+   - Provide actionable steps based on the evidence reviewed
+
+5. **SAFETY-FOCUSED GUIDANCE**: Always prioritize user safety and provide:
+   - NSW-specific emergency contacts and support services
+   - Safety planning considerations based on patterns identified
+   - Legal options available under NSW law
+   - Evidence preservation recommendations
+
+6. **CLEAR BOUNDARIES**: This is general legal information, not legal advice. Recommend consulting with Legal Aid NSW or a domestic violence specialist lawyer for case-specific advice.
+
+**IMPORTANT**: Always reference specific content from uploaded files when providing analysis. Never give generic advice when specific evidence has been provided.${fileAcknowledgment}`,
     };
 
     const chatMessages = messages ?? [

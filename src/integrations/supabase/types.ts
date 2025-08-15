@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
@@ -166,6 +166,45 @@ export type Database = {
           role?: string
           thread_id?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      nsw_legal_resources: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          reference: string | null
+          tags: string[] | null
+          title: string
+          tsv: unknown | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          category: string
+          content: string
+          created_at?: string
+          id?: string
+          reference?: string | null
+          tags?: string[] | null
+          title: string
+          tsv?: unknown | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          reference?: string | null
+          tags?: string[] | null
+          title?: string
+          tsv?: unknown | null
+          updated_at?: string
+          url?: string | null
         }
         Relationships: []
       }
