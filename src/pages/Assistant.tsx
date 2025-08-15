@@ -79,20 +79,34 @@ export default function Assistant() {
 
   return (
     <div className="container mx-auto px-6 py-8">
-      <SEO title="Legal Assistant | NSW Legal Evidence Manager" description="Ask grounded questions about your documents and NSW sources with citations." />
-      <h1 className="text-2xl font-semibold tracking-tight mb-2">Legal Assistant</h1>
-      <p className="text-muted-foreground mb-6">Chat with an NSW-focused legal assistant. Not legal advice.</p>
+      <SEO title="NSW Coercive Control Legal Assistant | Evidence Manager" description="Specialized NSW legal assistant for coercive control cases with evidence analysis and legal guidance." />
+      <h1 className="text-2xl font-semibold tracking-tight mb-2">NSW Coercive Control Legal Assistant</h1>
+      <p className="text-muted-foreground mb-4">Specialized legal assistant for NSW coercive control matters. Analyzes your evidence and provides NSW-specific legal guidance.</p>
+      
+      <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
+        <h2 className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">How I can help:</h2>
+        <ul className="text-sm text-amber-700 dark:text-amber-300 space-y-1">
+          <li>• Analyze patterns of coercive control in your evidence</li>
+          <li>• Explain NSW Crimes Act provisions and court procedures</li>
+          <li>• Guide evidence collection and documentation</li>
+          <li>• Connect you with NSW support services and legal aid</li>
+          <li>• Review your uploaded documents for legal relevance</li>
+        </ul>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mt-3 font-medium">
+          This is not legal advice. Always consult with a qualified NSW lawyer for your specific situation.
+        </p>
+      </div>
 
       <section aria-label="Ask a legal question" className="grid gap-4">
         <Card>
           <CardHeader>
-            <CardTitle>Ask a question</CardTitle>
+            <CardTitle>Ask about your NSW coercive control case</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Describe your situation or question (NSW)."
+              placeholder="Describe your situation, ask about NSW laws, or request analysis of your uploaded evidence..."
               className="min-h-32"
             />
             <div className="flex justify-end">
@@ -106,7 +120,7 @@ export default function Assistant() {
         {answer !== null && (
           <Card>
             <CardHeader>
-              <CardTitle>Assistant response</CardTitle>
+              <CardTitle>NSW Legal Analysis</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
               <article className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
