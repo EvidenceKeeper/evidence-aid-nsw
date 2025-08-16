@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Files, MessageCircleQuestion, CalendarClock, FileText, Search, LifeBuoy, Settings, LayoutDashboard } from "lucide-react";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
+import { ChatButton } from "@/components/chat/ChatButton";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -19,6 +20,9 @@ const navItems = [
 
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAssistantPage = location.pathname === "/assistant";
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="grid grid-cols-1 md:grid-cols-[260px_1fr]">
@@ -55,9 +59,12 @@ export default function AppLayout() {
             </button>
           </div>
         </aside>
-        <main className="min-h-screen">
+        <main className="min-h-screen relative">
           <DisclaimerBanner />
           <Outlet />
+          
+          {/* Global Chat Button - Hidden on assistant page */}
+          {!isAssistantPage && <ChatButton />}
         </main>
       </div>
     </div>
