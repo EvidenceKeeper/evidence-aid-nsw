@@ -102,6 +102,8 @@ export type Database = {
       }
       files: {
         Row: {
+          auto_category: string | null
+          category: string | null
           created_at: string
           id: string
           meta: Json
@@ -110,10 +112,13 @@ export type Database = {
           size: number | null
           status: string
           storage_path: string | null
+          tags: string[] | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          auto_category?: string | null
+          category?: string | null
           created_at?: string
           id?: string
           meta?: Json
@@ -122,10 +127,13 @@ export type Database = {
           size?: number | null
           status?: string
           storage_path?: string | null
+          tags?: string[] | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          auto_category?: string | null
+          category?: string | null
           created_at?: string
           id?: string
           meta?: Json
@@ -134,6 +142,7 @@ export type Database = {
           size?: number | null
           status?: string
           storage_path?: string | null
+          tags?: string[] | null
           updated_at?: string
           user_id?: string
         }
@@ -207,6 +216,72 @@ export type Database = {
           url?: string | null
         }
         Relationships: []
+      }
+      timeline_events: {
+        Row: {
+          category: string | null
+          chunk_id: string | null
+          confidence: number | null
+          context: string | null
+          created_at: string
+          description: string | null
+          event_date: string
+          event_time: string | null
+          file_id: string | null
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          category?: string | null
+          chunk_id?: string | null
+          confidence?: number | null
+          context?: string | null
+          created_at?: string
+          description?: string | null
+          event_date: string
+          event_time?: string | null
+          file_id?: string | null
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          category?: string | null
+          chunk_id?: string | null
+          confidence?: number | null
+          context?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string
+          event_time?: string | null
+          file_id?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_events_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
