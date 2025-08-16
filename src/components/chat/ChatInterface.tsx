@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, Loader2 } from "lucide-react";
+import { Send, Paperclip, Loader2, Upload } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ChatMessage } from "./ChatMessage";
-import { FileUpload } from "./FileUpload";
 
 interface Message {
   id: string;
@@ -36,8 +36,8 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showFileUpload, setShowFileUpload] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -299,10 +299,58 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     }
   };
 
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+    // Reset input to allow selecting the same file again
+    e.target.value = '';
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      // Text files
+      'text/plain': ['.txt'],
+      'text/csv': ['.csv'],
+      'text/rtf': ['.rtf'],
+      // Documents
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-powerpoint': ['.ppt'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      // Images
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp', '.svg'],
+      // Audio
+      'audio/*': ['.mp3', '.wav', '.m4a', '.ogg', '.flac', '.aac'],
+      // Video
+      'video/*': ['.mp4', '.mov', '.avi', '.webm', '.mkv'],
+      // Email files
+      'application/vnd.ms-outlook': ['.msg'],
+      'message/rfc822': ['.eml'],
+      // Archives
+      'application/zip': ['.zip'],
+      'application/x-rar-compressed': ['.rar'],
+    },
+    multiple: true,
+    noClick: true,
+  });
+
   return (
-    <div className={`flex flex-col h-full bg-background ${isModal ? "max-h-[80vh]" : "min-h-screen"}`}>
+    <div 
+      {...getRootProps()}
+      className={`flex flex-col h-screen bg-background overflow-hidden ${
+        isDragActive ? 'bg-primary/5 border-2 border-dashed border-primary' : ''
+      }`}
+    >
+      <input {...getInputProps()} />
+      
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-card/60 backdrop-blur">
+      <div className="flex items-center justify-between p-4 border-b bg-card/60 backdrop-blur shrink-0">
         <div>
           <h1 className="text-lg font-semibold">Veronica, Legal Assistant</h1>
           <p className="text-sm text-muted-foreground">NSW Family Law & Domestic Violence Specialist</p>
@@ -314,12 +362,26 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         )}
       </div>
 
+      {/* Drag overlay */}
+      {isDragActive && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
+          <div className="text-center">
+            <Upload className="h-12 w-12 mx-auto mb-4 text-primary" />
+            <p className="text-lg font-medium text-primary">Drop files to upload</p>
+            <p className="text-sm text-muted-foreground">Audio, video, documents, images, and more</p>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
             <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant.</p>
-            <p className="text-sm">Upload files or ask me about your case to get started.</p>
+            <p className="text-sm mb-2">Upload files or ask me about your case to get started.</p>
+            <p className="text-xs text-muted-foreground">
+              Supports: Documents, Audio, Video, Images, Emails, Archives
+            </p>
           </div>
         )}
         
@@ -337,25 +399,9 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* File Upload */}
-      {showFileUpload && (
-        <div className="p-4 border-t">
-          <FileUpload onUpload={handleFileUpload} onClose={() => setShowFileUpload(false)} />
-        </div>
-      )}
-
       {/* Input */}
-      <div className="p-4 border-t bg-card/60 backdrop-blur">
+      <div className="p-4 border-t bg-card/60 backdrop-blur shrink-0">
         <div className="flex items-end space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowFileUpload(!showFileUpload)}
-            className="shrink-0"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
-          
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -365,13 +411,32 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
             disabled={loading}
           />
           
-          <Button
-            onClick={sendMessage}
-            disabled={loading || !input.trim()}
-            className="shrink-0"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          <div className="flex space-x-1 shrink-0">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileInputChange}
+              multiple
+              accept=".txt,.csv,.rtf,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.mp3,.wav,.m4a,.ogg,.flac,.aac,.mp4,.mov,.avi,.webm,.mkv,.msg,.eml,.zip,.rar"
+              className="hidden"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="shrink-0"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              onClick={sendMessage}
+              disabled={loading || !input.trim()}
+              className="shrink-0"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
