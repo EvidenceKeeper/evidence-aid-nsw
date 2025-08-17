@@ -48,47 +48,110 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary-lighter via-background to-accent-soft/20 flex items-center justify-center p-4">
       <SEO title="Sign in | NSW Legal Evidence Manager" description="Access your secure NSW evidence vault with email and password." />
-      <main className="max-w-md mx-auto">
-        <h1 className="text-2xl font-semibold tracking-tight mb-4">Account</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>{mode === "signin" ? "Sign in" : "Create an account"}</CardTitle>
+      
+      {/* Background pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary))_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(var(--accent))_0%,transparent_50%)] opacity-[0.03]" />
+      
+      <main className="relative w-full max-w-md">
+        <div className="text-center mb-8 fade-in">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-primary/10">
+              <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">NSW Legal Evidence</h1>
+          <p className="text-muted-foreground">Secure evidence management for legal professionals</p>
+        </div>
+
+        <Card className="card-premium">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">
+              {mode === "signin" ? "Welcome back" : "Create your account"}
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+                <Input 
+                  id="email" 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                  placeholder="legal.professional@example.com"
+                  className="focus-elegant"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                <Input 
+                  id="password" 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  placeholder="••••••••••••"
+                  className="focus-elegant"
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-            </div>
+
             {mode === "signin" ? (
-              <Button onClick={signIn} disabled={loading}>{loading ? "Signing in..." : "Sign in"}</Button>
+              <Button 
+                onClick={signIn} 
+                disabled={loading} 
+                className="w-full btn-premium h-11"
+              >
+                {loading ? "Signing in..." : "Sign in securely"}
+              </Button>
             ) : (
-              <Button onClick={signUp} disabled={loading}>{loading ? "Creating account..." : "Sign up"}</Button>
+              <Button 
+                onClick={signUp} 
+                disabled={loading}
+                className="w-full btn-premium h-11"
+              >
+                {loading ? "Creating account..." : "Create secure account"}
+              </Button>
             )}
 
-            <div className="text-sm text-muted-foreground">
+            <div className="text-center text-sm text-muted-foreground">
               {mode === "signin" ? (
                 <span>
-                  New here?{" "}
-                  <button className="underline" onClick={() => setMode("signup")}>Create an account</button>
+                  Need an account?{" "}
+                  <button 
+                    className="text-primary hover:underline font-medium transition-colors" 
+                    onClick={() => setMode("signup")}
+                  >
+                    Sign up here
+                  </button>
                 </span>
               ) : (
                 <span>
                   Already have an account?{" "}
-                  <button className="underline" onClick={() => setMode("signin")}>Sign in</button>
+                  <button 
+                    className="text-primary hover:underline font-medium transition-colors" 
+                    onClick={() => setMode("signin")}
+                  >
+                    Sign in instead
+                  </button>
                 </span>
               )}
             </div>
 
-            <div className="text-xs text-muted-foreground">
-              Tip: If email links don’t open correctly, set Site URL and Redirect URLs in Supabase Auth settings.
+            <div className="pt-4 border-t">
+              <div className="text-xs text-muted-foreground text-center space-y-2">
+                <p className="flex items-center justify-center gap-1">
+                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                  Bank-level encryption and security
+                </p>
+                <Link to="/" className="text-primary hover:underline">← Back to dashboard</Link>
+              </div>
             </div>
-            <Link to="/" className="text-sm underline">Back to app</Link>
           </CardContent>
         </Card>
       </main>

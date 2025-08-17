@@ -7,100 +7,122 @@ All colors MUST be HSL. */
 
 @layer base {
   :root {
-    /* Core palette */
-    --background: 210 20% 99%;
-    --foreground: 230 50% 8%;
+    /* Premium legal palette */
+    --background: 216 18% 98%;
+    --foreground: 215 25% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 50% 8%;
+    --card-foreground: 215 25% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 50% 8%;
+    --popover-foreground: 215 25% 12%;
 
-    /* Brand */
-    --primary: 226 76% 52%; /* NSW-inspired deep blue */
-    --primary-foreground: 210 40% 98%;
+    /* Professional brand identity */
+    --primary: 215 84% 35%; /* Deep navy for trust & authority */
+    --primary-foreground: 0 0% 98%;
+    --primary-soft: 215 84% 45%;
+    --primary-lighter: 215 84% 92%;
 
-    --secondary: 220 16% 94%;
-    --secondary-foreground: 230 50% 12%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 215 25% 16%;
 
-    --muted: 220 16% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 12% 48%;
 
-    --accent: 255 92% 76%;
-    --accent-foreground: 240 33% 15%;
+    --accent: 154 35% 45%; /* Sage green for approachability */
+    --accent-foreground: 0 0% 98%;
+    --accent-soft: 154 35% 85%;
+
+    --warm: 25 85% 45%; /* Warm gold accent */
+    --warm-foreground: 0 0% 98%;
+    --warm-soft: 25 85% 92%;
 
     --destructive: 0 72% 55%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 13% 90%;
-    --input: 220 13% 90%;
-    --ring: 226 76% 52%;
+    --border: 210 20% 88%;
+    --input: 210 20% 88%;
+    --ring: 215 84% 35%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
-    /* Sidebar */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 230 50% 12%;
-    --sidebar-primary: 226 76% 52%;
+    /* Sophisticated sidebar */
+    --sidebar-background: 215 30% 97%;
+    --sidebar-foreground: 215 25% 16%;
+    --sidebar-primary: 215 84% 35%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 220 16% 94%;
-    --sidebar-accent-foreground: 230 50% 12%;
-    --sidebar-border: 220 13% 90%;
-    --sidebar-ring: 226 76% 52%;
+    --sidebar-accent: 210 20% 92%;
+    --sidebar-accent-foreground: 215 25% 16%;
+    --sidebar-border: 210 20% 85%;
+    --sidebar-ring: 215 84% 35%;
 
-    /* Category hues */
-    --category-police: 220 90% 56%;
-    --category-court: 265 70% 55%;
-    --category-message: 172 66% 45%;
-    --category-photo: 14 85% 55%;
-    --category-medical: 190 75% 45%;
-    --category-financial: 32 90% 50%;
-    --category-witness: 295 70% 55%;
-    --category-other: 240 8% 50%;
+    /* Refined category colors for legal docs */
+    --category-police: 220 85% 45%;
+    --category-court: 265 65% 45%;
+    --category-message: 172 55% 35%;
+    --category-photo: 14 75% 45%;
+    --category-medical: 190 65% 35%;
+    --category-financial: 32 80% 40%;
+    --category-witness: 295 60% 45%;
+    --category-other: 215 15% 45%;
 
-    /* Motion & shadows */
-    --shadow-elegant: 0 10px 30px -12px hsl(var(--primary) / 0.25);
-    --transition-smooth: all 200ms cubic-bezier(0.22, 1, 0.36, 1);
+    /* Premium motion & effects */
+    --shadow-elegant: 0 8px 25px -8px hsl(var(--primary) / 0.15);
+    --shadow-premium: 0 20px 40px -12px hsl(var(--primary) / 0.12);
+    --shadow-card: 0 2px 8px -2px hsl(var(--primary) / 0.08);
+    --transition-smooth: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    /* Gradients for premium feel */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-soft)));
+    --gradient-warm: linear-gradient(135deg, hsl(var(--warm)), hsl(var(--accent)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
   }
 
   .dark {
-    --background: 230 50% 7%;
-    --foreground: 210 40% 98%;
+    --background: 215 30% 8%;
+    --foreground: 210 40% 95%;
 
-    --card: 230 50% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 30% 10%;
+    --card-foreground: 210 40% 95%;
 
-    --popover: 230 50% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 30% 10%;
+    --popover-foreground: 210 40% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 230 50% 12%;
+    --primary: 215 84% 55%;
+    --primary-foreground: 215 30% 8%;
+    --primary-soft: 215 84% 65%;
+    --primary-lighter: 215 84% 15%;
 
-    --secondary: 220 14% 16%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 215 25% 15%;
+    --secondary-foreground: 210 40% 95%;
 
-    --muted: 220 14% 16%;
-    --muted-foreground: 220 10% 70%;
+    --muted: 215 25% 15%;
+    --muted-foreground: 215 15% 65%;
 
-    --accent: 255 92% 76%;
-    --accent-foreground: 240 33% 15%;
+    --accent: 154 35% 55%;
+    --accent-foreground: 215 30% 8%;
+    --accent-soft: 154 35% 20%;
 
-    --destructive: 0 62% 40%;
-    --destructive-foreground: 210 40% 98%;
+    --warm: 25 85% 55%;
+    --warm-foreground: 215 30% 8%;
+    --warm-soft: 25 85% 15%;
 
-    --border: 220 14% 18%;
-    --input: 220 14% 18%;
-    --ring: 226 76% 52%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 98%;
 
-    --sidebar-background: 230 45% 8%;
-    --sidebar-foreground: 220 14% 90%;
-    --sidebar-primary: 226 76% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 16%;
-    --sidebar-accent-foreground: 220 14% 90%;
-    --sidebar-border: 220 14% 16%;
-    --sidebar-ring: 226 76% 52%;
+    --border: 215 25% 18%;
+    --input: 215 25% 18%;
+    --ring: 215 84% 55%;
+
+    --sidebar-background: 215 30% 6%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 215 84% 55%;
+    --sidebar-primary-foreground: 215 30% 8%;
+    --sidebar-accent: 215 25% 12%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 215 25% 15%;
+    --sidebar-ring: 215 84% 55%;
   }
 }
 
@@ -110,6 +132,71 @@ All colors MUST be HSL. */
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv01", "cv02", "cv03", "cv04";
   }
+
+  /* Professional scrollbars */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/30;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/60;
+  }
+}
+
+@layer components {
+  /* Premium card styles */
+  .card-premium {
+    @apply bg-card border border-border rounded-lg shadow-[var(--shadow-card)] backdrop-blur-sm;
+    transition: var(--transition-smooth);
+  }
+  
+  .card-premium:hover {
+    @apply shadow-[var(--shadow-elegant)];
+    transform: translateY(-1px);
+  }
+
+  /* Professional buttons */
+  .btn-premium {
+    @apply relative overflow-hidden;
+    transition: var(--transition-smooth);
+  }
+  
+  .btn-premium:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Elegant focus rings */
+  .focus-elegant {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Professional animations */
+  .fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }

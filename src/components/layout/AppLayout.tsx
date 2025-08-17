@@ -1,20 +1,21 @@
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
-import { Files, MessageCircleQuestion, CalendarClock, FileText, Search, LifeBuoy, Settings, LayoutDashboard } from "lucide-react";
+import { Files, MessageCircleQuestion, CalendarClock, FileText, Search, LifeBuoy, Settings, LayoutDashboard, LogOut, Scale } from "lucide-react";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
 import { ChatButton } from "@/components/chat/ChatButton";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { to: "/", label: "Home", icon: LayoutDashboard },
+  { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/workspace", label: "Workspace", icon: LayoutDashboard },
-  { to: "/evidence", label: "Library", icon: Files },
-  { to: "/assistant", label: "Chat", icon: MessageCircleQuestion },
+  { to: "/evidence", label: "Evidence", icon: Files },
+  { to: "/assistant", label: "Assistant", icon: MessageCircleQuestion },
   { to: "/timeline", label: "Timeline", icon: CalendarClock },
   { to: "/forms", label: "Forms", icon: FileText },
-  { to: "/taskboard", label: "Taskboard", icon: FileText },
+  { to: "/taskboard", label: "Tasks", icon: FileText },
   { to: "/search", label: "Search", icon: Search },
-  { to: "/find-help", label: "Find Help", icon: LifeBuoy },
+  { to: "/find-help", label: "Support", icon: LifeBuoy },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -25,12 +26,33 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="grid grid-cols-1 md:grid-cols-[260px_1fr]">
-        <aside className="border-r bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-          <div className="h-16 flex items-center px-4 border-b">
-            <div className="font-semibold tracking-tight">NSW Evidence</div>
+      {/* Professional top header */}
+      <header className="border-b bg-card/80 backdrop-blur-md supports-[backdrop-filter]:bg-card/80 sticky top-0 z-40">
+        <div className="flex h-16 items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Scale className="h-6 w-6 text-primary" />
+              <div className="font-semibold text-lg tracking-tight">NSW Legal Evidence</div>
+            </div>
           </div>
-          <nav className="p-2 space-y-1">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => { await supabase.auth.signOut(); navigate("/auth"); }}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign out
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex">
+        {/* Elegant sidebar */}
+        <aside className="w-64 border-r bg-sidebar-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar-background/95 min-h-[calc(100vh-4rem)] sticky top-16">
+          <nav className="p-4 space-y-2">
             {navItems.map(({ to, label, icon: Icon }) => (
               <NavLink
                 key={to}
@@ -38,30 +60,28 @@ export default function AppLayout() {
                 end={to === "/"}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                    "flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200",
+                    "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2",
                     isActive
-                      ? "bg-primary/10 text-primary"
-                      : "hover:bg-accent hover:text-accent-foreground"
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                      : "text-sidebar-foreground"
                   )
                 }
               >
-                <Icon className="size-4" />
+                <Icon className="h-5 w-5" />
                 <span>{label}</span>
               </NavLink>
             ))}
           </nav>
-          <div className="p-3 border-t mt-2">
-            <button
-              className="w-full text-left text-sm px-3 py-2 rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-              onClick={async () => { await supabase.auth.signOut(); navigate("/auth"); }}
-            >
-              Sign out
-            </button>
-          </div>
         </aside>
-        <main className="min-h-screen relative">
+
+        {/* Main content area */}
+        <main className="flex-1 min-h-[calc(100vh-4rem)] relative">
           <DisclaimerBanner />
-          <Outlet />
+          <div className="fade-in">
+            <Outlet />
+          </div>
           
           {/* Global Chat Button - Hidden on assistant page */}
           {!isAssistantPage && <ChatButton />}
