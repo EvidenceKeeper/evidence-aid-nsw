@@ -4,6 +4,19 @@ import { toast } from "sonner";
 import { SEO } from "@/components/SEO";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EvidenceWizard } from "@/components/evidence/EvidenceWizard";
+import { 
+  Plus, 
+  FolderOpen, 
+  FileText, 
+  Camera, 
+  MessageSquare, 
+  Heart, 
+  DollarSign,
+  Users,
+  Shield
+} from "lucide-react";
 
 const categories = [
   { name: "Police report", color: "bg-[hsl(var(--category-police))]/15 text-[hsl(var(--category-police))]" },
@@ -30,6 +43,8 @@ export default function Evidence() {
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [indexing, setIndexing] = useState<string | null>(null);
+  const [showWizard, setShowWizard] = useState(false);
+  const [filesByCategory, setFilesByCategory] = useState<Record<string, EvidenceItem[]>>({});
 
   const formatBytes = (bytes?: number) => {
     if (bytes === undefined || bytes === null) return "";
@@ -86,6 +101,16 @@ export default function Evidence() {
       }));
 
       setFiles(items);
+      
+      // Group files by category for better organization
+      const grouped = items.reduce((acc, file) => {
+        const category = detectFileCategory(file);
+        if (!acc[category]) acc[category] = [];
+        acc[category].push(file);
+        return acc;
+      }, {} as Record<string, EvidenceItem[]>);
+      
+      setFilesByCategory(grouped);
     } catch (err: any) {
       console.error(err);
       toast.error(err?.message ?? "Unexpected error while loading files");
@@ -251,95 +276,174 @@ export default function Evidence() {
     }
   };
 
+  const detectFileCategory = (file: EvidenceItem) => {
+    if (file.mimeType?.startsWith('image/')) return 'Photos & Videos';
+    if (file.name.toLowerCase().includes('message') || file.name.toLowerCase().includes('text')) return 'Messages & Communication';
+    if (file.name.toLowerCase().includes('medical') || file.name.toLowerCase().includes('doctor')) return 'Medical Records';
+    if (file.name.toLowerCase().includes('bank') || file.name.toLowerCase().includes('financial')) return 'Financial Evidence';
+    if (file.name.toLowerCase().includes('witness') || file.name.toLowerCase().includes('statement')) return 'Witness Statements';
+    return 'Official Documents';
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const icons = {
+      'Photos & Videos': Camera,
+      'Messages & Communication': MessageSquare,
+      'Medical Records': Heart,
+      'Financial Evidence': DollarSign,
+      'Witness Statements': Users,
+      'Official Documents': FileText,
+    };
+    return icons[category as keyof typeof icons] || FileText;
+  };
+
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      'Photos & Videos': 'bg-purple-50 border-purple-200',
+      'Messages & Communication': 'bg-blue-50 border-blue-200',
+      'Medical Records': 'bg-red-50 border-red-200',
+      'Financial Evidence': 'bg-yellow-50 border-yellow-200',
+      'Witness Statements': 'bg-indigo-50 border-indigo-200',
+      'Official Documents': 'bg-green-50 border-green-200',
+    };
+    return colors[category as keyof typeof colors] || 'bg-gray-50 border-gray-200';
+  };
+
+  if (showWizard) {
+    return (
+      <div className="container mx-auto px-6 py-8">
+        <SEO title="Upload Evidence | NSW Legal Evidence Manager" description="Guided evidence upload to organize your case documents safely and securely." />
+        <EvidenceWizard onComplete={() => {
+          setShowWizard(false);
+          loadFiles();
+        }} />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-6 py-8">
-      <SEO title="Evidence Hub | NSW Legal Evidence Manager" description="Upload, organize, and preview documents. Auto-categorize and manage tags in a clean evidence grid." />
+      <SEO title="Evidence Library | NSW Legal Evidence Manager" description="View and organize your uploaded evidence in a simple, trauma-informed interface." />
 
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Evidence</h1>
-        <p className="text-muted-foreground">Upload PDFs, images, emails, audio/video. Categorize, tag, and preview.</p>
+      <header className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight mb-2">Your Evidence Library</h1>
+          <p className="text-muted-foreground">Your files are organized and secure. You're building a strong case.</p>
+        </div>
+        <Button 
+          onClick={() => setShowWizard(true)}
+          size="lg"
+          className="flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Evidence
+        </Button>
       </header>
 
-      <section
-        {...getRootProps()}
-        className="border border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary/60 transition-colors"
-      >
-        <input {...getInputProps()} />
-        {isDragActive ? (
-          <p>Drop files to upload securely.</p>
-        ) : (
-          <p>Drag and drop files here, or click to select. You must be logged in.</p>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <div className="flex flex-wrap gap-2 mb-4">
-          {categories.map((c) => (
-            <span key={c.name} className={`px-2 py-1 text-xs rounded-full ${c.color}`}>{c.name}</span>
-          ))}
+      {files.length === 0 ? (
+        <Card className="text-center py-16">
+          <CardContent>
+            <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <CardTitle className="text-xl mb-2">Start Building Your Case</CardTitle>
+            <p className="text-muted-foreground mb-6">
+              Upload your evidence and we'll help organize everything automatically. 
+              Your information is private and secure.
+            </p>
+            <Button 
+              onClick={() => setShowWizard(true)}
+              size="lg"
+              className="flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              Upload First Evidence
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-8">
+          {Object.entries(filesByCategory).map(([category, categoryFiles]) => {
+            const CategoryIcon = getCategoryIcon(category);
+            return (
+              <Card key={category} className={`${getCategoryColor(category)}`}>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-white/80">
+                      <CategoryIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">{category}</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        {categoryFiles.length} file{categoryFiles.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categoryFiles.map((item) => (
+                      <Card key={item.path} className="bg-white border hover:shadow-sm transition-shadow">
+                        <CardContent className="p-4">
+                          {item.mimeType?.startsWith("image/") && item.signedUrl ? (
+                            <img
+                              src={item.signedUrl}
+                              alt={`${item.name} preview`}
+                              loading="lazy"
+                              className="h-32 w-full object-cover rounded-md mb-3"
+                            />
+                          ) : (
+                            <div className="h-32 rounded-md bg-muted/40 mb-3 flex items-center justify-center">
+                              <FileText className="w-8 h-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium truncate" title={item.name}>
+                              {item.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatBytes(item.size)}
+                            </p>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => item.signedUrl && window.open(item.signedUrl, "_blank", "noopener,noreferrer")}
+                                disabled={!item.signedUrl}
+                                className="flex-1"
+                              >
+                                View
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleIndex(item)}
+                                disabled={indexing === item.path}
+                                className="flex-1"
+                              >
+                                {indexing === item.path ? "Processing..." : "Process"}
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          
+          {/* Quick access to add more evidence */}
+          <Card className="border-dashed border-2 hover:border-primary/60 transition-colors cursor-pointer"
+                onClick={() => setShowWizard(true)}>
+            <CardContent className="text-center py-8">
+              <Plus className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">Add more evidence to strengthen your case</p>
+            </CardContent>
+          </Card>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {loading && Array.from({ length: 8 }).map((_, i) => (
-            <article key={i} className="rounded-lg border bg-card p-4 hover:shadow-sm transition-shadow">
-              <div className="h-36 rounded-md bg-muted/40 mb-3" />
-              <div className="h-4 bg-muted/60 rounded w-3/4 mb-2" />
-              <div className="h-3 bg-muted/40 rounded w-1/2" />
-            </article>
-          ))}
-
-          {!loading && files.length === 0 && (
-            <div className="col-span-full rounded-lg border bg-card p-8 text-center text-muted-foreground">
-              No files yet. Upload above to get started.
-            </div>
-          )}
-
-          {!loading && files.map((item) => (
-            <article key={item.path} className="rounded-lg border bg-card p-4 hover:shadow-sm transition-shadow">
-              {item.mimeType?.startsWith("image/") && item.signedUrl ? (
-                <img
-                  src={item.signedUrl}
-                  alt={`${item.name} preview`}
-                  loading="lazy"
-                  className="h-36 w-full object-cover rounded-md mb-3"
-                />
-              ) : (
-                <div className="h-36 rounded-md bg-muted/40 mb-3 flex items-center justify-center text-sm text-muted-foreground">
-                  {item.mimeType || "File"}
-                </div>
-              )}
-
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" title={item.name}>{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatBytes(item.size)}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleIndex(item)}
-                    disabled={indexing === item.path}
-                  >
-                    {indexing === item.path ? "Indexing…" : "Index"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => item.signedUrl && window.open(item.signedUrl, "_blank", "noopener,noreferrer")}
-                    disabled={!item.signedUrl}
-                  >
-                    View
-                  </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(item.path)}>
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      )}
     </div>
   );
 }

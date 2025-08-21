@@ -3,10 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, FileText, CheckCircle, AlertCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { SimpleTimeline } from "@/components/timeline/SimpleTimeline";
+import { Calendar, TrendingUp, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
 
 interface TimelineEvent {
   id: string;
@@ -22,32 +21,19 @@ interface TimelineEvent {
 }
 
 export default function Timeline() {
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const { toast } = useToast();
+  const [hasEvents, setHasEvents] = useState(false);
 
-  const loadTimelineEvents = async () => {
+  const checkForEvents = async () => {
     try {
-      const { data, error } = await supabase
+      const { count, error } = await supabase
         .from("timeline_events")
-        .select(`
-          *,
-          files(name)
-        `)
-        .order("event_date", { ascending: false });
+        .select("*", { count: "exact", head: true });
 
       if (error) throw error;
-      setEvents(data || []);
+      setHasEvents((count || 0) > 0);
     } catch (error) {
-      console.error("Error loading timeline:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load timeline events",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+      console.error("Error checking timeline events:", error);
     }
   };
 
@@ -63,11 +49,7 @@ export default function Timeline() {
       if (filesError) throw filesError;
 
       if (!files?.length) {
-        toast({
-          title: "No Files",
-          description: "No processed files found. Upload and process some evidence first.",
-          variant: "destructive"
-        });
+        toast.error("No processed files found. Upload and process some evidence first.");
         return;
       }
 
@@ -90,213 +72,119 @@ export default function Timeline() {
       const successful = results.filter(r => !r.error);
       const totalExtracted = successful.reduce((sum, r) => sum + (r.inserted || 0), 0);
 
-      toast({
-        title: "Timeline Extraction Complete",
-        description: `Extracted ${totalExtracted} events from ${successful.length} files`,
-      });
+      toast.success(`Found ${totalExtracted} events from ${successful.length} files! Building your timeline...`);
 
-      // Reload events
-      await loadTimelineEvents();
+      // Check for events
+      await checkForEvents();
 
     } catch (error) {
       console.error("Timeline extraction error:", error);
-      toast({
-        title: "Error",
-        description: "Failed to extract timeline events",
-        variant: "destructive"
-      });
+      toast.error("Failed to extract timeline events. Please try again.");
     } finally {
       setProcessing(false);
     }
   };
 
-  const verifyEvent = async (eventId: string, verified: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("timeline_events")
-        .update({ verified })
-        .eq("id", eventId);
-
-      if (error) throw error;
-
-      setEvents(events.map(e => 
-        e.id === eventId ? { ...e, verified } : e
-      ));
-
-      toast({
-        title: verified ? "Event Verified" : "Event Unverified",
-        description: `Timeline event has been ${verified ? "verified" : "marked as unverified"}`,
-      });
-    } catch (error) {
-      console.error("Error updating event:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update event verification",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      incident: "bg-red-100 text-red-800",
-      communication: "bg-blue-100 text-blue-800",
-      legal_action: "bg-purple-100 text-purple-800",
-      medical: "bg-green-100 text-green-800",
-      financial: "bg-yellow-100 text-yellow-800",
-      other: "bg-gray-100 text-gray-800"
-    };
-    return colors[category as keyof typeof colors] || colors.other;
-  };
-
   useEffect(() => {
-    loadTimelineEvents();
+    checkForEvents();
   }, []);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-6 py-8">
-        <SEO title="Timeline | NSW Legal Evidence Manager" description="Extract and manage dated events, link evidence, and export a court-ready chronology." />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading timeline...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-6 py-8">
-      <SEO title="Timeline | NSW Legal Evidence Manager" description="Extract and manage dated events, link evidence, and export a court-ready chronology." />
+      <SEO title="Your Timeline | NSW Legal Evidence Manager" description="Simple visual timeline of events built from your evidence files." />
       
-      <div className="flex items-center justify-between mb-6">
+      <header className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight mb-2">Timeline</h1>
-          <p className="text-muted-foreground">Auto-extracted events from your evidence files</p>
+          <h1 className="text-2xl font-semibold tracking-tight mb-2">Your Case Timeline</h1>
+          <p className="text-muted-foreground">
+            {hasEvents 
+              ? "Review and verify the events we found in your evidence" 
+              : "We'll build a timeline from your evidence files automatically"}
+          </p>
         </div>
         
-        <Button 
-          onClick={extractTimelineFromFiles}
-          disabled={processing}
-          className="flex items-center gap-2"
-        >
-          {processing ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              Processing...
-            </>
-          ) : (
-            <>
-              <Calendar className="h-4 w-4" />
-              Extract Timeline
-            </>
-          )}
-        </Button>
-      </div>
+        {!hasEvents && (
+          <Button 
+            onClick={extractTimelineFromFiles}
+            disabled={processing}
+            size="lg"
+            className="flex items-center gap-2"
+          >
+            {processing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Building timeline...
+              </>
+            ) : (
+              <>
+                <TrendingUp className="h-4 w-4" />
+                Build My Timeline
+              </>
+            )}
+          </Button>
+        )}
+      </header>
 
-      {events.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Timeline Events</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              Upload and process evidence files, then click "Extract Timeline" to automatically identify dated events.
+      {!hasEvents ? (
+        <Card className="text-center py-16">
+          <CardContent>
+            <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <CardTitle className="text-xl mb-2">Let's Build Your Timeline</CardTitle>
+            <p className="text-muted-foreground mb-6">
+              Upload evidence files first, then we'll automatically find important dates and events 
+              to create a clear timeline for your case.
             </p>
-            <Button onClick={extractTimelineFromFiles} disabled={processing}>
-              {processing ? "Processing..." : "Extract Timeline"}
-            </Button>
+            {processing ? (
+              <div className="flex items-center justify-center gap-2 text-primary">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                <span>Analyzing your evidence files...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg p-3">
+                  <CheckCircle className="w-4 h-4 inline mr-2" />
+                  This helps organize your case chronologically for court or police
+                </p>
+                <Button 
+                  onClick={extractTimelineFromFiles}
+                  size="lg"
+                  className="flex items-center gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Build My Timeline
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {events.map((event) => (
-            <Card key={event.id} className={`transition-all hover:shadow-md ${
-              event.verified ? "border-green-200 bg-green-50/50" : "border-border"
-            }`}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center text-sm">
-                      <Calendar className="h-4 w-4 text-muted-foreground mb-1" />
-                      <span className="font-medium">
-                        {format(new Date(event.event_date), "MMM dd")}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {format(new Date(event.event_date), "yyyy")}
-                      </span>
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CardTitle className="text-lg">{event.title}</CardTitle>
-                        {event.event_time && (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {event.event_time}
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className={getCategoryColor(event.category)}>
-                          {event.category.replace("_", " ")}
-                        </Badge>
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <FileText className="h-3 w-3" />
-                          {event.files?.name}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className={`text-xs px-2 py-1 rounded ${
-                      event.confidence > 0.7 ? "bg-green-100 text-green-700" :
-                      event.confidence > 0.4 ? "bg-yellow-100 text-yellow-700" :
-                      "bg-red-100 text-red-700"
-                    }`}>
-                      {Math.round(event.confidence * 100)}% confident
-                    </div>
-                    
-                    <Button
-                      size="sm"
-                      variant={event.verified ? "default" : "outline"}
-                      onClick={() => verifyEvent(event.id, !event.verified)}
-                      className="flex items-center gap-1"
-                    >
-                      {event.verified ? (
-                        <>
-                          <CheckCircle className="h-3 w-3" />
-                          Verified
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-3 w-3" />
-                          Verify
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground mb-3">{event.description}</p>
-                {event.context && (
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                      View context from document
-                    </summary>
-                    <div className="mt-2 p-3 bg-muted rounded text-muted-foreground">
-                      "{event.context}..."
-                    </div>
-                  </details>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              Click "Does this look right?" to verify events are accurate
+            </div>
+            <Button 
+              onClick={extractTimelineFromFiles}
+              disabled={processing}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {processing ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Calendar className="h-4 w-4" />
+                  Update Timeline
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <SimpleTimeline />
         </div>
       )}
     </div>
