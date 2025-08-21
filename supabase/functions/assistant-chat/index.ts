@@ -82,16 +82,71 @@ serve(async (req) => {
     const userEmail = user.email;
     const userName = userEmail ? userEmail.split('@')[0] : 'there';
 
-    // Check for recently uploaded files
-    const { data: recentFiles, error: filesError } = await supabase
+    // Check for substantial evidence and case memory
+    const { data: allFiles, error: filesError } = await supabase
       .from("files")
-      .select("name, created_at, status")
+      .select("id, name, created_at, status")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
+      .eq("status", "processed")
+      .order("created_at", { ascending: false });
 
-    const hasRecentUploads = recentFiles && recentFiles.length > 0;
-    const newlyProcessedFiles = recentFiles?.filter(f => f.status === 'processed') || [];
+    const { data: totalChunks } = await supabase
+      .from("chunks")
+      .select("id", { count: "exact", head: true })
+      .eq("file_id", allFiles?.[0]?.id || "");
+
+    const hasSubstantialEvidence = (totalChunks?.count || 0) > 100; // Substantial evidence threshold
+    
+    // Check if case memory exists  
+    const { data: caseMemory } = await supabase
+      .from("case_memory")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    const { data: legalStrategy } = await supabase
+      .from("legal_strategy")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    // SMART TRIGGER: If substantial evidence exists but no case analysis has been done, trigger it now
+    let analysisTriggered = false;
+    if (hasSubstantialEvidence && !caseMemory && !legalStrategy && allFiles && allFiles.length > 0) {
+      console.log('🧠 Smart trigger: Substantial evidence detected, initiating case analysis...');
+      
+      try {
+        const analysisResponse = await supabase.functions.invoke('continuous-case-analysis', {
+          body: { 
+            file_id: allFiles[0].id,
+            analysis_type: 'comprehensive_review' 
+          }
+        });
+
+        if (!analysisResponse.error) {
+          console.log('✅ Smart analysis completed');
+          analysisTriggered = true;
+          
+          // Refresh case memory and strategy after analysis
+          const { data: newCaseMemory } = await supabase
+            .from("case_memory")
+            .select("*")
+            .eq("user_id", user.id)
+            .single();
+          
+          const { data: newLegalStrategy } = await supabase
+            .from("legal_strategy")
+            .select("*")
+            .eq("user_id", user.id)
+            .single();
+        }
+      } catch (error) {
+        console.error('Smart analysis trigger failed:', error);
+      }
+    }
+
+    const hasRecentUploads = allFiles && allFiles.length > 0;
+    const newlyProcessedFiles = allFiles?.slice(0, 5) || [];
 
     // Simple per-user rate limit: 10 requests per minute
     const windowMs = 60_000;
@@ -219,19 +274,36 @@ serve(async (req) => {
       }
     }
 
-    // Create personalized greeting and file acknowledgment
-    let fileAcknowledgment = "";
-    if (hasRecentUploads) {
-      if (newlyProcessedFiles.length > 0) {
-        fileAcknowledgment = `\n\nI can see you've uploaded ${newlyProcessedFiles.map(f => f.name).join(', ')} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
-      } else if (recentFiles && recentFiles.length > 0) {
-        fileAcknowledgment = `\n\nI can see you have files uploaded (${recentFiles.map(f => f.name).join(', ')}). I'll analyze the content that's been indexed to provide specific insights about your situation.`;
+    // Create SMART personalized greeting and evidence acknowledgment
+    let smartGreeting = "";
+    if (hasSubstantialEvidence && hasRecentUploads) {
+      const fileNames = newlyProcessedFiles.map(f => f.name).join(', ');
+      const chunkCount = totalChunks?.count || 0;
+      
+      if (analysisTriggered) {
+        smartGreeting = `\n\n🔍 **EVIDENCE ANALYSIS COMPLETE**
+I've just analyzed your ${fileNames} containing ${chunkCount}+ pieces of evidence. Based on my analysis, I can already identify concerning patterns that appear relevant to NSW coercive control laws. Let me share what I found and how this strengthens your case...`;
+      } else if (caseMemory || legalStrategy) {
+        smartGreeting = `\n\n📋 **CASE UPDATE**
+I can see you've uploaded ${fileNames} with ${chunkCount}+ evidence pieces that I've analyzed. Based on your established case goals and this evidence, I'm ready to provide specific insights about the patterns I've identified and next steps.`;
+      } else {
+        smartGreeting = `\n\n📁 **SUBSTANTIAL EVIDENCE DETECTED**
+I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evidence. This appears to be a significant evidence collection. I'm analyzing it now to identify patterns and legal significance...`;
       }
+    } else if (hasRecentUploads) {
+      const fileNames = newlyProcessedFiles.slice(0, 3).map(f => f.name).join(', ');
+      smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
     }
 
-    // Check for existing case memory to understand user's goals
-    const { data: caseMemory } = await supabase
+    // Get updated case memory after potential analysis
+    const { data: currentCaseMemory } = await supabase
       .from("case_memory")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+      
+    const { data: currentLegalStrategy } = await supabase
+      .from("legal_strategy")
       .select("*")
       .eq("user_id", user.id)
       .single();
@@ -242,8 +314,16 @@ serve(async (req) => {
 
 ## CORE METHODOLOGY ##
 
-**STEP 1: GOAL ESTABLISHMENT** ${!caseMemory ? `
-- If this is our first interaction, IMMEDIATELY ask about their primary legal objective:
+**EVIDENCE-AWARE INTELLIGENCE**
+${hasSubstantialEvidence ? `
+🔍 **SUBSTANTIAL EVIDENCE DETECTED**: ${totalChunks?.count || 0}+ pieces of evidence uploaded
+📁 **FILES ANALYZED**: ${allFiles?.map(f => f.name).join(', ')}
+${currentLegalStrategy ? `💪 **CASE STRENGTH**: ${Math.round((currentLegalStrategy.case_strength_overall || 0) * 100)}% based on evidence analysis` : ''}
+${analysisTriggered ? '✅ **FRESH ANALYSIS**: Just completed comprehensive evidence review' : ''}` : ''}
+
+**STEP 1: GOAL ESTABLISHMENT** ${!currentCaseMemory ? `
+${hasSubstantialEvidence ? `- You have substantial evidence uploaded. Let me analyze the patterns I found and then ask about your specific legal objectives.` : `
+- If this is our first interaction, IMMEDIATELY ask about their primary legal objective:`}
   * Seeking an ADVO (Apprehended Domestic Violence Order)?
   * Building evidence for criminal charges under Section 54D?
   * Preparing for family court proceedings?
@@ -251,9 +331,9 @@ serve(async (req) => {
   * Documenting ongoing abuse patterns?
 - Ask about key parties involved, timeline, and current safety situation
 - Store this information for future reference` : `
-- User's established goal: ${caseMemory.facts || 'Not yet documented'}
-- Key parties: ${JSON.stringify(caseMemory.parties || {})}
-- Issues identified: ${JSON.stringify(caseMemory.issues || {})}`}
+- User's established goal: ${currentCaseMemory.facts || 'Not yet documented'}
+- Key parties: ${JSON.stringify(currentCaseMemory.parties || {})}
+- Issues identified: ${JSON.stringify(currentCaseMemory.issues || {})}`}
 
 **STEP 2: EVIDENCE ANALYSIS FRAMEWORK**
 When analyzing uploaded content, provide responses in this exact structure:
@@ -308,7 +388,9 @@ Priority-ranked actions toward your goal:
 Always assess safety implications based on evidence patterns and provide NSW-specific emergency contacts.
 
 ## PERSONAL ENGAGEMENT ##
-Address ${userName} personally and acknowledge their courage in documenting abuse.${fileAcknowledgment}
+Address ${userName} personally and acknowledge their courage in documenting abuse.${smartGreeting}
+
+**PROACTIVE INTELLIGENCE**: ${hasSubstantialEvidence ? `With ${totalChunks?.count || 0}+ evidence pieces, demonstrate your understanding by referencing specific patterns, quotes, and legal implications from their actual uploads. Show you've studied their case thoroughly.` : 'Build rapport and establish their legal objectives.'}
 
 **CRITICAL**: Never provide hypothetical examples. Always analyze the actual uploaded evidence with specific quotes and citations. Teach the user why each finding matters legally and what to do next.`,
     };

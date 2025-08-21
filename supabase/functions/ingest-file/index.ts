@@ -260,28 +260,23 @@ serve(async (req) => {
 
     await supabase.from("files").update({ status: "processed" }).eq("id", fileId);
 
-    // Automatically trigger continuous case analysis
+    // Automatically trigger continuous case analysis using Supabase client
     try {
       console.log('🔄 Triggering automatic case analysis...');
       
-      const analysisResponse = await fetch(`${SUPABASE_URL}/functions/v1/continuous-case-analysis`, {
-        method: 'POST',
-        headers: {
-          'Authorization': req.headers.get('Authorization') || '',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
+      const analysisResponse = await supabase.functions.invoke('continuous-case-analysis', {
+        body: { 
           file_id: fileId,
           analysis_type: 'new_evidence' 
-        }),
+        }
       });
 
       let analysisResult = null;
-      if (analysisResponse.ok) {
-        analysisResult = await analysisResponse.json();
+      if (!analysisResponse.error && analysisResponse.data) {
+        analysisResult = analysisResponse.data;
         console.log('✅ Case analysis completed:', analysisResult.summary);
       } else {
-        console.error('❌ Case analysis failed:', analysisResponse.statusText);
+        console.error('❌ Case analysis failed:', analysisResponse.error);
       }
 
       return new Response(
