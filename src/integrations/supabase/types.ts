@@ -35,6 +35,42 @@ export type Database = {
         }
         Relationships: []
       }
+      case_analysis_history: {
+        Row: {
+          analysis_type: string
+          case_strength_change: number | null
+          created_at: string
+          id: string
+          key_insights: string[] | null
+          new_state: Json | null
+          previous_state: Json | null
+          trigger_file_id: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_type: string
+          case_strength_change?: number | null
+          created_at?: string
+          id?: string
+          key_insights?: string[] | null
+          new_state?: Json | null
+          previous_state?: Json | null
+          trigger_file_id?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_type?: string
+          case_strength_change?: number | null
+          created_at?: string
+          id?: string
+          key_insights?: string[] | null
+          new_state?: Json | null
+          previous_state?: Json | null
+          trigger_file_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       case_memory: {
         Row: {
           facts: string | null
@@ -57,6 +93,48 @@ export type Database = {
           id?: string
           issues?: Json | null
           parties?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      case_patterns: {
+        Row: {
+          created_at: string
+          description: string
+          evidence_files: string[] | null
+          id: string
+          legal_significance: string | null
+          pattern_strength: number
+          pattern_type: string
+          timeline_end: string | null
+          timeline_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          evidence_files?: string[] | null
+          id?: string
+          legal_significance?: string | null
+          pattern_strength?: number
+          pattern_type: string
+          timeline_end?: string | null
+          timeline_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          evidence_files?: string[] | null
+          id?: string
+          legal_significance?: string | null
+          pattern_strength?: number
+          pattern_type?: string
+          timeline_end?: string | null
+          timeline_start?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -99,6 +177,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      evidence_processing_queue: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          file_id: string
+          id: string
+          priority: number
+          processing_type: string
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_id: string
+          id?: string
+          priority?: number
+          processing_type?: string
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_id?: string
+          id?: string
+          priority?: number
+          processing_type?: string
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      evidence_relationships: {
+        Row: {
+          confidence: number
+          created_at: string
+          description: string | null
+          id: string
+          relationship_type: string
+          source_file_id: string
+          target_file_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          relationship_type: string
+          source_file_id: string
+          target_file_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          relationship_type?: string
+          source_file_id?: string
+          target_file_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       files: {
         Row: {
@@ -145,6 +298,45 @@ export type Database = {
           tags?: string[] | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      legal_strategy: {
+        Row: {
+          case_strength_overall: number
+          evidence_gaps: Json
+          id: string
+          legal_elements_status: Json
+          next_steps: Json
+          opposing_arguments: Json
+          strengths: Json
+          updated_at: string
+          user_id: string
+          weaknesses: Json
+        }
+        Insert: {
+          case_strength_overall?: number
+          evidence_gaps?: Json
+          id?: string
+          legal_elements_status?: Json
+          next_steps?: Json
+          opposing_arguments?: Json
+          strengths?: Json
+          updated_at?: string
+          user_id: string
+          weaknesses?: Json
+        }
+        Update: {
+          case_strength_overall?: number
+          evidence_gaps?: Json
+          id?: string
+          legal_elements_status?: Json
+          next_steps?: Json
+          opposing_arguments?: Json
+          strengths?: Json
+          updated_at?: string
+          user_id?: string
+          weaknesses?: Json
         }
         Relationships: []
       }

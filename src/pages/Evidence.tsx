@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EvidenceWizard } from "@/components/evidence/EvidenceWizard";
+import { EvidenceAnalysisFeedback } from "@/components/evidence/EvidenceAnalysisFeedback";
+import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
 import { 
   Plus, 
   FolderOpen, 
@@ -45,6 +47,7 @@ export default function Evidence() {
   const [indexing, setIndexing] = useState<string | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [filesByCategory, setFilesByCategory] = useState<Record<string, EvidenceItem[]>>({});
+  const [latestAnalysis, setLatestAnalysis] = useState<any>(null);
 
   const formatBytes = (bytes?: number) => {
     if (bytes === undefined || bytes === null) return "";
@@ -224,15 +227,30 @@ export default function Evidence() {
     if (!item?.path) return;
     try {
       setIndexing(item.path);
-      const { error } = await supabase.functions.invoke("ingest-file", {
+      const response = await supabase.functions.invoke("ingest-file", {
         body: { path: item.path },
       });
-      if (error) throw error;
-      toast.success(`Indexed ${item.name}`);
+      
+      if (response.error) {
+        throw response.error;
+      }
+      
+      console.log('File processed successfully:', response.data);
+      
+      // Show analysis feedback if available
+      if (response.data?.analysis) {
+        setLatestAnalysis({
+          ...response.data.analysis,
+          fileName: item.name
+        });
+      } else {
+        toast.success(`Successfully processed ${item.name}`);
+      }
+      
       await loadFiles();
     } catch (err: any) {
       console.error(err);
-      toast.error(err?.message ?? "Indexing failed");
+      toast.error(err?.message ?? "Processing failed");
     } finally {
       setIndexing(null);
     }
@@ -324,6 +342,18 @@ export default function Evidence() {
   return (
     <div className="container mx-auto px-6 py-8">
       <SEO title="Evidence Library | NSW Legal Evidence Manager" description="View and organize your uploaded evidence in a simple, trauma-informed interface." />
+
+      {/* Show analysis feedback if available */}
+      {latestAnalysis && (
+        <EvidenceAnalysisFeedback
+          analysis={latestAnalysis}
+          fileName={latestAnalysis.fileName}
+          onClose={() => setLatestAnalysis(null)}
+        />
+      )}
+
+      {/* Live case insights */}
+      <LiveCaseInsights />
 
       <header className="flex items-center justify-between mb-8">
         <div>
@@ -418,11 +448,11 @@ export default function Evidence() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleIndex(item)}
-                                disabled={indexing === item.path}
-                                className="flex-1"
-                              >
-                                {indexing === item.path ? "Processing..." : "Process"}
-                              </Button>
+                                 disabled={indexing === item.path}
+                                 className="flex-1"
+                               >
+                                 {indexing === item.path ? "Analyzing..." : "Analyze"}
+                               </Button>
                             </div>
                           </div>
                         </CardContent>
