@@ -245,9 +245,12 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
 
         if (fileError) throw fileError;
 
-        // Index the file
+        // Index the file using the storage path
         await supabase.functions.invoke("ingest-file", {
-          body: { file_id: fileData.id }
+          body: { 
+            path: fileName,
+            bucket: "evidence"
+          }
         });
 
         // Categorize the file
