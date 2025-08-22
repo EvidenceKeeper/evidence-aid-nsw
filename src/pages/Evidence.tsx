@@ -17,7 +17,8 @@ import {
   Heart, 
   DollarSign,
   Users,
-  Shield
+  Shield,
+  Trash2
 } from "lucide-react";
 
 const categories = [
@@ -452,6 +453,14 @@ export default function Evidence() {
                                  className="flex-1"
                                >
                                  {indexing === item.path ? "Analyzing..." : "Analyze"}
+                               </Button>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleDelete(item.path)}
+                                 className="text-destructive hover:text-destructive"
+                               >
+                                 <Trash2 className="w-4 h-4" />
                                </Button>
                             </div>
                           </div>
