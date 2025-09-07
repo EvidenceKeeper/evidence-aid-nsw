@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useWellnessSettings } from "@/hooks/useWellnessSettings";
+import { WellnessFront } from "@/components/WellnessFront";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -15,6 +17,9 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showRealAuth, setShowRealAuth] = useState(false);
+  
+  const { settings, isLoading: settingsLoading } = useWellnessSettings();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -46,6 +51,27 @@ export default function AuthPage() {
     if (error) return toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
     toast({ title: "Check your email", description: "Confirm your address to complete signup." });
   };
+
+  if (settingsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  // Show wellness front if enabled and not yet accessed
+  if (settings.enableWellnessFront && !showRealAuth) {
+    return (
+      <>
+        <SEO title="Daily Wellness Check-in" description="Your daily companion for mental health and wellness practices." />
+        <WellnessFront 
+          settings={settings} 
+          onAccessGranted={() => setShowRealAuth(true)} 
+        />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-lighter via-background to-accent-soft/20 flex items-center justify-center p-4">
