@@ -7,7 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import AppLayout from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import Evidence from "@/pages/Evidence";
-import Timeline from "@/pages/Timeline";
+import CaseVisualization from "@/pages/CaseVisualization";
 import Forms from "@/pages/Forms";
 import Assistant from "@/pages/Assistant";
 import SearchPage from "@/pages/Search";
@@ -35,7 +35,7 @@ const App = () => (
                   <Route index element={<Dashboard />} />
                   <Route path="workspace" element={<Workspace />} />
                   <Route path="evidence" element={<Evidence />} />
-                  <Route path="timeline" element={<Timeline />} />
+                  <Route path="timeline" element={<CaseVisualization />} />
                   <Route path="forms" element={<Forms />} />
                   <Route path="assistant" element={<Assistant />} />
                   <Route path="chat" element={<Assistant />} />
