@@ -264,9 +264,22 @@ serve(async (req) => {
     try {
       console.log('🔄 Triggering automatic case analysis...');
       
+      // Start enhanced background processing
+      try {
+        const { error: enhancedProcessingError } = await supabase.functions.invoke(
+          "enhanced-evidence-processor", 
+          { body: { file_id: fileId, processing_type: "full_analysis" } }
+        );
+        if (enhancedProcessingError) {
+          console.error("Enhanced processing invocation failed:", enhancedProcessingError);
+        }
+      } catch (error) {
+        console.error("Failed to trigger enhanced processing:", error);
+      }
+
       const analysisResponse = await supabase.functions.invoke('continuous-case-analysis', {
         body: { 
-          file_id: fileId,
+          file_id: fileId, 
           analysis_type: 'new_evidence' 
         }
       });
@@ -286,9 +299,9 @@ serve(async (req) => {
           content_type: contentType,
           analysis: analysisResult || {
             success: true,
-            summary: `Thank you for uploading ${fileName}. Your evidence has been processed and is now part of your case file.`,
-            insights: ['Evidence successfully processed and stored securely'],
-            case_impact: 'This evidence contributes to your case documentation'
+            summary: `Thank you for uploading ${fileName}. Enhanced processing has started to extract timeline events and analyze patterns.`,
+            insights: ['Evidence successfully processed and stored securely', 'Timeline extraction and pattern analysis in progress'],
+            case_impact: 'This evidence will be automatically analyzed for coercive control patterns and timeline events'
           }
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
