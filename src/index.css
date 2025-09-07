@@ -166,6 +166,21 @@ All colors MUST be HSL. */
     transform: translateY(-1px);
   }
 
+  /* Wellness card styles */
+  .card-wellness {
+    @apply bg-emerald-50/80 border border-emerald-200/60 rounded-lg shadow-[var(--shadow-card)] backdrop-blur-sm;
+    transition: var(--transition-smooth);
+  }
+  
+  .card-wellness:hover {
+    @apply shadow-[0_8px_25px_-8px_hsl(142_70%_45%_/_0.15)];
+    transform: translateY(-1px);
+  }
+
+  .dark .card-wellness {
+    @apply bg-emerald-950/20 border-emerald-800/40;
+  }
+
   /* Professional buttons */
   .btn-premium {
     @apply relative overflow-hidden;
@@ -174,6 +189,25 @@ All colors MUST be HSL. */
   
   .btn-premium:hover {
     transform: translateY(-1px);
+  }
+
+  /* Wellness buttons */
+  .btn-wellness {
+    @apply relative overflow-hidden bg-gradient-to-r from-emerald-500 to-emerald-600 text-white;
+    transition: var(--transition-smooth);
+  }
+  
+  .btn-wellness:hover {
+    @apply from-emerald-600 to-emerald-700;
+    transform: translateY(-1px);
+  }
+
+  .dark .btn-wellness {
+    @apply from-emerald-600 to-emerald-700;
+  }
+
+  .dark .btn-wellness:hover {
+    @apply from-emerald-700 to-emerald-800;
   }
 
   /* Elegant focus rings */

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useWellnessSettings } from "@/hooks/useWellnessSettings";
-import { WellnessFront } from "@/components/WellnessFront";
+import { Heart, Shield } from "lucide-react";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -17,9 +17,11 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showRealAuth, setShowRealAuth] = useState(false);
   
   const { settings, isLoading: settingsLoading } = useWellnessSettings();
+
+  // Determine if we should show MindSpace camouflage
+  const isCamouflaged = settings.enableWellnessFront;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -60,43 +62,54 @@ export default function AuthPage() {
     );
   }
 
-  // Show wellness front if enabled and not yet accessed
-  if (settings.enableWellnessFront && !showRealAuth) {
-    return (
-      <>
-        <SEO title="Daily Wellness Check-in" description="Your daily companion for mental health and wellness practices." />
-        <WellnessFront 
-          settings={settings} 
-          onAccessGranted={() => setShowRealAuth(true)} 
-        />
-      </>
-    );
-  }
+  // Define content based on camouflage settings
+  const appTitle = isCamouflaged ? "MindSpace" : "NSW Legal Evidence";
+  const appTagline = isCamouflaged ? "Your personal wellness companion" : "Secure evidence management for legal professionals";
+  const pageTitle = isCamouflaged ? "MindSpace - Sign In" : "Sign in | NSW Legal Evidence Manager";
+  const pageDescription = isCamouflaged ? "Access your personal wellness space for meditation, journaling, and mental health support" : "Access your secure NSW evidence vault with email and password.";
+  const welcomeText = mode === "signin" ? (isCamouflaged ? "Welcome back to your safe space" : "Welcome back") : (isCamouflaged ? "Join your wellness community" : "Create your account");
+  const signInText = isCamouflaged ? "Enter your wellness space" : "Sign in securely";
+  const signUpText = isCamouflaged ? "Begin your wellness journey" : "Create secure account";
+  const emailPlaceholder = isCamouflaged ? "your.email@example.com" : "legal.professional@example.com";
+  const securityText = isCamouflaged ? "Your privacy is our priority" : "Bank-level encryption and security";
+  const dashboardLinkText = isCamouflaged ? "← Back to wellness" : "← Back to dashboard";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-lighter via-background to-accent-soft/20 flex items-center justify-center p-4">
-      <SEO title="Sign in | NSW Legal Evidence Manager" description="Access your secure NSW evidence vault with email and password." />
+    <div className={`min-h-screen flex items-center justify-center p-4 ${
+      isCamouflaged 
+        ? "bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950/20 dark:via-green-950/20 dark:to-teal-950/20" 
+        : "bg-gradient-to-br from-primary-lighter via-background to-accent-soft/20"
+    }`}>
+      <SEO title={pageTitle} description={pageDescription} />
       
       {/* Background pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary))_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(var(--accent))_0%,transparent_50%)] opacity-[0.03]" />
+      <div className={`absolute inset-0 opacity-[0.03] ${
+        isCamouflaged
+          ? "bg-[radial-gradient(circle_at_30%_20%,hsl(142_70%_45%)_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(158_60%_50%)_0%,transparent_50%)]"
+          : "bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary))_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(var(--accent))_0%,transparent_50%)]"
+      }`} />
       
       <main className="relative w-full max-w-md">
         <div className="text-center mb-8 fade-in">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
+            <div className={`p-3 rounded-xl ${
+              isCamouflaged ? "bg-emerald-100 dark:bg-emerald-900/20" : "bg-primary/10"
+            }`}>
+              {isCamouflaged ? (
+                <Heart className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <Shield className="h-8 w-8 text-primary" />
+              )}
             </div>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">NSW Legal Evidence</h1>
-          <p className="text-muted-foreground">Secure evidence management for legal professionals</p>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">{appTitle}</h1>
+          <p className="text-muted-foreground">{appTagline}</p>
         </div>
 
-        <Card className="card-premium">
+        <Card className={`${isCamouflaged ? "card-wellness" : "card-premium"}`}>
           <CardHeader className="text-center">
             <CardTitle className="text-xl">
-              {mode === "signin" ? "Welcome back" : "Create your account"}
+              {welcomeText}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -108,7 +121,7 @@ export default function AuthPage() {
                   type="email" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
-                  placeholder="legal.professional@example.com"
+                  placeholder={emailPlaceholder}
                   className="focus-elegant"
                 />
               </div>
@@ -129,17 +142,17 @@ export default function AuthPage() {
               <Button 
                 onClick={signIn} 
                 disabled={loading} 
-                className="w-full btn-premium h-11"
+                className={`w-full h-11 ${isCamouflaged ? "btn-wellness" : "btn-premium"}`}
               >
-                {loading ? "Signing in..." : "Sign in securely"}
+                {loading ? "Signing in..." : signInText}
               </Button>
             ) : (
               <Button 
                 onClick={signUp} 
                 disabled={loading}
-                className="w-full btn-premium h-11"
+                className={`w-full h-11 ${isCamouflaged ? "btn-wellness" : "btn-premium"}`}
               >
-                {loading ? "Creating account..." : "Create secure account"}
+                {loading ? "Creating account..." : signUpText}
               </Button>
             )}
 
@@ -170,12 +183,16 @@ export default function AuthPage() {
             <div className="pt-4 border-t">
               <div className="text-xs text-muted-foreground text-center space-y-2">
                 <p className="flex items-center justify-center gap-1">
-                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                  Bank-level encryption and security
+                  {isCamouflaged ? (
+                    <Heart className="h-3 w-3" />
+                  ) : (
+                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  {securityText}
                 </p>
-                <Link to="/" className="text-primary hover:underline">← Back to dashboard</Link>
+                <Link to="/" className="text-primary hover:underline">{dashboardLinkText}</Link>
               </div>
             </div>
           </CardContent>
