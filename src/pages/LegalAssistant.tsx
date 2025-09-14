@@ -7,6 +7,7 @@ import LegalKnowledgeManager from "@/components/legal/LegalKnowledgeManager";
 import ContentIngestionManager from "@/components/legal/ContentIngestionManager";
 import EvidenceLegalConnector from "@/components/evidence/EvidenceLegalConnector";
 import PersonalKnowledgeGraph from "@/components/visualization/PersonalKnowledgeGraph";
+import CaseOverviewDashboard from "@/components/case/CaseOverviewDashboard";
 
 export default function LegalAssistant() {
   return (
@@ -24,8 +25,9 @@ export default function LegalAssistant() {
           </p>
         </div>
 
-        <Tabs defaultValue="assistant" className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+        <Tabs defaultValue="dashboard" className="w-full">
+          <TabsList className="grid w-full grid-cols-8">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="assistant">AI Assistant</TabsTrigger>
             <TabsTrigger value="search">Legal Search</TabsTrigger>
             <TabsTrigger value="process">Process Guide</TabsTrigger>
@@ -34,6 +36,10 @@ export default function LegalAssistant() {
             <TabsTrigger value="evidence">Evidence Links</TabsTrigger>
             <TabsTrigger value="knowledge">Knowledge Graph</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="dashboard" className="mt-6">
+            <CaseOverviewDashboard />
+          </TabsContent>
 
           <TabsContent value="assistant" className="mt-6">
             <NSWLegalAssistant />
