@@ -1354,6 +1354,86 @@ export type Database = {
         }
         Relationships: []
       }
+      nsw_case_law: {
+        Row: {
+          case_name: string
+          case_summary: string | null
+          catchwords: string[] | null
+          court_id: string | null
+          created_at: string
+          division: string | null
+          full_text_available: boolean | null
+          id: string
+          judges: string[] | null
+          judgment_date: string | null
+          legal_principles: string[] | null
+          legislation_cited: string[] | null
+          neutral_citation: string | null
+          outcome: string | null
+          parties: Json | null
+          precedent_value: string | null
+          source_url: string | null
+          subject_matter: string[] | null
+          traditional_citation: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          case_name: string
+          case_summary?: string | null
+          catchwords?: string[] | null
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          full_text_available?: boolean | null
+          id?: string
+          judges?: string[] | null
+          judgment_date?: string | null
+          legal_principles?: string[] | null
+          legislation_cited?: string[] | null
+          neutral_citation?: string | null
+          outcome?: string | null
+          parties?: Json | null
+          precedent_value?: string | null
+          source_url?: string | null
+          subject_matter?: string[] | null
+          traditional_citation?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          case_name?: string
+          case_summary?: string | null
+          catchwords?: string[] | null
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          full_text_available?: boolean | null
+          id?: string
+          judges?: string[] | null
+          judgment_date?: string | null
+          legal_principles?: string[] | null
+          legislation_cited?: string[] | null
+          neutral_citation?: string | null
+          outcome?: string | null
+          parties?: Json | null
+          precedent_value?: string | null
+          source_url?: string | null
+          subject_matter?: string[] | null
+          traditional_citation?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_case_law_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nsw_courts: {
         Row: {
           contact_info: Json | null
@@ -1384,6 +1464,216 @@ export type Database = {
           jurisdiction?: string
           location?: string | null
           website_url?: string | null
+        }
+        Relationships: []
+      }
+      nsw_entity_topics: {
+        Row: {
+          assigned_by: string | null
+          confidence_score: number | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          relevance_score: number
+          topic_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          relevance_score?: number
+          topic_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          relevance_score?: number
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_entity_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_legal_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsw_legal_forms: {
+        Row: {
+          court_id: string | null
+          created_at: string
+          effective_date: string | null
+          filing_fee: number | null
+          form_fields: Json | null
+          form_number: string
+          form_title: string
+          form_type: string
+          id: string
+          instructions: string | null
+          jurisdiction: string
+          pdf_url: string | null
+          processing_time_days: number | null
+          purpose: string
+          related_legislation: string[] | null
+          required_documents: string[] | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          court_id?: string | null
+          created_at?: string
+          effective_date?: string | null
+          filing_fee?: number | null
+          form_fields?: Json | null
+          form_number: string
+          form_title: string
+          form_type: string
+          id?: string
+          instructions?: string | null
+          jurisdiction?: string
+          pdf_url?: string | null
+          processing_time_days?: number | null
+          purpose: string
+          related_legislation?: string[] | null
+          required_documents?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          court_id?: string | null
+          created_at?: string
+          effective_date?: string | null
+          filing_fee?: number | null
+          form_fields?: Json | null
+          form_number?: string
+          form_title?: string
+          form_type?: string
+          id?: string
+          instructions?: string | null
+          jurisdiction?: string
+          pdf_url?: string | null
+          processing_time_days?: number | null
+          purpose?: string
+          related_legislation?: string[] | null
+          required_documents?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_legal_forms_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsw_legal_outcomes: {
+        Row: {
+          binding_courts: string[] | null
+          case_id: string | null
+          costs_order: string | null
+          created_at: string
+          distinguished_cases: string[] | null
+          followed_cases: string[] | null
+          id: string
+          legal_principle: string | null
+          orders_made: string[] | null
+          outcome_description: string | null
+          outcome_type: string
+          precedent_established: string | null
+        }
+        Insert: {
+          binding_courts?: string[] | null
+          case_id?: string | null
+          costs_order?: string | null
+          created_at?: string
+          distinguished_cases?: string[] | null
+          followed_cases?: string[] | null
+          id?: string
+          legal_principle?: string | null
+          orders_made?: string[] | null
+          outcome_description?: string | null
+          outcome_type: string
+          precedent_established?: string | null
+        }
+        Update: {
+          binding_courts?: string[] | null
+          case_id?: string | null
+          costs_order?: string | null
+          created_at?: string
+          distinguished_cases?: string[] | null
+          followed_cases?: string[] | null
+          id?: string
+          legal_principle?: string | null
+          orders_made?: string[] | null
+          outcome_description?: string | null
+          outcome_type?: string
+          precedent_established?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_legal_outcomes_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_case_law"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsw_legal_relationships: {
+        Row: {
+          context: string | null
+          created_at: string
+          extracted_by: string | null
+          id: string
+          relationship_description: string | null
+          relationship_strength: number | null
+          relationship_type: string
+          source_entity_id: string
+          source_entity_type: string
+          target_entity_id: string
+          target_entity_type: string
+          verification_status: string | null
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          extracted_by?: string | null
+          id?: string
+          relationship_description?: string | null
+          relationship_strength?: number | null
+          relationship_type: string
+          source_entity_id: string
+          source_entity_type: string
+          target_entity_id: string
+          target_entity_type: string
+          verification_status?: string | null
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          extracted_by?: string | null
+          id?: string
+          relationship_description?: string | null
+          relationship_strength?: number | null
+          relationship_type?: string
+          source_entity_id?: string
+          source_entity_type?: string
+          target_entity_id?: string
+          target_entity_type?: string
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -1425,6 +1715,307 @@ export type Database = {
           url?: string | null
         }
         Relationships: []
+      }
+      nsw_legal_topics: {
+        Row: {
+          complexity_level: string | null
+          created_at: string
+          description: string | null
+          id: string
+          keywords: string[] | null
+          parent_topic_id: string | null
+          practitioner_notes: string | null
+          related_legislation: string[] | null
+          synonyms: string[] | null
+          topic_category: string
+          topic_level: number
+          topic_name: string
+          typical_courts: string[] | null
+        }
+        Insert: {
+          complexity_level?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          parent_topic_id?: string | null
+          practitioner_notes?: string | null
+          related_legislation?: string[] | null
+          synonyms?: string[] | null
+          topic_category: string
+          topic_level?: number
+          topic_name: string
+          typical_courts?: string[] | null
+        }
+        Update: {
+          complexity_level?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          parent_topic_id?: string | null
+          practitioner_notes?: string | null
+          related_legislation?: string[] | null
+          synonyms?: string[] | null
+          topic_category?: string
+          topic_level?: number
+          topic_name?: string
+          typical_courts?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_legal_topics_parent_topic_id_fkey"
+            columns: ["parent_topic_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_legal_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsw_legislation: {
+        Row: {
+          act_name: string
+          act_number: string | null
+          act_type: string
+          commencement_date: string | null
+          created_at: string
+          id: string
+          jurisdiction: string
+          long_title: string | null
+          parent_act_id: string | null
+          preamble: string | null
+          repeal_date: string | null
+          short_title: string | null
+          source_url: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          act_name: string
+          act_number?: string | null
+          act_type: string
+          commencement_date?: string | null
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          long_title?: string | null
+          parent_act_id?: string | null
+          preamble?: string | null
+          repeal_date?: string | null
+          short_title?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          act_name?: string
+          act_number?: string | null
+          act_type?: string
+          commencement_date?: string | null
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          long_title?: string | null
+          parent_act_id?: string | null
+          preamble?: string | null
+          repeal_date?: string | null
+          short_title?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_legislation_parent_act_id_fkey"
+            columns: ["parent_act_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_legislation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsw_legislation_sections: {
+        Row: {
+          amendment_history: Json | null
+          created_at: string
+          effective_date: string | null
+          id: string
+          legislation_id: string
+          notes: string | null
+          order_index: number
+          parent_section_id: string | null
+          section_content: string
+          section_level: number
+          section_number: string
+          section_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          amendment_history?: Json | null
+          created_at?: string
+          effective_date?: string | null
+          id?: string
+          legislation_id: string
+          notes?: string | null
+          order_index?: number
+          parent_section_id?: string | null
+          section_content: string
+          section_level?: number
+          section_number: string
+          section_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amendment_history?: Json | null
+          created_at?: string
+          effective_date?: string | null
+          id?: string
+          legislation_id?: string
+          notes?: string | null
+          order_index?: number
+          parent_section_id?: string | null
+          section_content?: string
+          section_level?: number
+          section_number?: string
+          section_title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_legislation_sections_legislation_id_fkey"
+            columns: ["legislation_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_legislation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nsw_legislation_sections_parent_section_id_fkey"
+            columns: ["parent_section_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_legislation_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      nsw_police_policies: {
+        Row: {
+          authority: string | null
+          compliance_requirements: string[] | null
+          content: string
+          created_at: string
+          effective_date: string
+          id: string
+          policy_number: string
+          policy_title: string
+          policy_type: string
+          related_legislation: string[] | null
+          review_date: string | null
+          status: string
+          subject_area: string
+          updated_at: string
+        }
+        Insert: {
+          authority?: string | null
+          compliance_requirements?: string[] | null
+          content: string
+          created_at?: string
+          effective_date: string
+          id?: string
+          policy_number: string
+          policy_title: string
+          policy_type: string
+          related_legislation?: string[] | null
+          review_date?: string | null
+          status?: string
+          subject_area: string
+          updated_at?: string
+        }
+        Update: {
+          authority?: string | null
+          compliance_requirements?: string[] | null
+          content?: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+          policy_number?: string
+          policy_title?: string
+          policy_type?: string
+          related_legislation?: string[] | null
+          review_date?: string | null
+          status?: string
+          subject_area?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      nsw_practice_directions: {
+        Row: {
+          content: string
+          court_id: string | null
+          created_at: string
+          division: string | null
+          effective_date: string
+          id: string
+          pd_number: string
+          related_legislation: string[] | null
+          source_url: string | null
+          status: string
+          subject_areas: string[] | null
+          supersedes_pd_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          effective_date: string
+          id?: string
+          pd_number: string
+          related_legislation?: string[] | null
+          source_url?: string | null
+          status?: string
+          subject_areas?: string[] | null
+          supersedes_pd_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          effective_date?: string
+          id?: string
+          pd_number?: string
+          related_legislation?: string[] | null
+          source_url?: string | null
+          status?: string
+          subject_areas?: string[] | null
+          supersedes_pd_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nsw_practice_directions_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "nsw_practice_directions_supersedes_pd_id_fkey"
+            columns: ["supersedes_pd_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_practice_directions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       police_policies: {
         Row: {
