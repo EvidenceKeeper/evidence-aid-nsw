@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen } from "lucide-react";
+import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen, Share2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { LegalKnowledgeManager } from "@/components/legal/LegalKnowledgeManager";
@@ -17,6 +17,8 @@ import ConsultationRequest from "@/components/legal/ConsultationRequest";
 import EnhancedLegalSearch from "@/components/legal/EnhancedLegalSearch";
 import EvidenceIntegrationToggle from "@/components/evidence/EvidenceIntegrationToggle";
 import EvidenceConnections from "@/components/evidence/EvidenceConnections";
+import { CaseShareDialog } from "@/components/case/CaseShareDialog";
+import { CollaborationActivity } from "@/components/case/CollaborationActivity";
 import { useEvidenceIntegration } from "@/hooks/useEvidenceIntegration";
 
 export default function Settings() {
@@ -292,6 +294,32 @@ export default function Settings() {
               />
               <EnhancedLegalSearch />
               <EvidenceConnections />
+              
+              {/* Case Sharing */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Share2 className="h-5 w-5" />
+                    Case Sharing & Collaboration
+                  </CardTitle>
+                  <CardDescription>
+                    Share your case with colleagues and track collaboration activity
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-4">
+                    <CaseShareDialog>
+                      <Button>
+                        <Share2 className="mr-2 h-4 w-4" />
+                        Share Case
+                      </Button>
+                    </CaseShareDialog>
+                  </div>
+                  
+                  <CollaborationActivity />
+                </CardContent>
+              </Card>
+              
               <LegalKnowledgeManager />
             </div>
           </TabsContent>
