@@ -6,6 +6,7 @@ import PoliceProcessNavigator from "@/components/legal/PoliceProcessNavigator";
 import LegalKnowledgeManager from "@/components/legal/LegalKnowledgeManager";
 import ContentIngestionManager from "@/components/legal/ContentIngestionManager";
 import EvidenceLegalConnector from "@/components/evidence/EvidenceLegalConnector";
+import PersonalKnowledgeGraph from "@/components/visualization/PersonalKnowledgeGraph";
 
 export default function LegalAssistant() {
   return (
@@ -24,13 +25,14 @@ export default function LegalAssistant() {
         </div>
 
         <Tabs defaultValue="assistant" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="assistant">AI Assistant</TabsTrigger>
             <TabsTrigger value="search">Legal Search</TabsTrigger>
             <TabsTrigger value="process">Process Guide</TabsTrigger>
             <TabsTrigger value="ingest">Content Pipeline</TabsTrigger>
             <TabsTrigger value="manage">Knowledge Base</TabsTrigger>
             <TabsTrigger value="evidence">Evidence Links</TabsTrigger>
+            <TabsTrigger value="knowledge">Knowledge Graph</TabsTrigger>
           </TabsList>
 
           <TabsContent value="assistant" className="mt-6">
@@ -55,6 +57,10 @@ export default function LegalAssistant() {
 
             <TabsContent value="evidence" className="mt-6">
               <EvidenceLegalConnector />
+            </TabsContent>
+
+            <TabsContent value="knowledge" className="mt-6">
+              <PersonalKnowledgeGraph />
             </TabsContent>
           </Tabs>
       </div>
