@@ -14,6 +14,7 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { LegalKnowledgeManager } from "@/components/legal/LegalKnowledgeManager";
 import ConsultationRequest from "@/components/legal/ConsultationRequest";
+import EnhancedLegalSearch from "@/components/legal/EnhancedLegalSearch";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, exportSettings, importSettings, isLoading } = useWellnessSettings();
@@ -279,7 +280,10 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="legal" className="space-y-6">
-            <LegalKnowledgeManager />
+            <div className="space-y-6">
+              <EnhancedLegalSearch />
+              <LegalKnowledgeManager />
+            </div>
           </TabsContent>
 
           <TabsContent value="consultation" className="space-y-6">

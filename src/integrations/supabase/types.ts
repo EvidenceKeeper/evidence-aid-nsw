@@ -378,6 +378,62 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_citations: {
+        Row: {
+          citation_type: string
+          confidence_score: number | null
+          court: string | null
+          created_at: string
+          full_citation: string
+          id: string
+          jurisdiction: string
+          neutral_citation: string | null
+          section_id: string
+          short_citation: string
+          updated_at: string
+          url: string | null
+          year: number | null
+        }
+        Insert: {
+          citation_type: string
+          confidence_score?: number | null
+          court?: string | null
+          created_at?: string
+          full_citation: string
+          id?: string
+          jurisdiction?: string
+          neutral_citation?: string | null
+          section_id: string
+          short_citation: string
+          updated_at?: string
+          url?: string | null
+          year?: number | null
+        }
+        Update: {
+          citation_type?: string
+          confidence_score?: number | null
+          court?: string | null
+          created_at?: string
+          full_citation?: string
+          id?: string
+          jurisdiction?: string
+          neutral_citation?: string | null
+          section_id?: string
+          short_citation?: string
+          updated_at?: string
+          url?: string | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_citations_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_concepts: {
         Row: {
           concept_name: string
@@ -499,6 +555,7 @@ export type Database = {
       }
       legal_sections: {
         Row: {
+          citation_format: string | null
           citation_reference: string | null
           content: string
           created_at: string
@@ -506,18 +563,22 @@ export type Database = {
           document_id: string
           embedding_data: Json | null
           id: string
+          last_verified: string | null
           legal_concepts: string[] | null
           level: number
           order_index: number
+          paragraph_anchor: string | null
           parent_section_id: string | null
           section_number: string | null
           section_type: string
+          source_url: string | null
           title: string
           tsv: unknown | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          citation_format?: string | null
           citation_reference?: string | null
           content: string
           created_at?: string
@@ -525,18 +586,22 @@ export type Database = {
           document_id: string
           embedding_data?: Json | null
           id?: string
+          last_verified?: string | null
           legal_concepts?: string[] | null
           level?: number
           order_index?: number
+          paragraph_anchor?: string | null
           parent_section_id?: string | null
           section_number?: string | null
           section_type: string
+          source_url?: string | null
           title: string
           tsv?: unknown | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          citation_format?: string | null
           citation_reference?: string | null
           content?: string
           created_at?: string
@@ -544,12 +609,15 @@ export type Database = {
           document_id?: string
           embedding_data?: Json | null
           id?: string
+          last_verified?: string | null
           legal_concepts?: string[] | null
           level?: number
           order_index?: number
+          paragraph_anchor?: string | null
           parent_section_id?: string | null
           section_number?: string | null
           section_type?: string
+          source_url?: string | null
           title?: string
           tsv?: unknown | null
           updated_at?: string

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import CitationAwareResponse from "@/components/legal/CitationAwareResponse";
 
 interface Message {
   id: string;
@@ -18,12 +19,27 @@ interface Message {
     excerpt: string;
     meta: any;
   }>;
+  legalCitations?: Array<{
+    id: string;
+    citation_type: 'statute' | 'case_law' | 'regulation' | 'practice_direction' | 'rule';
+    short_citation: string;
+    full_citation: string;
+    neutral_citation?: string;
+    court?: string;
+    year?: number;
+    jurisdiction: string;
+    url?: string;
+    confidence_score: number;
+    content_preview?: string;
+  }>;
   timestamp: Date;
   files?: Array<{
     id: string;
     name: string;
     status: "uploading" | "processing" | "ready" | "error";
   }>;
+  userQuery?: string;
+  consultationId?: string;
 }
 
 interface ChatMessageProps {
@@ -129,10 +145,20 @@ export function ChatMessage({ message }: ChatMessageProps) {
               </div>
             )}
             
-            {/* Content */}
-            <div className="whitespace-pre-wrap text-sm">
-              {message.content}
-            </div>
+            {/* Content - Use Citation-Aware Response for assistant messages */}
+            {!isUser && message.legalCitations ? (
+              <CitationAwareResponse
+                content={message.content}
+                citations={message.legalCitations}
+                userQuery={message.userQuery}
+                consultationId={message.consultationId}
+                className="border-0 shadow-none p-0"
+              />
+            ) : (
+              <div className="whitespace-pre-wrap text-sm">
+                {message.content}
+              </div>
+            )}
 
             {/* Citations */}
             {message.citations && message.citations.length > 0 && (

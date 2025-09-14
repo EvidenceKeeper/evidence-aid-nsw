@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Send, FileText, User, Calendar, MessageSquare } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import CitationAwareResponse from '@/components/legal/CitationAwareResponse';
 
 interface Consultation {
   id: string;
@@ -280,7 +281,7 @@ export default function ConsultationDetail() {
             
             {/* Messages */}
             <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.map((message) => (
+              {messages.map((message, index) => (
                 <div
                   key={message.id}
                   className={`p-4 rounded-lg border ${getMessageTypeColor(message.message_type)} ${
@@ -300,7 +301,19 @@ export default function ConsultationDetail() {
                       {new Date(message.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  
+                  {/* Use Citation-Aware Response for lawyer messages */}
+                  {message.sender_role === 'lawyer' ? (
+                    <CitationAwareResponse
+                      content={message.content}
+                      citations={message.citations || []}
+                      consultationId={consultation.id}
+                      mode="lawyer"
+                      className="border-0 shadow-none p-0"
+                    />
+                  ) : (
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                  )}
                 </div>
               ))}
               <div ref={messagesEndRef} />
