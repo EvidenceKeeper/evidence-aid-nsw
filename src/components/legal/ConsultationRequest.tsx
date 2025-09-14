@@ -92,6 +92,7 @@ export default function ConsultationRequest() {
         .from('lawyer_consultations')
         .insert({
           user_id: user.id,
+          lawyer_id: null,
           case_summary: caseSummary.trim(),
           priority,
           status: 'pending'

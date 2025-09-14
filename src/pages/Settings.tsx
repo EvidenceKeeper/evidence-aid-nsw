@@ -13,6 +13,7 @@ import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen } fro
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { LegalKnowledgeManager } from "@/components/legal/LegalKnowledgeManager";
+import ConsultationRequest from "@/components/legal/ConsultationRequest";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, exportSettings, importSettings, isLoading } = useWellnessSettings();
@@ -76,7 +77,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="privacy" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="privacy" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Privacy & Safety
@@ -88,6 +89,10 @@ export default function Settings() {
             <TabsTrigger value="legal" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
               Legal Knowledge
+            </TabsTrigger>
+            <TabsTrigger value="consultation" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Consultation
             </TabsTrigger>
             <TabsTrigger value="emergency" className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -275,6 +280,10 @@ export default function Settings() {
 
           <TabsContent value="legal" className="space-y-6">
             <LegalKnowledgeManager />
+          </TabsContent>
+
+          <TabsContent value="consultation" className="space-y-6">
+            <ConsultationRequest />
           </TabsContent>
 
           <TabsContent value="emergency" className="space-y-6">

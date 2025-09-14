@@ -18,6 +18,8 @@ import AuthPage from "@/pages/Auth";
 import AuthGate from "@/components/auth/AuthGate";
 import Workspace from "@/pages/Workspace";
 import Taskboard from "@/pages/Taskboard";
+import LawyerConsultations from "@/pages/LawyerConsultations";
+import ConsultationDetail from "@/pages/ConsultationDetail";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,8 @@ const App = () => (
                   <Route path="search" element={<SearchPage />} />
                   <Route path="find-help" element={<FindHelp />} />
                   <Route path="taskboard" element={<Taskboard />} />
+                  <Route path="consultations" element={<LawyerConsultations />} />
+                  <Route path="consultation/:consultationId" element={<ConsultationDetail />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
               </Route>

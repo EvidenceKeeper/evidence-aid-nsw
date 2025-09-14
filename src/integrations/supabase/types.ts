@@ -348,7 +348,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           id: string
-          lawyer_id: string
+          lawyer_id: string | null
           priority: string
           status: string
           updated_at: string
@@ -359,7 +359,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
-          lawyer_id: string
+          lawyer_id?: string | null
           priority?: string
           status?: string
           updated_at?: string
@@ -370,7 +370,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           id?: string
-          lawyer_id?: string
+          lawyer_id?: string | null
           priority?: string
           status?: string
           updated_at?: string
