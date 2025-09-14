@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen, Share2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { LegalKnowledgeManager } from "@/components/legal/LegalKnowledgeManager";
+import LegalKnowledgeManager from "@/components/legal/LegalKnowledgeManager";
 import ConsultationRequest from "@/components/legal/ConsultationRequest";
 import EnhancedLegalSearch from "@/components/legal/EnhancedLegalSearch";
 import EvidenceIntegrationToggle from "@/components/evidence/EvidenceIntegrationToggle";

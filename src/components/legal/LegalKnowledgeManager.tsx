@@ -388,3 +388,5 @@ export function LegalKnowledgeManager() {
     </Card>
   );
 }
+
+export default LegalKnowledgeManager;

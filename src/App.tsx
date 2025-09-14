@@ -20,6 +20,7 @@ import Workspace from "@/pages/Workspace";
 import Taskboard from "@/pages/Taskboard";
 import LawyerConsultations from "@/pages/LawyerConsultations";
 import ConsultationDetail from "@/pages/ConsultationDetail";
+import LegalAssistant from "@/pages/LegalAssistant";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ const App = () => (
                   <Route path="forms" element={<Forms />} />
                   <Route path="assistant" element={<Assistant />} />
                   <Route path="chat" element={<Assistant />} />
+                  <Route path="legal" element={<LegalAssistant />} />
                   <Route path="search" element={<SearchPage />} />
                   <Route path="find-help" element={<FindHelp />} />
                   <Route path="taskboard" element={<Taskboard />} />
