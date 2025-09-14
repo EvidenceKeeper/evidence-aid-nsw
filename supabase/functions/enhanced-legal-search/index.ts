@@ -221,6 +221,80 @@ serve(async (req) => {
       });
     }
 
+    // Get entity relationships for enriched context
+    const entityRelationships = new Map();
+    if (filteredResults.length > 0) {
+      const documentIds = [...new Set(filteredResults.map(r => r.legal_documents?.id).filter(Boolean))];
+      
+      // Get relationships where these documents are source or target
+      const { data: relationships } = await supabaseClient
+        .from('legal_relationships')
+        .select(`
+          id,
+          source_entity_type,
+          target_entity_type,
+          relationship_type,
+          relationship_description,
+          relationship_strength,
+          source_entity_id,
+          target_entity_id
+        `)
+        .or(`source_entity_id.in.(${documentIds.join(',')}),target_entity_id.in.(${documentIds.join(',')})`)
+        .limit(100);
+
+      if (relationships) {
+        relationships.forEach(rel => {
+          const sourceKey = rel.source_entity_id;
+          const targetKey = rel.target_entity_id;
+          
+          if (!entityRelationships.has(sourceKey)) {
+            entityRelationships.set(sourceKey, []);
+          }
+          if (!entityRelationships.has(targetKey)) {
+            entityRelationships.set(targetKey, []);
+          }
+          
+          entityRelationships.get(sourceKey).push({
+            ...rel,
+            direction: 'outgoing'
+          });
+          entityRelationships.get(targetKey).push({
+            ...rel,
+            direction: 'incoming'
+          });
+        });
+      }
+    }
+
+    // Get evidence connections if user is authenticated
+    let evidenceConnections = [];
+    if (userId && includePersonal) {
+      const sectionIds = filteredResults.map(r => r.id).filter(Boolean);
+      if (sectionIds.length > 0) {
+        const { data: connections } = await supabaseClient
+          .from('evidence_legal_connections')
+          .select(`
+            id,
+            legal_section_id,
+            evidence_file_id,
+            connection_type,
+            relevance_score,
+            explanation,
+            files!inner(
+              id,
+              name,
+              category
+            )
+          `)
+          .in('legal_section_id', sectionIds)
+          .eq('user_id', userId);
+
+        if (connections) {
+          evidenceConnections = connections;
+        }
+      }
+    }
+
     // Calculate relevance scores and format results
     const formattedResults = filteredResults.map(result => {
       // Calculate relevance based on query match
@@ -231,6 +305,20 @@ serve(async (req) => {
       ) ? 0.3 : 0;
       
       const relevanceScore = Math.min(0.2 + titleMatch + contentMatch + conceptMatch, 1.0);
+
+      // Get relationships for this document
+      const docRelationships = entityRelationships.get(result.legal_documents?.id) || [];
+      
+      // Get evidence connections for this section
+      const sectionEvidence = evidenceConnections.filter(conn => 
+        conn.legal_section_id === result.id
+      ).map(conn => ({
+        file_name: conn.files.name,
+        connection_type: conn.connection_type,
+        explanation: conn.explanation,
+        relevance_score: conn.relevance_score,
+        file_category: conn.files.category
+      }));
 
       return {
         id: result.id,
@@ -246,6 +334,8 @@ serve(async (req) => {
         paragraph_anchor: result.paragraph_anchor,
         legal_concepts: result.legal_concepts || [],
         citations: result.legal_citations || [],
+        relationships: docRelationships,
+        evidence_connections: sectionEvidence,
         relevance_score: relevanceScore,
       };
     });

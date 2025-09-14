@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Search, FileText, Gavel, Scale, Filter, X, Zap } from 'lucide-react';
 import CitationChip from './CitationChip';
+import SearchResultRelationships from './SearchResultRelationships';
+import EvidenceConnections from './EvidenceConnections';
 import { useCitationContext } from '@/hooks/useCitationContext';
 import { useEvidenceIntegration } from '@/hooks/useEvidenceIntegration';
 
@@ -34,11 +36,21 @@ interface SearchResult {
   section_id: string;
   document_id: string;
   citations?: any[];
+  relationships?: {
+    id: string;
+    source_entity_type: string;
+    target_entity_type: string;
+    relationship_type: string;
+    relationship_description?: string;
+    relationship_strength: number;
+    direction: 'incoming' | 'outgoing';
+  }[];
   evidence_connections?: {
     file_name: string;
     connection_type: string;
     explanation: string;
     relevance_score: number;
+    file_category?: string;
   }[];
 }
 
@@ -387,37 +399,12 @@ export default function EnhancedLegalSearch() {
                   {result.content}
                 </p>
 
-                {/* Evidence Connections */}
-                {result.evidence_connections && result.evidence_connections.length > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <h5 className="text-xs font-medium text-blue-800 mb-2 flex items-center">
-                      <Zap className="h-3 w-3 mr-1" />
-                      Your Evidence Connections
-                    </h5>
-                    <div className="space-y-2">
-                      {result.evidence_connections.map((connection, idx) => (
-                        <div key={idx} className="text-xs">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <FileText className="h-3 w-3 text-blue-600" />
-                            <span className="font-medium text-blue-800">{connection.file_name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {Math.round(connection.relevance_score * 100)}% relevant
-                            </Badge>
-                          </div>
-                          <p className="text-blue-700 ml-5">{connection.explanation}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
+                {/* Legal Concepts */}
                 {result.legal_concepts && result.legal_concepts.length > 0 && (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground mb-1 block">
-                      Legal Concepts:
-                    </span>
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Legal Concepts:</span>
                     <div className="flex flex-wrap gap-1">
-                      {result.legal_concepts.slice(0, 5).map((concept, index) => (
+                      {result.legal_concepts.map((concept, index) => (
                         <Badge key={index} variant="secondary" className="text-xs">
                           {concept}
                         </Badge>
@@ -426,21 +413,38 @@ export default function EnhancedLegalSearch() {
                   </div>
                 )}
 
+                {/* Citations */}
                 {result.citations && result.citations.length > 0 && (
-                  <div>
-                    <span className="text-xs font-medium text-muted-foreground mb-2 block">
-                      Citations:
-                    </span>
+                  <div className="space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">Citations:</span>
                     <div className="flex flex-wrap gap-1">
-                      {result.citations.map((citation) => (
+                      {result.citations.slice(0, 3).map((citation, index) => (
                         <CitationChip
-                          key={citation.id}
+                          key={index}
                           citation={citation}
                           mode={getDisplayMode()}
                         />
                       ))}
+                      {result.citations.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{result.citations.length - 3} more
+                        </Badge>
+                      )}
                     </div>
                   </div>
+                )}
+
+                {/* Relationships */}
+                {result.relationships && result.relationships.length > 0 && (
+                  <SearchResultRelationships 
+                    relationships={result.relationships}
+                    documentTitle={result.title}
+                  />
+                )}
+
+                {/* Evidence Connections */}
+                {result.evidence_connections && result.evidence_connections.length > 0 && (
+                  <EvidenceConnections connections={result.evidence_connections} />
                 )}
               </CardContent>
             </Card>
