@@ -4,6 +4,7 @@ import NSWLegalAssistant from "@/components/legal/NSWLegalAssistant";
 import EnhancedLegalSearch from "@/components/legal/EnhancedLegalSearch";
 import PoliceProcessNavigator from "@/components/legal/PoliceProcessNavigator";
 import LegalKnowledgeManager from "@/components/legal/LegalKnowledgeManager";
+import ContentIngestionManager from "@/components/legal/ContentIngestionManager";
 
 export default function LegalAssistant() {
   return (
@@ -22,10 +23,11 @@ export default function LegalAssistant() {
         </div>
 
         <Tabs defaultValue="assistant" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="assistant">AI Assistant</TabsTrigger>
             <TabsTrigger value="search">Legal Search</TabsTrigger>
             <TabsTrigger value="process">Process Guide</TabsTrigger>
+            <TabsTrigger value="ingest">Content Pipeline</TabsTrigger>
             <TabsTrigger value="manage">Knowledge Base</TabsTrigger>
           </TabsList>
 
@@ -39,6 +41,10 @@ export default function LegalAssistant() {
 
           <TabsContent value="process" className="mt-6">
             <PoliceProcessNavigator />
+          </TabsContent>
+
+          <TabsContent value="ingest" className="mt-6">
+            <ContentIngestionManager />
           </TabsContent>
 
           <TabsContent value="manage" className="mt-6">

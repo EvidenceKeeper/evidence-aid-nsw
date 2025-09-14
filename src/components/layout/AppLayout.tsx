@@ -11,6 +11,7 @@ const navItems = [
   { to: "/workspace", label: "Workspace", icon: LayoutDashboard },
   { to: "/evidence", label: "Evidence", icon: Files },
   { to: "/assistant", label: "Assistant", icon: MessageCircleQuestion },
+  { to: "/legal", label: "NSW Legal", icon: Scale },
   { to: "/timeline", label: "Timeline", icon: CalendarClock },
   { to: "/forms", label: "Forms", icon: FileText },
   { to: "/taskboard", label: "Tasks", icon: FileText },
