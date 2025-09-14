@@ -500,6 +500,72 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_chunks: {
+        Row: {
+          chunk_order: number
+          chunk_text: string
+          citation_references: string[] | null
+          confidence_score: number | null
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          legal_concepts: string[] | null
+          metadata: Json | null
+          paragraph_anchor: string | null
+          provenance: Json
+          section_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          chunk_order?: number
+          chunk_text: string
+          citation_references?: string[] | null
+          confidence_score?: number | null
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          legal_concepts?: string[] | null
+          metadata?: Json | null
+          paragraph_anchor?: string | null
+          provenance?: Json
+          section_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          chunk_order?: number
+          chunk_text?: string
+          citation_references?: string[] | null
+          confidence_score?: number | null
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          legal_concepts?: string[] | null
+          metadata?: Json | null
+          paragraph_anchor?: string | null
+          provenance?: Json
+          section_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_chunks_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_citations: {
         Row: {
           citation_type: string
@@ -596,14 +662,19 @@ export type Database = {
       }
       legal_documents: {
         Row: {
+          checksum: string | null
           created_at: string
           document_type: string
           effective_date: string | null
           id: string
+          ingestion_method: string | null
           jurisdiction: string
+          last_verified: string | null
           scope: string
+          source_authority: string | null
           source_url: string | null
           status: string
+          tags: string[] | null
           title: string
           total_sections: number | null
           updated_at: string
@@ -611,14 +682,19 @@ export type Database = {
           version: string
         }
         Insert: {
+          checksum?: string | null
           created_at?: string
           document_type: string
           effective_date?: string | null
           id?: string
+          ingestion_method?: string | null
           jurisdiction?: string
+          last_verified?: string | null
           scope?: string
+          source_authority?: string | null
           source_url?: string | null
           status?: string
+          tags?: string[] | null
           title: string
           total_sections?: number | null
           updated_at?: string
@@ -626,19 +702,66 @@ export type Database = {
           version?: string
         }
         Update: {
+          checksum?: string | null
           created_at?: string
           document_type?: string
           effective_date?: string | null
           id?: string
+          ingestion_method?: string | null
           jurisdiction?: string
+          last_verified?: string | null
           scope?: string
+          source_authority?: string | null
           source_url?: string | null
           status?: string
+          tags?: string[] | null
           title?: string
           total_sections?: number | null
           updated_at?: string
           user_id?: string | null
           version?: string
+        }
+        Relationships: []
+      }
+      legal_evaluation_questions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          difficulty_level: string
+          expected_answer: string
+          id: string
+          jurisdiction: string
+          question_text: string
+          required_citations: string[] | null
+          reviewer_notes: string | null
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          difficulty_level?: string
+          expected_answer: string
+          id?: string
+          jurisdiction?: string
+          question_text: string
+          required_citations?: string[] | null
+          reviewer_notes?: string | null
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          difficulty_level?: string
+          expected_answer?: string
+          id?: string
+          jurisdiction?: string
+          question_text?: string
+          required_citations?: string[] | null
+          reviewer_notes?: string | null
+          topic?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -680,6 +803,8 @@ export type Database = {
           citation_format: string | null
           citation_reference: string | null
           content: string
+          context_after: string | null
+          context_before: string | null
           created_at: string
           cross_references: string[] | null
           document_id: string
@@ -693,6 +818,7 @@ export type Database = {
           parent_section_id: string | null
           section_number: string | null
           section_type: string
+          source_checksum: string | null
           source_url: string | null
           title: string
           tsv: unknown | null
@@ -703,6 +829,8 @@ export type Database = {
           citation_format?: string | null
           citation_reference?: string | null
           content: string
+          context_after?: string | null
+          context_before?: string | null
           created_at?: string
           cross_references?: string[] | null
           document_id: string
@@ -716,6 +844,7 @@ export type Database = {
           parent_section_id?: string | null
           section_number?: string | null
           section_type: string
+          source_checksum?: string | null
           source_url?: string | null
           title: string
           tsv?: unknown | null
@@ -726,6 +855,8 @@ export type Database = {
           citation_format?: string | null
           citation_reference?: string | null
           content?: string
+          context_after?: string | null
+          context_before?: string | null
           created_at?: string
           cross_references?: string[] | null
           document_id?: string
@@ -739,6 +870,7 @@ export type Database = {
           parent_section_id?: string | null
           section_number?: string | null
           section_type?: string
+          source_checksum?: string | null
           source_url?: string | null
           title?: string
           tsv?: unknown | null
@@ -831,6 +963,39 @@ export type Database = {
         }
         Relationships: []
       }
+      nsw_courts: {
+        Row: {
+          contact_info: Json | null
+          court_level: string
+          court_name: string
+          created_at: string
+          id: string
+          jurisdiction: string
+          location: string | null
+          website_url: string | null
+        }
+        Insert: {
+          contact_info?: Json | null
+          court_level: string
+          court_name: string
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          location?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          contact_info?: Json | null
+          court_level?: string
+          court_name?: string
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          location?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       nsw_legal_resources: {
         Row: {
           category: string
@@ -869,6 +1034,59 @@ export type Database = {
           url?: string | null
         }
         Relationships: []
+      }
+      rag_response_quality: {
+        Row: {
+          citation_hit_rate: number | null
+          citations_provided: Json | null
+          confidence_score: number | null
+          created_at: string
+          evaluation_question_id: string | null
+          id: string
+          metadata: Json | null
+          query_text: string
+          response_content: string
+          source_freshness: number | null
+          user_feedback: number | null
+          user_id: string
+        }
+        Insert: {
+          citation_hit_rate?: number | null
+          citations_provided?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          evaluation_question_id?: string | null
+          id?: string
+          metadata?: Json | null
+          query_text: string
+          response_content: string
+          source_freshness?: number | null
+          user_feedback?: number | null
+          user_id: string
+        }
+        Update: {
+          citation_hit_rate?: number | null
+          citations_provided?: Json | null
+          confidence_score?: number | null
+          created_at?: string
+          evaluation_question_id?: string | null
+          id?: string
+          metadata?: Json | null
+          query_text?: string
+          response_content?: string
+          source_freshness?: number | null
+          user_feedback?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rag_response_quality_evaluation_question_id_fkey"
+            columns: ["evaluation_question_id"]
+            isOneToOne: false
+            referencedRelation: "legal_evaluation_questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       shared_cases: {
         Row: {
@@ -1001,6 +1219,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
       generate_share_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1018,12 +1240,122 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: string
+      }
+      match_legal_chunks: {
+        Args: {
+          court_filter?: string
+          jurisdiction_filter?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+          year_from?: number
+          year_to?: number
+        }
+        Returns: {
+          chunk_text: string
+          citation_references: string[]
+          document_id: string
+          id: string
+          legal_concepts: string[]
+          metadata: Json
+          provenance: Json
+          section_id: string
+          similarity: number
+        }[]
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
       }
     }
     Enums: {
