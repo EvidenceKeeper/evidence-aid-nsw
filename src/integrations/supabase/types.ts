@@ -219,6 +219,101 @@ export type Database = {
           },
         ]
       }
+      evidence_analysis: {
+        Row: {
+          analysis_type: string
+          confidence_score: number | null
+          content: string
+          created_at: string
+          file_id: string
+          id: string
+          legal_concepts: Json | null
+          relevant_citations: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_type: string
+          confidence_score?: number | null
+          content: string
+          created_at?: string
+          file_id: string
+          id?: string
+          legal_concepts?: Json | null
+          relevant_citations?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_type?: string
+          confidence_score?: number | null
+          content?: string
+          created_at?: string
+          file_id?: string
+          id?: string
+          legal_concepts?: Json | null
+          relevant_citations?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_analysis_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_legal_connections: {
+        Row: {
+          connection_type: string
+          created_at: string
+          evidence_file_id: string
+          explanation: string | null
+          id: string
+          legal_section_id: string
+          relevance_score: number | null
+          user_id: string
+        }
+        Insert: {
+          connection_type: string
+          created_at?: string
+          evidence_file_id: string
+          explanation?: string | null
+          id?: string
+          legal_section_id: string
+          relevance_score?: number | null
+          user_id: string
+        }
+        Update: {
+          connection_type?: string
+          created_at?: string
+          evidence_file_id?: string
+          explanation?: string | null
+          id?: string
+          legal_section_id?: string
+          relevance_score?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_legal_connections_evidence_file_id_fkey"
+            columns: ["evidence_file_id"]
+            isOneToOne: false
+            referencedRelation: "files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_legal_connections_legal_section_id_fkey"
+            columns: ["legal_section_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence_processing_queue: {
         Row: {
           completed_at: string | null
@@ -840,6 +935,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_evidence_informed_advice: {
+        Args: { _include_evidence?: boolean; _query: string; _user_id: string }
+        Returns: {
+          connection_explanation: string
+          evidence_relevance: number
+          file_name: string
+          legal_content: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

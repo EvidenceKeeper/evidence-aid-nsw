@@ -9,9 +9,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Search, FileText, Gavel, Scale, Filter, X } from 'lucide-react';
+import { Search, FileText, Gavel, Scale, Filter, X, Zap } from 'lucide-react';
 import CitationChip from './CitationChip';
 import { useCitationContext } from '@/hooks/useCitationContext';
+import { useEvidenceIntegration } from '@/hooks/useEvidenceIntegration';
 
 interface SearchFilters {
   searchType: 'semantic' | 'keyword' | 'both';
@@ -33,6 +34,12 @@ interface SearchResult {
   section_id: string;
   document_id: string;
   citations?: any[];
+  evidence_connections?: {
+    file_name: string;
+    connection_type: string;
+    explanation: string;
+    relevance_score: number;
+  }[];
 }
 
 export default function EnhancedLegalSearch() {
@@ -41,6 +48,7 @@ export default function EnhancedLegalSearch() {
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const { getDisplayMode } = useCitationContext();
+  const { settings: evidenceSettings, getEvidenceForQuery } = useEvidenceIntegration();
   const { toast } = useToast();
 
   const [filters, setFilters] = useState<SearchFilters>({
@@ -65,24 +73,75 @@ export default function EnhancedLegalSearch() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('enhanced-legal-search', {
-        body: {
-          query: query.trim(),
-          searchType: filters.searchType,
-          jurisdiction: filters.jurisdiction,
-          citationType: filters.citationType !== 'all' ? filters.citationType : undefined,
-          yearFrom: filters.yearFrom ? parseInt(filters.yearFrom) : undefined,
-          yearTo: filters.yearTo ? parseInt(filters.yearTo) : undefined,
-          court: filters.court || undefined,
-          includePersonal: filters.includePersonal,
-        },
-      });
+      // Enhanced legal search with evidence integration
+      const [legalResults, evidenceResults] = await Promise.all([
+        // Regular legal search
+        supabase.functions.invoke('enhanced-legal-search', {
+          body: {
+            query: query.trim(),
+            searchType: filters.searchType,
+            jurisdiction: filters.jurisdiction,
+            citationType: filters.citationType !== 'all' ? filters.citationType : undefined,
+            yearFrom: filters.yearFrom ? parseInt(filters.yearFrom) : undefined,
+            yearTo: filters.yearTo ? parseInt(filters.yearTo) : undefined,
+            court: filters.court || undefined,
+            includePersonal: filters.includePersonal,
+          },
+        }),
+        // Evidence-informed results if enabled
+        evidenceSettings.enabled 
+          ? getEvidenceForQuery(query.trim(), 10)
+          : Promise.resolve([])
+      ]);
 
-      if (error) throw error;
+      if (legalResults.error) throw legalResults.error;
 
-      setResults(data.results || []);
+      let combinedResults = legalResults.data?.results || [];
+
+      // Enhance results with evidence connections if available
+      if (evidenceResults.length > 0) {
+        combinedResults = combinedResults.map(result => {
+          const evidenceConnections = evidenceResults
+            .filter(ev => ev.legal_content?.includes(result.content.substring(0, 100)))
+            .map(ev => ({
+              file_name: ev.file_name,
+              connection_type: 'evidence_support',
+              explanation: `Your evidence in "${ev.file_name}" ${ev.connection_explanation || 'relates to this legal provision'}`,
+              relevance_score: ev.evidence_relevance
+            }));
+
+          return {
+            ...result,
+            evidence_connections: evidenceConnections
+          };
+        });
+
+        // Also add evidence-driven results
+        const evidenceDrivenResults = evidenceResults
+          .filter(ev => ev.evidence_relevance > 0.6)
+          .map(ev => ({
+            id: `evidence-${ev.file_name}`,
+            title: `Evidence Connection: ${ev.file_name}`,
+            content: ev.legal_content || 'Related legal content based on your evidence',
+            document_type: 'evidence_connection',
+            relevance_score: ev.evidence_relevance,
+            legal_concepts: [],
+            section_id: '',
+            document_id: '',
+            evidence_connections: [{
+              file_name: ev.file_name,
+              connection_type: 'primary_evidence',
+              explanation: ev.connection_explanation || 'This legal principle applies to your evidence',
+              relevance_score: ev.evidence_relevance
+            }]
+          }));
+
+        combinedResults = [...evidenceDrivenResults, ...combinedResults];
+      }
+
+      setResults(combinedResults);
       
-      if (data.results?.length === 0) {
+      if (combinedResults.length === 0) {
         toast({
           title: "No results found",
           description: "Try adjusting your search terms or filters.",
@@ -266,6 +325,7 @@ export default function EnhancedLegalSearch() {
                   </div>
                 </div>
 
+              {/* Include Personal Documents Toggle */}
                 <div className="flex items-center space-x-2">
                   <Switch
                     id="personal-docs"
@@ -276,6 +336,18 @@ export default function EnhancedLegalSearch() {
                     Include personal legal documents
                   </Label>
                 </div>
+
+                {evidenceSettings.enabled && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Zap className="h-4 w-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-800">Evidence Integration Active</span>
+                    </div>
+                    <p className="text-xs text-blue-700">
+                      Search results will include connections to your evidence files and show how laws apply to your specific situation.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -297,6 +369,12 @@ export default function EnhancedLegalSearch() {
                   <div className="flex items-center space-x-2">
                     {getResultIcon(result.document_type)}
                     <CardTitle className="text-base">{result.title}</CardTitle>
+                    {result.evidence_connections && result.evidence_connections.length > 0 && (
+                      <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                        <Zap className="h-3 w-3 mr-1" />
+                        Evidence Match
+                      </Badge>
+                    )}
                   </div>
                   <Badge variant="outline" className="text-xs">
                     {Math.round(result.relevance_score * 100)}% match
@@ -308,6 +386,30 @@ export default function EnhancedLegalSearch() {
                 <p className="text-sm text-muted-foreground line-clamp-3">
                   {result.content}
                 </p>
+
+                {/* Evidence Connections */}
+                {result.evidence_connections && result.evidence_connections.length > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h5 className="text-xs font-medium text-blue-800 mb-2 flex items-center">
+                      <Zap className="h-3 w-3 mr-1" />
+                      Your Evidence Connections
+                    </h5>
+                    <div className="space-y-2">
+                      {result.evidence_connections.map((connection, idx) => (
+                        <div key={idx} className="text-xs">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <FileText className="h-3 w-3 text-blue-600" />
+                            <span className="font-medium text-blue-800">{connection.file_name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {Math.round(connection.relevance_score * 100)}% relevant
+                            </Badge>
+                          </div>
+                          <p className="text-blue-700 ml-5">{connection.explanation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {result.legal_concepts && result.legal_concepts.length > 0 && (
                   <div>

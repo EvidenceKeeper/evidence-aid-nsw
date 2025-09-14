@@ -15,9 +15,13 @@ import { useToast } from "@/hooks/use-toast";
 import { LegalKnowledgeManager } from "@/components/legal/LegalKnowledgeManager";
 import ConsultationRequest from "@/components/legal/ConsultationRequest";
 import EnhancedLegalSearch from "@/components/legal/EnhancedLegalSearch";
+import EvidenceIntegrationToggle from "@/components/evidence/EvidenceIntegrationToggle";
+import EvidenceConnections from "@/components/evidence/EvidenceConnections";
+import { useEvidenceIntegration } from "@/hooks/useEvidenceIntegration";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, exportSettings, importSettings, isLoading } = useWellnessSettings();
+  const { settings: evidenceSettings, updateSettings: updateEvidenceSettings, refreshConnections } = useEvidenceIntegration();
   const { toast } = useToast();
   const [importText, setImportText] = useState("");
 
@@ -281,7 +285,13 @@ export default function Settings() {
 
           <TabsContent value="legal" className="space-y-6">
             <div className="space-y-6">
+              <EvidenceIntegrationToggle 
+                enabled={evidenceSettings.enabled} 
+                onEnabledChange={(enabled) => updateEvidenceSettings({ enabled })}
+                onAnalysisComplete={refreshConnections}
+              />
               <EnhancedLegalSearch />
+              <EvidenceConnections />
               <LegalKnowledgeManager />
             </div>
           </TabsContent>
