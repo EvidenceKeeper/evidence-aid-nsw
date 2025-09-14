@@ -301,6 +301,191 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_concepts: {
+        Row: {
+          concept_name: string
+          created_at: string
+          description: string | null
+          id: string
+          parent_concept_id: string | null
+          related_concepts: string[] | null
+          usage_count: number | null
+        }
+        Insert: {
+          concept_name: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_concept_id?: string | null
+          related_concepts?: string[] | null
+          usage_count?: number | null
+        }
+        Update: {
+          concept_name?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          parent_concept_id?: string | null
+          related_concepts?: string[] | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_concepts_parent_concept_id_fkey"
+            columns: ["parent_concept_id"]
+            isOneToOne: false
+            referencedRelation: "legal_concepts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          effective_date: string | null
+          id: string
+          jurisdiction: string
+          source_url: string | null
+          status: string
+          title: string
+          total_sections: number | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          effective_date?: string | null
+          id?: string
+          jurisdiction?: string
+          source_url?: string | null
+          status?: string
+          title: string
+          total_sections?: number | null
+          updated_at?: string
+          version?: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          effective_date?: string | null
+          id?: string
+          jurisdiction?: string
+          source_url?: string | null
+          status?: string
+          title?: string
+          total_sections?: number | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      legal_search_cache: {
+        Row: {
+          created_at: string
+          hit_count: number | null
+          id: string
+          last_accessed: string
+          query_hash: string
+          query_text: string
+          results: Json
+          search_type: string
+        }
+        Insert: {
+          created_at?: string
+          hit_count?: number | null
+          id?: string
+          last_accessed?: string
+          query_hash: string
+          query_text: string
+          results: Json
+          search_type: string
+        }
+        Update: {
+          created_at?: string
+          hit_count?: number | null
+          id?: string
+          last_accessed?: string
+          query_hash?: string
+          query_text?: string
+          results?: Json
+          search_type?: string
+        }
+        Relationships: []
+      }
+      legal_sections: {
+        Row: {
+          citation_reference: string | null
+          content: string
+          created_at: string
+          cross_references: string[] | null
+          document_id: string
+          embedding_data: Json | null
+          id: string
+          legal_concepts: string[] | null
+          level: number
+          order_index: number
+          parent_section_id: string | null
+          section_number: string | null
+          section_type: string
+          title: string
+          tsv: unknown | null
+          updated_at: string
+        }
+        Insert: {
+          citation_reference?: string | null
+          content: string
+          created_at?: string
+          cross_references?: string[] | null
+          document_id: string
+          embedding_data?: Json | null
+          id?: string
+          legal_concepts?: string[] | null
+          level?: number
+          order_index?: number
+          parent_section_id?: string | null
+          section_number?: string | null
+          section_type: string
+          title: string
+          tsv?: unknown | null
+          updated_at?: string
+        }
+        Update: {
+          citation_reference?: string | null
+          content?: string
+          created_at?: string
+          cross_references?: string[] | null
+          document_id?: string
+          embedding_data?: Json | null
+          id?: string
+          legal_concepts?: string[] | null
+          level?: number
+          order_index?: number
+          parent_section_id?: string | null
+          section_number?: string | null
+          section_type?: string
+          title?: string
+          tsv?: unknown | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_sections_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_sections_parent_section_id_fkey"
+            columns: ["parent_section_id"]
+            isOneToOne: false
+            referencedRelation: "legal_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_strategy: {
         Row: {
           case_strength_overall: number
