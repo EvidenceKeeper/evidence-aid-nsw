@@ -178,6 +178,47 @@ export type Database = {
           },
         ]
       }
+      consultation_messages: {
+        Row: {
+          citations: Json | null
+          consultation_id: string
+          content: string
+          created_at: string
+          id: string
+          message_type: string
+          metadata: Json | null
+          sender_id: string
+        }
+        Insert: {
+          citations?: Json | null
+          consultation_id: string
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          sender_id: string
+        }
+        Update: {
+          citations?: Json | null
+          consultation_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultation_messages_consultation_id_fkey"
+            columns: ["consultation_id"]
+            isOneToOne: false
+            referencedRelation: "lawyer_consultations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence_processing_queue: {
         Row: {
           completed_at: string | null
@@ -296,6 +337,42 @@ export type Database = {
           status?: string
           storage_path?: string | null
           tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lawyer_consultations: {
+        Row: {
+          case_summary: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          lawyer_id: string
+          priority: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          case_summary?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lawyer_id: string
+          priority?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          case_summary?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          lawyer_id?: string
+          priority?: string
+          status?: string
           updated_at?: string
           user_id?: string
         }
