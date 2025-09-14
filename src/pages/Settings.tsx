@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw } from "lucide-react";
+import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { LegalKnowledgeManager } from "@/components/legal/LegalKnowledgeManager";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, exportSettings, importSettings, isLoading } = useWellnessSettings();
@@ -75,7 +76,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="privacy" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="privacy" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Privacy & Safety
@@ -83,6 +84,10 @@ export default function Settings() {
             <TabsTrigger value="wellness" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
               Wellness Front
+            </TabsTrigger>
+            <TabsTrigger value="legal" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Legal Knowledge
             </TabsTrigger>
             <TabsTrigger value="emergency" className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
@@ -266,6 +271,10 @@ export default function Settings() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="legal" className="space-y-6">
+            <LegalKnowledgeManager />
           </TabsContent>
 
           <TabsContent value="emergency" className="space-y-6">
