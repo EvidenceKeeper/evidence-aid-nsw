@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      act_sections: {
+        Row: {
+          act_id: string
+          amendment_history: Json | null
+          created_at: string
+          effective_date: string | null
+          id: string
+          notes: string | null
+          order_index: number
+          parent_section_id: string | null
+          section_content: string
+          section_level: number
+          section_number: string
+          section_title: string | null
+          updated_at: string
+        }
+        Insert: {
+          act_id: string
+          amendment_history?: Json | null
+          created_at?: string
+          effective_date?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          parent_section_id?: string | null
+          section_content: string
+          section_level?: number
+          section_number: string
+          section_title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          act_id?: string
+          amendment_history?: Json | null
+          created_at?: string
+          effective_date?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          parent_section_id?: string | null
+          section_content?: string
+          section_level?: number
+          section_number?: string
+          section_title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "act_sections_act_id_fkey"
+            columns: ["act_id"]
+            isOneToOne: false
+            referencedRelation: "legal_acts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "act_sections_parent_section_id_fkey"
+            columns: ["parent_section_id"]
+            isOneToOne: false
+            referencedRelation: "act_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assistant_requests: {
         Row: {
           created_at: string
@@ -242,6 +305,41 @@ export type Database = {
             columns: ["consultation_id"]
             isOneToOne: false
             referencedRelation: "lawyer_consultations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_topics: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          relevance_score: number
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          relevance_score?: number
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          relevance_score?: number
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_topics_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "legal_topics"
             referencedColumns: ["id"]
           },
         ]
@@ -499,6 +597,148 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      legal_acts: {
+        Row: {
+          act_name: string
+          act_number: string | null
+          act_type: string
+          commencement_date: string | null
+          created_at: string
+          id: string
+          jurisdiction: string
+          long_title: string | null
+          parent_act_id: string | null
+          preamble: string | null
+          repeal_date: string | null
+          short_title: string | null
+          source_url: string | null
+          status: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          act_name: string
+          act_number?: string | null
+          act_type: string
+          commencement_date?: string | null
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          long_title?: string | null
+          parent_act_id?: string | null
+          preamble?: string | null
+          repeal_date?: string | null
+          short_title?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          act_name?: string
+          act_number?: string | null
+          act_type?: string
+          commencement_date?: string | null
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          long_title?: string | null
+          parent_act_id?: string | null
+          preamble?: string | null
+          repeal_date?: string | null
+          short_title?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_acts_parent_act_id_fkey"
+            columns: ["parent_act_id"]
+            isOneToOne: false
+            referencedRelation: "legal_acts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_cases: {
+        Row: {
+          case_name: string
+          case_summary: string | null
+          catchwords: string[] | null
+          court_id: string | null
+          created_at: string
+          division: string | null
+          full_text_available: boolean | null
+          id: string
+          judges: string[] | null
+          judgment_date: string | null
+          legal_principles: string[] | null
+          neutral_citation: string | null
+          outcome: string | null
+          parties: Json | null
+          precedent_value: string | null
+          source_url: string | null
+          subject_matter: string[] | null
+          traditional_citation: string | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          case_name: string
+          case_summary?: string | null
+          catchwords?: string[] | null
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          full_text_available?: boolean | null
+          id?: string
+          judges?: string[] | null
+          judgment_date?: string | null
+          legal_principles?: string[] | null
+          neutral_citation?: string | null
+          outcome?: string | null
+          parties?: Json | null
+          precedent_value?: string | null
+          source_url?: string | null
+          subject_matter?: string[] | null
+          traditional_citation?: string | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          case_name?: string
+          case_summary?: string | null
+          catchwords?: string[] | null
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          full_text_available?: boolean | null
+          id?: string
+          judges?: string[] | null
+          judgment_date?: string | null
+          legal_principles?: string[] | null
+          neutral_citation?: string | null
+          outcome?: string | null
+          parties?: Json | null
+          precedent_value?: string | null
+          source_url?: string | null
+          subject_matter?: string[] | null
+          traditional_citation?: string | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_cases_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_courts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       legal_chunks: {
         Row: {
@@ -765,6 +1005,113 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_forms: {
+        Row: {
+          court_id: string | null
+          created_at: string
+          effective_date: string | null
+          form_fields: Json | null
+          form_number: string
+          form_title: string
+          form_type: string
+          id: string
+          instructions: string | null
+          jurisdiction: string
+          pdf_url: string | null
+          purpose: string
+          related_legislation: string[] | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          court_id?: string | null
+          created_at?: string
+          effective_date?: string | null
+          form_fields?: Json | null
+          form_number: string
+          form_title: string
+          form_type: string
+          id?: string
+          instructions?: string | null
+          jurisdiction?: string
+          pdf_url?: string | null
+          purpose: string
+          related_legislation?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          court_id?: string | null
+          created_at?: string
+          effective_date?: string | null
+          form_fields?: Json | null
+          form_number?: string
+          form_title?: string
+          form_type?: string
+          id?: string
+          instructions?: string | null
+          jurisdiction?: string
+          pdf_url?: string | null
+          purpose?: string
+          related_legislation?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_forms_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_relationships: {
+        Row: {
+          context: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          relationship_description: string | null
+          relationship_strength: number | null
+          relationship_type: string
+          source_entity_id: string
+          source_entity_type: string
+          target_entity_id: string
+          target_entity_type: string
+          verified: boolean | null
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          relationship_description?: string | null
+          relationship_strength?: number | null
+          relationship_type: string
+          source_entity_id: string
+          source_entity_type: string
+          target_entity_id: string
+          target_entity_type: string
+          verified?: boolean | null
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          relationship_description?: string | null
+          relationship_strength?: number | null
+          relationship_type?: string
+          source_entity_id?: string
+          source_entity_type?: string
+          target_entity_id?: string
+          target_entity_type?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       legal_search_cache: {
         Row: {
           created_at: string
@@ -933,6 +1280,50 @@ export type Database = {
         }
         Relationships: []
       }
+      legal_topics: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          keywords: string[] | null
+          parent_topic_id: string | null
+          related_legislation: string[] | null
+          topic_category: string
+          topic_name: string
+          typical_courts: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          parent_topic_id?: string | null
+          related_legislation?: string[] | null
+          topic_category: string
+          topic_name: string
+          typical_courts?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          keywords?: string[] | null
+          parent_topic_id?: string | null
+          related_legislation?: string[] | null
+          topic_category?: string
+          topic_name?: string
+          typical_courts?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_topics_parent_topic_id_fkey"
+            columns: ["parent_topic_id"]
+            isOneToOne: false
+            referencedRelation: "legal_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           citations: Json
@@ -1034,6 +1425,117 @@ export type Database = {
           url?: string | null
         }
         Relationships: []
+      }
+      police_policies: {
+        Row: {
+          authority: string | null
+          content: string
+          created_at: string
+          effective_date: string
+          id: string
+          policy_number: string
+          policy_title: string
+          policy_type: string
+          related_legislation: string[] | null
+          review_date: string | null
+          status: string
+          subject_area: string
+          updated_at: string
+        }
+        Insert: {
+          authority?: string | null
+          content: string
+          created_at?: string
+          effective_date: string
+          id?: string
+          policy_number: string
+          policy_title: string
+          policy_type: string
+          related_legislation?: string[] | null
+          review_date?: string | null
+          status?: string
+          subject_area: string
+          updated_at?: string
+        }
+        Update: {
+          authority?: string | null
+          content?: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+          policy_number?: string
+          policy_title?: string
+          policy_type?: string
+          related_legislation?: string[] | null
+          review_date?: string | null
+          status?: string
+          subject_area?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      practice_directions: {
+        Row: {
+          content: string
+          court_id: string | null
+          created_at: string
+          division: string | null
+          effective_date: string
+          id: string
+          pd_number: string
+          source_url: string | null
+          status: string
+          subject_areas: string[] | null
+          supersedes_pd_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          effective_date: string
+          id?: string
+          pd_number: string
+          source_url?: string | null
+          status?: string
+          subject_areas?: string[] | null
+          supersedes_pd_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          court_id?: string | null
+          created_at?: string
+          division?: string | null
+          effective_date?: string
+          id?: string
+          pd_number?: string
+          source_url?: string | null
+          status?: string
+          subject_areas?: string[] | null
+          supersedes_pd_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "practice_directions_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "nsw_courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "practice_directions_supersedes_pd_id_fkey"
+            columns: ["supersedes_pd_id"]
+            isOneToOne: false
+            referencedRelation: "practice_directions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rag_response_quality: {
         Row: {
