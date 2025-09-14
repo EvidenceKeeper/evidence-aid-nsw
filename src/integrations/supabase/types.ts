@@ -71,6 +71,33 @@ export type Database = {
         }
         Relationships: []
       }
+      case_collaboration_log: {
+        Row: {
+          action_details: Json | null
+          action_type: string
+          case_owner_id: string
+          collaborator_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          action_details?: Json | null
+          action_type: string
+          case_owner_id: string
+          collaborator_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          action_details?: Json | null
+          action_type?: string
+          case_owner_id?: string
+          collaborator_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       case_memory: {
         Row: {
           facts: string | null
@@ -843,6 +870,45 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_cases: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          owner_id: string
+          permission_level: string
+          share_token: string | null
+          shared_at: string
+          shared_with_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          owner_id: string
+          permission_level?: string
+          share_token?: string | null
+          shared_at?: string
+          shared_with_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          owner_id?: string
+          permission_level?: string
+          share_token?: string | null
+          shared_at?: string
+          shared_with_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       timeline_events: {
         Row: {
           category: string | null
@@ -935,6 +1001,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_share_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_evidence_informed_advice: {
         Args: { _include_evidence?: boolean; _query: string; _user_id: string }
         Returns: {
