@@ -19,6 +19,21 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Get user from auth for rate limiting
+    const authHeader = req.headers.get('Authorization');
+    let userId = null;
+    
+    if (authHeader) {
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser(
+          authHeader.replace('Bearer ', '')
+        );
+        userId = user?.id;
+      } catch (e) {
+        console.warn('Auth failed for rate limiting:', e);
+      }
+    }
+
     const { 
       query, 
       searchType = 'both',
@@ -35,6 +50,34 @@ serve(async (req) => {
         JSON.stringify({ error: 'Query is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Rate limiting: 20 requests per minute per user (more lenient for search)
+    if (userId) {
+      const windowMs = 60_000;
+      const limit = 20;
+      const sinceIso = new Date(Date.now() - windowMs).toISOString();
+
+      const { count, error: countErr } = await supabaseClient
+        .from("assistant_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", sinceIso);
+
+      if (countErr) {
+        console.error("Rate limit count error", countErr);
+      }
+
+      if ((count ?? 0) >= limit) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please wait and try again." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Log request without IP
+      supabaseClient.from("assistant_requests").insert({ user_id: userId })
+        .then(({ error }) => error && console.error("Log insert error", error));
     }
 
     console.log('Enhanced legal search request:', {

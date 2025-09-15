@@ -38,6 +38,32 @@ serve(async (req) => {
       throw new Error('Authentication failed');
     }
 
+    // Rate limiting: 10 requests per minute for evidence analysis
+    const windowMs = 60_000;
+    const limit = 10;
+    const sinceIso = new Date(Date.now() - windowMs).toISOString();
+
+    const { count, error: countErr } = await supabaseClient
+      .from("assistant_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", sinceIso);
+
+    if (countErr) {
+      console.error("Rate limit count error", countErr);
+    }
+
+    if ((count ?? 0) >= limit) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Evidence analysis is limited to 10 requests per minute." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Log request without IP
+    supabaseClient.from("assistant_requests").insert({ user_id: user.id })
+      .then(({ error }) => error && console.error("Log insert error", error));
+
     const { 
       file_id, 
       analysis_types = ['legal_relevance'],

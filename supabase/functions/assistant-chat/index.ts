@@ -152,7 +152,6 @@ serve(async (req) => {
     const windowMs = 60_000;
     const limit = 10;
     const sinceIso = new Date(Date.now() - windowMs).toISOString();
-    const ip = req.headers.get("x-forwarded-for") ?? undefined;
 
     const { count, error: countErr } = await supabase
       .from("assistant_requests")
@@ -171,10 +170,9 @@ serve(async (req) => {
       );
     }
 
-    // Log this request (non-blocking failure)
+    // Log this request without IP for privacy (non-blocking failure)
     const insertPromise = supabase.from("assistant_requests").insert({
       user_id: user.id,
-      ip_address: ip,
     });
     insertPromise.then(({ error }) => error && console.error("Log insert error", error));
 
