@@ -190,21 +190,22 @@ serve(async (req) => {
       : null;
     const queryText = String(prompt ?? lastUserText ?? "").slice(0, 500);
 
-    // Enhanced retrieval: user files + NSW legal resources + evidence inventory
-    let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any; type?: string }> = [];
+    // Enhanced retrieval: vector search + legal resources + evidence inventory
+    let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any; type?: string; similarity?: number }> = [];
     let contextBlocks: string[] = [];
     let nswLegalContext: string[] = [];
     let evidenceInventory: string = "";
+    let vectorSearchResults: any[] = [];
 
-    // Build comprehensive evidence inventory for AI context
+    // Enhanced evidence inventory with hierarchical summaries
     if (allFiles && allFiles.length > 0) {
       console.log(`Building evidence inventory for ${allFiles.length} files...`);
       
-      // Get detailed file information with analysis
+      // Get detailed file information with analysis and summaries
       const { data: detailedFiles } = await supabase
         .from("files")
         .select(`
-          id, name, created_at, category, auto_category, meta, tags,
+          id, name, created_at, category, auto_category, meta, tags, exhibit_code, file_summary,
           evidence_analysis (
             analysis_type, content, legal_concepts, confidence_score, relevant_citations
           )
@@ -218,12 +219,19 @@ serve(async (req) => {
           const analysis = file.evidence_analysis?.[0];
           const uploadDate = new Date(file.created_at).toLocaleDateString();
           const category = file.category || file.auto_category || 'Uncategorized';
+          const exhibitCode = file.exhibit_code || String.fromCharCode(65 + index);
           
           let inventoryEntry = `
-**EXHIBIT ${String.fromCharCode(65 + index)} - ${file.name}**
+**EXHIBIT ${exhibitCode} - ${file.name}**
 - Uploaded: ${uploadDate}
 - Category: ${category}
 - File ID: ${file.id}`;
+
+          // Add file summary if available
+          if (file.file_summary) {
+            inventoryEntry += `
+- Summary: ${file.file_summary}`;
+          }
 
           if (analysis) {
             inventoryEntry += `
@@ -247,83 +255,153 @@ serve(async (req) => {
         }).join('\n\n');
 
         evidenceInventory = `
-=== EVIDENCE INVENTORY (${detailedFiles.length} files) ===
+=== ENHANCED EVIDENCE INVENTORY (${detailedFiles.length} files) ===
 ${inventoryItems}
 
 === EVIDENCE ANALYSIS INSTRUCTIONS ===
-When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A shows..." or "In your uploaded police report (Exhibit B)..."). Always quote specific content from these files when providing analysis. Each exhibit has been analyzed for legal significance - reference the analysis findings to provide informed guidance.
+When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A shows..." or "In your uploaded police report (Exhibit B)..."). Always quote specific content from these files when providing analysis. Each exhibit has been analyzed for legal significance and may have summaries available - reference both the analysis findings and file summaries to provide comprehensive guidance.
 `;
       }
     }
 
     if (queryText) {
-      // Expanded search terms for coercive control patterns
-      const coerciveControlTerms = [
-        queryText,
-        queryText + " coercive control domestic violence",
-        queryText + " emotional abuse financial control",
-        queryText + " intimidation stalking threats",
-        "pattern behaviour isolation monitoring"
-      ];
+      console.log("🔍 Performing enhanced vector search...");
+      
+      // Generate embedding for the query
+      let queryEmbedding: number[] | null = null;
+      try {
+        const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openAIApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "text-embedding-3-large",
+            input: queryText,
+            dimensions: 1536,
+          }),
+        });
 
-      // Search user's uploaded chunks (increased limit for comprehensive analysis)
-      const { data: chunkRows, error: chunkErr } = await supabase
-        .from("chunks")
-        .select("id, file_id, seq, text, meta")
-        .textSearch("tsv", coerciveControlTerms.join(" | "), { type: "websearch" })
-        .limit(20);
+        if (embeddingResponse.ok) {
+          const embeddingData = await embeddingResponse.json();
+          queryEmbedding = embeddingData.data[0].embedding;
+        }
+      } catch (error) {
+        console.error("Failed to generate query embedding:", error);
+      }
 
-      // Search NSW legal resources for relevant law and procedures
+      // Perform vector similarity search on user's files
+      if (queryEmbedding) {
+        const { data: vectorResults, error: vectorError } = await supabase.rpc(
+          "match_user_chunks",
+          {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.6,
+            match_count: 15,
+            filter_user_id: user.id,
+          }
+        );
+
+        if (!vectorError && vectorResults?.length) {
+          console.log(`✅ Found ${vectorResults.length} vector matches`);
+          vectorSearchResults = vectorResults;
+          
+          citations = vectorResults.map((result: any, i: number) => ({
+            index: i + 1,
+            file_id: result.file_id,
+            file_name: result.file_name,
+            seq: result.seq,
+            excerpt: result.text.slice(0, 500),
+            meta: result.meta,
+            type: "user_file_vector",
+            similarity: Math.round(result.similarity * 100),
+          }));
+
+          contextBlocks = citations.map((c) => 
+            `[CITATION ${c.index}] ${c.file_name}#${c.seq} (${c.similarity}% match): ${c.excerpt}`
+          );
+        }
+      }
+
+      // Fallback to text search if vector search fails or returns no results
+      if (!vectorSearchResults.length) {
+        console.log("📝 Falling back to text search...");
+        
+        // Expanded search terms for coercive control patterns
+        const coerciveControlTerms = [
+          queryText,
+          queryText + " coercive control domestic violence",
+          queryText + " emotional abuse financial control",
+          queryText + " intimidation stalking threats",
+          "pattern behaviour isolation monitoring"
+        ];
+
+        // Search user's uploaded chunks (increased limit for comprehensive analysis)
+        const { data: chunkRows, error: chunkErr } = await supabase
+          .from("chunks")
+          .select("id, file_id, seq, text, meta")
+          .textSearch("tsv", coerciveControlTerms.join(" | "), { type: "websearch" })
+          .limit(20);
+
+        // Search NSW legal resources for relevant law and procedures
+        const { data: legalRows, error: legalErr } = await supabase
+          .from("nsw_legal_resources")
+          .select("id, title, content, category, reference, url")
+          .textSearch("tsv", queryText + " coercive control domestic violence", { type: "websearch" })
+          .limit(8);
+
+        if (!chunkErr && chunkRows && chunkRows.length) {
+          const fileIds = Array.from(new Set(chunkRows.map((c: any) => c.file_id)));
+          const { data: fileRows } = await supabase
+            .from("files")
+            .select("id, name")
+            .in("id", fileIds);
+          const nameById: Record<string, string> = {};
+          fileRows?.forEach((f: any) => (nameById[f.id] = f.name));
+
+          // Prioritize more chunks for comprehensive analysis (increased from 6 to 15)
+          const byFile: Record<string, any[]> = {};
+          for (const c of chunkRows) {
+            (byFile[c.file_id] ||= []).push(c);
+          }
+          const selected: any[] = [];
+          let layer = 0;
+          while (selected.length < 15) {
+            let advanced = false;
+            for (const fid of Object.keys(byFile)) {
+              const arr = byFile[fid];
+              if (arr[layer]) {
+                selected.push(arr[layer]);
+                advanced = true;
+                if (selected.length >= 15) break;
+              }
+            }
+            if (!advanced) break;
+            layer++;
+          }
+          const finalSel = selected.length ? selected : chunkRows.slice(0, 15);
+
+          citations = finalSel.map((c: any, i: number) => ({
+            index: i + 1,
+            file_id: c.file_id,
+            file_name: nameById[c.file_id] ?? "File",
+            seq: c.seq,
+            excerpt: String(c.text ?? '').slice(0, 500),
+            meta: c.meta ?? {},
+            type: "user_file"
+          }));
+          contextBlocks = citations.map((c) => `[CITATION ${c.index}] ${c.file_name}#${c.seq}: ${c.excerpt}`);
+        }
+      }
+
+      // Add NSW legal resources to context
       const { data: legalRows, error: legalErr } = await supabase
         .from("nsw_legal_resources")
         .select("id, title, content, category, reference, url")
         .textSearch("tsv", queryText + " coercive control domestic violence", { type: "websearch" })
         .limit(8);
 
-      if (!chunkErr && chunkRows && chunkRows.length) {
-        const fileIds = Array.from(new Set(chunkRows.map((c: any) => c.file_id)));
-        const { data: fileRows } = await supabase
-          .from("files")
-          .select("id, name")
-          .in("id", fileIds);
-        const nameById: Record<string, string> = {};
-        fileRows?.forEach((f: any) => (nameById[f.id] = f.name));
-
-        // Prioritize more chunks for comprehensive analysis (increased from 6 to 15)
-        const byFile: Record<string, any[]> = {};
-        for (const c of chunkRows) {
-          (byFile[c.file_id] ||= []).push(c);
-        }
-        const selected: any[] = [];
-        let layer = 0;
-        while (selected.length < 15) {
-          let advanced = false;
-          for (const fid of Object.keys(byFile)) {
-            const arr = byFile[fid];
-            if (arr[layer]) {
-              selected.push(arr[layer]);
-              advanced = true;
-              if (selected.length >= 15) break;
-            }
-          }
-          if (!advanced) break;
-          layer++;
-        }
-        const finalSel = selected.length ? selected : chunkRows.slice(0, 15);
-
-        citations = finalSel.map((c: any, i: number) => ({
-          index: i + 1,
-          file_id: c.file_id,
-          file_name: nameById[c.file_id] ?? "File",
-          seq: c.seq,
-          excerpt: String(c.text ?? '').slice(0, 500),
-          meta: c.meta ?? {},
-          type: "user_file"
-        }));
-        contextBlocks = citations.map((c) => `[CITATION ${c.index}] ${c.file_name}#${c.seq}: ${c.excerpt}`);
-      }
-
-      // Add NSW legal resources to context
       if (!legalErr && legalRows && legalRows.length) {
         const legalCitations = legalRows.map((legal: any, i: number) => ({
           index: citations.length + i + 1,
@@ -341,9 +419,135 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
       }
     }
 
-    // Create SMART personalized greeting and evidence acknowledgment
-    let smartGreeting = "";
-    if (hasSubstantialEvidence && hasRecentUploads) {
+    // Proactive Memory Triggers and Context Enhancement
+    let proactiveContext = "";
+    let memoryUpdates: any = {};
+    
+    if (queryText && currentCaseMemory) {
+      console.log("🧠 Running proactive memory triggers...");
+      
+      // Date Detection Trigger
+      const dateRegex = /\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})\b/g;
+      const dateMatches = queryText.match(dateRegex);
+      
+      if (dateMatches && currentCaseMemory.timeline_summary?.length > 0) {
+        const relevantTimelineEvents = currentCaseMemory.timeline_summary.filter((event: any) => {
+          return dateMatches.some(date => {
+            const normalizedDate = date.replace(/[\/\-\.]/g, '/');
+            return event.date?.includes(normalizedDate.split('/')[0]) || 
+                   event.date?.includes(normalizedDate.split('/')[1]) ||
+                   event.title?.toLowerCase().includes(date);
+          });
+        });
+        
+        if (relevantTimelineEvents.length > 0) {
+          proactiveContext += `\n🗓️ **TIMELINE CONTEXT for ${dateMatches.join(', ')}:**\n`;
+          relevantTimelineEvents.forEach((event: any, i: number) => {
+            proactiveContext += `${i + 1}. ${event.date}: ${event.title} - ${event.fact}\n`;
+          });
+          proactiveContext += "\n";
+        }
+      }
+      
+      // Person Detection Trigger
+      const personRegex = /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g;
+      const personMatches = queryText.match(personRegex);
+      
+      if (personMatches && contextBlocks.length > 0) {
+        const personAppearances: Record<string, any[]> = {};
+        
+        contextBlocks.forEach((block, index) => {
+          personMatches.forEach(person => {
+            if (block.toLowerCase().includes(person.toLowerCase())) {
+              if (!personAppearances[person]) personAppearances[person] = [];
+              personAppearances[person].push({
+                citation: index + 1,
+                context: block.slice(0, 200) + "..."
+              });
+            }
+          });
+        });
+        
+        Object.entries(personAppearances).forEach(([person, appearances]) => {
+          if (appearances.length > 0) {
+            proactiveContext += `\n👤 **${person.toUpperCase()} APPEARANCES:**\n`;
+            appearances.slice(-3).forEach((app: any, i: number) => {
+              proactiveContext += `${i + 1}. Citation ${app.citation}: ${app.context}\n`;
+            });
+            proactiveContext += "\n";
+          }
+        });
+      }
+      
+      // Goal Restatement Detection
+      const goalKeywords = ['custody', 'avo', 'divorce', 'court', 'hearing', 'settlement'];
+      const hasGoalKeywords = goalKeywords.some(keyword => queryText.toLowerCase().includes(keyword));
+      
+      if (hasGoalKeywords && queryText.toLowerCase().includes('want') && currentCaseMemory.primary_goal) {
+        const newGoalMatch = queryText.match(/want to (.+?)(?:\.|$)/i);
+        if (newGoalMatch) {
+          const potentialNewGoal = newGoalMatch[1].trim();
+          if (potentialNewGoal.length > 10 && !potentialNewGoal.toLowerCase().includes(currentCaseMemory.primary_goal?.toLowerCase() || '')) {
+            memoryUpdates.primary_goal = potentialNewGoal;
+            memoryUpdates.goal_established_at = new Date().toISOString();
+            proactiveContext += `\n🎯 **GOAL UPDATE DETECTED:** Updating from "${currentCaseMemory.primary_goal}" to "${potentialNewGoal}"\n\n`;
+          }
+        }
+      }
+    }
+
+    // Evidence Upload Announcements
+    let evidenceAnnouncement = "";
+    if (hasRecentUploads && newlyProcessedFiles.length > 0) {
+      const recentFile = newlyProcessedFiles[0];
+      const { data: recentAnalysis } = await supabase
+        .from("evidence_comprehensive_analysis")
+        .select("key_insights, timeline_significance")
+        .eq("file_id", recentFile.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (recentAnalysis) {
+        evidenceAnnouncement = `\n📈 **NEW EVIDENCE INDEXED:**\nJust processed "${recentFile.name}" and found ${recentAnalysis.key_insights?.length || 0} key insights. ${recentAnalysis.timeline_significance ? `Timeline impact: ${recentAnalysis.timeline_significance}` : ''}\n\n`;
+      }
+    }
+    // Case Strength Monitoring and Updates
+    let caseStrengthAnnouncement = "";
+    if (currentLegalStrategy && currentCaseMemory) {
+      const currentStrength = currentCaseMemory.case_strength_score || 0;
+      const legalStrength = currentLegalStrategy.case_strength_overall || 0;
+      
+      const strengthDiff = Math.abs(legalStrength - currentStrength);
+      if (strengthDiff > 3) {
+        const direction = legalStrength > currentStrength ? "+" : "-";
+        caseStrengthAnnouncement = `\n📊 **CASE STRENGTH UPDATE:** ${Math.round(legalStrength)}% (${direction}${Math.round(strengthDiff)})\n`;
+        
+        if (currentLegalStrategy.next_steps && Array.isArray(currentLegalStrategy.next_steps)) {
+          caseStrengthAnnouncement += `**Boosters:** ${currentLegalStrategy.next_steps.slice(0, 3).map((step: any, i: number) => `(${i + 1}) ${step.action || step}`).join(', ')}\n\n`;
+        }
+        
+        // Update case memory with new strength
+        memoryUpdates.case_strength_score = legalStrength;
+        memoryUpdates.case_strength_reasons = currentLegalStrategy.strengths || [];
+      }
+    }
+
+    // Apply memory updates if any
+    if (Object.keys(memoryUpdates).length > 0 && currentCaseMemory) {
+      try {
+        await supabase
+          .from("case_memory")
+          .update({
+            ...memoryUpdates,
+            last_updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+        console.log("✅ Case memory updated with:", Object.keys(memoryUpdates));
+      } catch (error) {
+        console.error("Failed to update case memory:", error);
+      }
+    }
       const fileNames = newlyProcessedFiles.map(f => f.name).join(', ');
       const chunkCount = totalChunks?.count || 0;
       
@@ -361,6 +565,12 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       const fileNames = newlyProcessedFiles.slice(0, 3).map(f => f.name).join(', ');
       smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
     }
+
+    // Combine all proactive context
+    const fullProactiveContext = proactiveContext + evidenceAnnouncement + caseStrengthAnnouncement;
+
+    // Combine all proactive context
+    const fullProactiveContext = proactiveContext + evidenceAnnouncement + caseStrengthAnnouncement;
 
     // Get updated case memory after potential analysis (including goal tracking)
     const { data: currentCaseMemory } = await supabase
@@ -429,7 +639,24 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       }
     }
 
-    // Generate case summary from comprehensive analysis
+    // Enhanced case context with memory-aware summaries
+    let caseContext = "";
+    if (currentCaseMemory) {
+      caseContext = `
+=== CASE MEMORY CONTEXT ===
+**Primary Goal:** ${currentCaseMemory.primary_goal || 'Not yet established'}
+**Goal Status:** ${currentCaseMemory.goal_status || 'unclear'}
+**Case Strength:** ${Math.round(currentCaseMemory.case_strength_score || 0)}%
+
+**Key Facts:** ${JSON.stringify(currentCaseMemory.key_facts || [])}
+**Recent Thread:** ${currentCaseMemory.thread_summary || 'New conversation'}
+
+**Evidence Index:** ${currentCaseMemory.evidence_index?.length || 0} files processed
+${currentCaseMemory.evidence_index?.map((e: any) => `- Exhibit ${e.exhibit_code}: ${e.file_name} (${e.summary})`).join('\n') || ''}
+
+**Timeline Summary:** ${currentCaseMemory.timeline_summary?.length || 0} events tracked
+`;
+    }
     let caseSummary = "";
     if (comprehensiveAnalysis && comprehensiveAnalysis.length > 0) {
       const latestAnalysis = comprehensiveAnalysis[0];

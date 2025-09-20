@@ -217,35 +217,56 @@ export type Database = {
       }
       case_memory: {
         Row: {
+          case_strength_reasons: Json | null
+          case_strength_score: number | null
+          evidence_index: Json | null
           facts: string | null
           goal_established_at: string | null
           goal_status: string | null
           id: string
           issues: Json | null
+          key_facts: Json | null
+          last_updated_at: string | null
           parties: Json | null
           primary_goal: string | null
+          thread_summary: string | null
+          timeline_summary: Json | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          case_strength_reasons?: Json | null
+          case_strength_score?: number | null
+          evidence_index?: Json | null
           facts?: string | null
           goal_established_at?: string | null
           goal_status?: string | null
           id?: string
           issues?: Json | null
+          key_facts?: Json | null
+          last_updated_at?: string | null
           parties?: Json | null
           primary_goal?: string | null
+          thread_summary?: string | null
+          timeline_summary?: Json | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          case_strength_reasons?: Json | null
+          case_strength_score?: number | null
+          evidence_index?: Json | null
           facts?: string | null
           goal_established_at?: string | null
           goal_status?: string | null
           id?: string
           issues?: Json | null
+          key_facts?: Json | null
+          last_updated_at?: string | null
           parties?: Json | null
           primary_goal?: string | null
+          thread_summary?: string | null
+          timeline_summary?: Json | null
           updated_at?: string
           user_id?: string
         }
@@ -302,6 +323,7 @@ export type Database = {
       chunks: {
         Row: {
           created_at: string
+          embedding: string | null
           file_id: string
           id: string
           meta: Json
@@ -311,6 +333,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          embedding?: string | null
           file_id: string
           id?: string
           meta?: Json
@@ -320,6 +343,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          embedding?: string | null
           file_id?: string
           id?: string
           meta?: Json
@@ -702,10 +726,13 @@ export type Database = {
           auto_category: string | null
           category: string | null
           created_at: string
+          exhibit_code: string | null
+          file_summary: string | null
           id: string
           meta: Json
           mime_type: string | null
           name: string
+          section_summaries: Json | null
           size: number | null
           status: string
           storage_path: string | null
@@ -717,10 +744,13 @@ export type Database = {
           auto_category?: string | null
           category?: string | null
           created_at?: string
+          exhibit_code?: string | null
+          file_summary?: string | null
           id?: string
           meta?: Json
           mime_type?: string | null
           name: string
+          section_summaries?: Json | null
           size?: number | null
           status?: string
           storage_path?: string | null
@@ -732,10 +762,13 @@ export type Database = {
           auto_category?: string | null
           category?: string | null
           created_at?: string
+          exhibit_code?: string | null
+          file_summary?: string | null
           id?: string
           meta?: Json
           mime_type?: string | null
           name?: string
+          section_summaries?: Json | null
           size?: number | null
           status?: string
           storage_path?: string | null
@@ -2619,6 +2652,23 @@ export type Database = {
           provenance: Json
           section_id: string
           similarity: number
+        }[]
+      }
+      match_user_chunks: {
+        Args: {
+          filter_user_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          file_id: string
+          file_name: string
+          id: string
+          meta: Json
+          seq: number
+          similarity: number
+          text: string
         }[]
       }
       sparsevec_out: {

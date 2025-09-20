@@ -350,6 +350,24 @@ serve(async (req) => {
 
     await supabase.from("files").update({ status: "processed" }).eq("id", fileId);
 
+    // Trigger enhanced memory processing for embeddings and summaries
+    try {
+      console.log('🧠 Triggering enhanced memory processing...');
+      
+      const { error: memoryError } = await supabase.functions.invoke(
+        "enhanced-memory-processor", 
+        { body: { file_id: fileId, processing_type: "embeddings_and_summaries" } }
+      );
+      
+      if (memoryError) {
+        console.error("Enhanced memory processing failed:", memoryError);
+      } else {
+        console.log("✅ Enhanced memory processing initiated");
+      }
+    } catch (error) {
+      console.error("Failed to trigger enhanced memory processing:", error);
+    }
+
     // Automatically trigger continuous case analysis using Supabase client
     try {
       console.log('🔄 Triggering automatic case analysis...');
