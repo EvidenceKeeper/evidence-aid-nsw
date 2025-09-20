@@ -135,7 +135,7 @@ export function ProcessingStatus() {
       <CardHeader>
         <CardTitle className="text-lg flex items-center gap-2">
           <Loader2 className="h-5 w-5" />
-          Evidence Processing Status
+          Automatic Evidence Analysis
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

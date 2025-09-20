@@ -48,7 +48,7 @@ export default function Evidence() {
   const [files, setFiles] = useState<EvidenceItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [indexing, setIndexing] = useState<string | null>(null);
+  
   const [showWizard, setShowWizard] = useState(false);
   const [filesByCategory, setFilesByCategory] = useState<Record<string, EvidenceItem[]>>({});
   const [latestAnalysis, setLatestAnalysis] = useState<any>(null);
@@ -182,7 +182,33 @@ export default function Evidence() {
 
       const success = results.filter((r) => r.ok).length;
       const failed = results.length - success;
-      if (success) toast.success(`Uploaded ${success} file(s).`);
+      
+      if (success) {
+        toast.success(`Uploaded ${success} file(s). Analysis starting automatically...`);
+        
+        // Automatically trigger analysis for each uploaded file
+        const successfulUploads = results.filter((r) => r.ok);
+        for (const upload of successfulUploads) {
+          if (upload.ok) {
+            try {
+              const response = await supabase.functions.invoke("ingest-file", {
+                body: { path: upload.path },
+              });
+              
+              if (response.data?.analysis) {
+                setLatestAnalysis({
+                  ...response.data.analysis,
+                  fileName: upload.name
+                });
+              }
+            } catch (err) {
+              console.error(`Auto-analysis failed for ${upload.name}:`, err);
+              // Don't show error toast for auto-analysis failures
+            }
+          }
+        }
+      }
+      
       if (failed) toast.error(`Failed to upload ${failed} file(s).`);
 
       await loadFiles();
@@ -227,76 +253,6 @@ export default function Evidence() {
     }
   };
 
-  const handleIndex = async (item: EvidenceItem) => {
-    if (!item?.path) return;
-    try {
-      setIndexing(item.path);
-      const response = await supabase.functions.invoke("ingest-file", {
-        body: { path: item.path },
-      });
-      
-      if (response.error) {
-        throw response.error;
-      }
-      
-      console.log('File processed successfully:', response.data);
-      
-      // Show analysis feedback if available
-      if (response.data?.analysis) {
-        setLatestAnalysis({
-          ...response.data.analysis,
-          fileName: item.name
-        });
-      } else {
-        toast.success(`Successfully processed ${item.name}`);
-      }
-      
-      await loadFiles();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? "Processing failed");
-    } finally {
-      setIndexing(null);
-    }
-  };
-
-  const handleIndexText = async (item: EvidenceItem) => {
-    if (!item?.path) return;
-    if (!item.mimeType?.startsWith("text/")) {
-      toast.error("Only plain text files can be indexed in this step.");
-      return;
-    }
-    try {
-      setIndexing(item.path);
-      // Refresh signed URL for safety
-      const { data: signed, error: signErr } = await supabase.storage
-        .from("evidence")
-        .createSignedUrl(item.path, 300);
-      if (signErr || !signed?.signedUrl) throw signErr ?? new Error("Failed to create signed URL");
-
-      const res = await fetch(signed.signedUrl);
-      if (!res.ok) throw new Error("Failed to fetch file content");
-      const text = await res.text();
-
-      const { data, error } = await supabase.functions.invoke("ingest-text", {
-        body: {
-          name: item.name,
-          storage_path: item.path,
-          mime_type: item.mimeType,
-          size: item.size,
-          text,
-          meta: { source: "storage://evidence" },
-        },
-      });
-      if (error) throw error;
-      toast.success(`Indexed ${item.name}`);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? "Indexing failed");
-    } finally {
-      setIndexing(null);
-    }
-  };
 
   const detectFileCategory = (file: EvidenceItem) => {
     // Check if file has auto_category from AI categorization first
@@ -467,34 +423,25 @@ export default function Evidence() {
                                )}
                              </div>
                             
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => item.signedUrl && window.open(item.signedUrl, "_blank", "noopener,noreferrer")}
-                                disabled={!item.signedUrl}
-                                className="flex-1"
-                              >
-                                View
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleIndex(item)}
-                                 disabled={indexing === item.path}
-                                 className="flex-1"
-                               >
-                                 {indexing === item.path ? "Analyzing..." : "Analyze"}
-                               </Button>
+                             <div className="flex gap-2">
                                <Button
                                  variant="outline"
                                  size="sm"
-                                 onClick={() => handleDelete(item.path)}
-                                 className="text-destructive hover:text-destructive"
+                                 onClick={() => item.signedUrl && window.open(item.signedUrl, "_blank", "noopener,noreferrer")}
+                                 disabled={!item.signedUrl}
+                                 className="flex-1"
                                >
-                                 <Trash2 className="w-4 h-4" />
+                                 View
                                </Button>
-                            </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(item.path)}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -510,7 +457,7 @@ export default function Evidence() {
                 onClick={() => setShowWizard(true)}>
             <CardContent className="text-center py-8">
               <Plus className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Add more evidence to strengthen your case</p>
+              <p className="text-sm text-muted-foreground">Add more evidence - analysis happens automatically</p>
             </CardContent>
           </Card>
         </div>

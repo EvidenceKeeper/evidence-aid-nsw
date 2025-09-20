@@ -31,7 +31,7 @@ async function extractPdfTextPerPage(data: Uint8Array): Promise<Array<{ page: nu
   try {
     const { getDocument } = await import(
       // Use legacy build to avoid worker requirement in Deno
-      "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.mjs"
+      "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.min.mjs"
     );
     const loadingTask: any = getDocument({ data });
     const pdf: any = await loadingTask.promise;
