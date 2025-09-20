@@ -185,6 +185,18 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   };
 
   const handleFileUpload = async (files: File[]) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to upload files.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const userId = sessionData.session.user.id;
+    
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
       role: "user",
@@ -200,15 +212,6 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
-        toast({
-          title: "Authentication Required",
-          description: "Please sign in to upload files.",
-          variant: "destructive"
-        });
-        return;
-      }
 
       for (const file of files) {
         // Update file status to processing
@@ -224,7 +227,6 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         ));
 
         // Upload to storage with user ID path
-        const userId = sessionData.session.user.id;
         const fileName = `${userId}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("evidence")
@@ -260,6 +262,19 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
           body: { file_id: fileData.id }
         });
 
+        // Extract timeline events
+        await supabase.functions.invoke("extract-timeline", {
+          body: { file_id: fileData.id }
+        });
+
+        // Start comprehensive evidence analysis
+        await supabase.functions.invoke("evidence-intelligence-orchestrator", {
+          body: { 
+            trigger_type: 'upload',
+            file_id: fileData.id 
+          }
+        });
+
         // Update file status to ready
         setMessages(prev => prev.map(msg => 
           msg.id === userMessage.id 
@@ -273,9 +288,28 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         ));
       }
 
+      // Add Veronica's acknowledgment after all files processed
+      const acknowledgmentMessage: Message = {
+        id: Math.random().toString(36).substring(7),
+        role: "assistant",
+        content: `I've received your ${files.length === 1 ? 'file' : `${files.length} files`}: ${files.map(f => f.name).join(", ")}. I'm analyzing ${files.length === 1 ? 'it' : 'them'} now and will add any timeline events I find to your case timeline. This evidence will help strengthen your case documentation.`,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, acknowledgmentMessage]);
+
+      // Persist Veronica's acknowledgment
+      const { error: insertErr } = await supabase.from("messages").insert({
+        user_id: userId,
+        role: "assistant",
+        content: acknowledgmentMessage.content,
+        citations: []
+      });
+      if (insertErr) console.warn("acknowledgment message insert failed", insertErr);
+
       toast({
-        title: "Files uploaded",
-        description: `Successfully uploaded and indexed ${files.length} file(s).`,
+        title: "Files uploaded and analyzed",
+        description: `Successfully processed ${files.length} file(s). Timeline events are being extracted.`,
       });
     } catch (error) {
       console.error("Upload error:", error);
