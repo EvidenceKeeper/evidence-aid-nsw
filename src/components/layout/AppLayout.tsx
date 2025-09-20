@@ -67,7 +67,7 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-3">
             <Button
-              onClick={() => setIsChatOpen(true)}
+              onClick={() => navigate('/lawyer-chat')}
               size="lg"
               className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
             >
