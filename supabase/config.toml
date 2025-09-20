@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.legal-document-processor]
 verify_jwt = true
+
+[functions.email-corpus-processor]
+verify_jwt = true

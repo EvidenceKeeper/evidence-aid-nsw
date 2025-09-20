@@ -27,6 +27,27 @@ function chunkText(text: string, target = 1200, overlap = 200) {
   return chunks;
 }
 
+function detectEmailCorpus(fileName: string, text: string): boolean {
+  // Check file extension
+  const emailExtensions = ['.txt', '.eml', '.mbox'];
+  const hasEmailExt = emailExtensions.some(ext => fileName.toLowerCase().endsWith(ext));
+  
+  // Check for email patterns in content
+  const emailHeaderPatterns = [
+    /^From:\s*.+/mi,
+    /^To:\s*.+/mi,
+    /^Subject:\s*.+/mi,
+    /^Date:\s*.+/mi,
+    /On\s+\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}.+wrote:/i,
+    /From\s+-\s+/m, // mbox separator
+  ];
+  
+  const hasEmailPatterns = emailHeaderPatterns.some(pattern => pattern.test(text));
+  
+  // Require both extension AND content patterns for confidence
+  return hasEmailExt && hasEmailPatterns;
+}
+
 async function extractPdfTextPerPage(data: Uint8Array): Promise<Array<{ page: number; text: string }>> {
   try {
     const { getDocument } = await import(
@@ -65,7 +86,7 @@ async function ocrImageFromUrl(url: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5-mini-2025-08-07",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "user",
@@ -228,17 +249,59 @@ serve(async (req) => {
     let totalChunks = 0;
     if (contentType.startsWith("text/")) {
       const text = await fileResp.text();
-      const chunks = chunkText(text);
-      totalChunks = chunks.length;
-      if (chunks.length) {
-        const rows = chunks.map((c) => ({ file_id: fileId!, seq: c.seq, text: c.text, meta: {} }));
-        const { error: chunkErr } = await supabase.from("chunks").insert(rows);
-        if (chunkErr) {
-          console.error("Chunk insert error", chunkErr);
-          return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+      
+      // Check if this is an email corpus file
+      const isEmailCorpus = detectEmailCorpus(fileName, text);
+      
+      if (isEmailCorpus) {
+        console.log(`📧 Detected email corpus: ${fileName}`);
+        // Route to specialized email processor
+        try {
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+            "email-corpus-processor",
+            { body: { file_id: fileId, file_name: fileName, text: text } }
+          );
+          
+          if (emailError) {
+            console.error("Email corpus processing failed:", emailError);
+            // Fall back to generic text processing
+          } else {
+            console.log("✅ Email corpus processing completed");
+            // Still need to create chunks for basic functionality
+            const chunks = chunkText(text);
+            totalChunks = chunks.length;
+            if (chunks.length) {
+              const rows = chunks.map((c) => ({ file_id: fileId!, seq: c.seq, text: c.text, meta: { email_corpus: true } }));
+              const { error: chunkErr } = await supabase.from("chunks").insert(rows);
+              if (chunkErr) {
+                console.error("Chunk insert error", chunkErr);
+                return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
+                  status: 500,
+                  headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Email processing error:", error);
+          // Fall back to generic processing
+        }
+      }
+      
+      if (!isEmailCorpus) {
+        // Generic text processing
+        const chunks = chunkText(text);
+        totalChunks = chunks.length;
+        if (chunks.length) {
+          const rows = chunks.map((c) => ({ file_id: fileId!, seq: c.seq, text: c.text, meta: {} }));
+          const { error: chunkErr } = await supabase.from("chunks").insert(rows);
+          if (chunkErr) {
+            console.error("Chunk insert error", chunkErr);
+            return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
+              status: 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
       }
     } else if (contentType === "application/pdf") {

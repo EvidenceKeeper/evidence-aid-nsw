@@ -462,13 +462,51 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
       // Get analysis results for content summary
       const { data: analysisResults } = await supabase
         .from("evidence_comprehensive_analysis")
-        .select("case_impact, key_insights")
+        .select("case_impact, key_insights, synthesis")
         .eq("user_id", userId)
         .gte("created_at", new Date(Date.now() - 120000).toISOString())
         .order("created_at", { ascending: false });
 
-      // Send intelligent post-upload prompt to assistant
-      await sendPostUploadPrompt(userId, files, timelineResults, analysisResults || []);
+      // Check for email corpus analysis proactive messages
+      const emailAnalysis = analysisResults?.find(a => 
+        a.synthesis && 
+        typeof a.synthesis === 'object' &&
+        a.synthesis !== null
+      );
+
+      if (emailAnalysis && emailAnalysis.synthesis) {
+        // Send proactive email corpus message
+        const synthesis = emailAnalysis.synthesis as any;
+        let emailMessage = '';
+        
+        if (synthesis.behavior_patterns?.length > 0) {
+          emailMessage += `I found ${synthesis.behavior_patterns.length} behavior patterns in your email corpus.\n\n`;
+        }
+        
+        if (synthesis.lawyer_summary && typeof synthesis.lawyer_summary === 'string') {
+          emailMessage += synthesis.lawyer_summary + '\n\n';
+        }
+        
+        if (timelineResults.length > 0) {
+          emailMessage += `I can add ${timelineResults.length} dated events to your timeline now. Proceed?`;
+        }
+        
+        if (emailMessage) {
+          setMessages(prev => [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              role: 'assistant',
+              content: emailMessage,
+              citations: [],
+              timestamp: new Date()
+            }
+          ]);
+        }
+      } else {
+        // Send intelligent post-upload prompt to assistant for non-email files
+        await sendPostUploadPrompt(userId, files, timelineResults, analysisResults || []);
+      }
 
       const timelineMessage = timelineResults.length > 0 
         ? `Found ${timelineResults.length} timeline events.`
