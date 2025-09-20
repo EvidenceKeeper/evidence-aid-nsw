@@ -122,6 +122,33 @@ serve(async (req) => {
       });
     }
 
+    // Rate limiting: 5 requests per minute for file processing
+    const windowMs = 60_000;
+    const limit = 5;
+    const sinceIso = new Date(Date.now() - windowMs).toISOString();
+
+    const serviceRoleSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+    const { count, error: countErr } = await serviceRoleSupabase
+      .from("assistant_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", sinceIso);
+
+    if (countErr) {
+      console.error("Rate limit count error", countErr);
+    }
+
+    if ((count ?? 0) >= limit) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. File processing is limited to 5 requests per minute." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Log request without IP for privacy
+    serviceRoleSupabase.from("assistant_requests").insert({ user_id: user.id })
+      .then(({ error }) => error && console.error("Log insert error", error));
+
     const body = await req.json();
     const path = String(body?.path || "");
     const bucket = String(body?.bucket || "evidence");

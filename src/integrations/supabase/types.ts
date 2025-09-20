@@ -81,19 +81,16 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          ip_address: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          ip_address?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
-          ip_address?: string | null
           user_id?: string
         }
         Relationships: []
@@ -2180,6 +2177,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      security_events: {
+        Row: {
+          created_at: string
+          details: Json | null
+          event_type: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          event_type: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          event_type?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
       }
       shared_cases: {
         Row: {
