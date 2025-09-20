@@ -158,6 +158,63 @@ export type Database = {
         }
         Relationships: []
       }
+      case_intelligence_synthesis: {
+        Row: {
+          created_at: string
+          critical_weaknesses: Json | null
+          evidence_completeness: number | null
+          evidence_gaps: Json | null
+          id: string
+          key_strengths: Json | null
+          last_analysis: string | null
+          legal_foundation_strength: number | null
+          next_steps: Json | null
+          overall_case_strength: number | null
+          pattern_coherence: number | null
+          risk_factors: Json | null
+          strategic_priorities: Json | null
+          timeline_clarity: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          critical_weaknesses?: Json | null
+          evidence_completeness?: number | null
+          evidence_gaps?: Json | null
+          id?: string
+          key_strengths?: Json | null
+          last_analysis?: string | null
+          legal_foundation_strength?: number | null
+          next_steps?: Json | null
+          overall_case_strength?: number | null
+          pattern_coherence?: number | null
+          risk_factors?: Json | null
+          strategic_priorities?: Json | null
+          timeline_clarity?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          critical_weaknesses?: Json | null
+          evidence_completeness?: number | null
+          evidence_gaps?: Json | null
+          id?: string
+          key_strengths?: Json | null
+          last_analysis?: string | null
+          legal_foundation_strength?: number | null
+          next_steps?: Json | null
+          overall_case_strength?: number | null
+          pattern_coherence?: number | null
+          risk_factors?: Json | null
+          strategic_priorities?: Json | null
+          timeline_clarity?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       case_memory: {
         Row: {
           facts: string | null
@@ -187,8 +244,10 @@ export type Database = {
       }
       case_patterns: {
         Row: {
+          corroboration_status: string | null
           created_at: string
           description: string
+          escalation_indicator: boolean | null
           evidence_files: string[] | null
           id: string
           legal_significance: string | null
@@ -200,8 +259,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          corroboration_status?: string | null
           created_at?: string
           description: string
+          escalation_indicator?: boolean | null
           evidence_files?: string[] | null
           id?: string
           legal_significance?: string | null
@@ -213,8 +274,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          corroboration_status?: string | null
           created_at?: string
           description?: string
+          escalation_indicator?: boolean | null
           evidence_files?: string[] | null
           id?: string
           legal_significance?: string | null
@@ -306,6 +369,66 @@ export type Database = {
           },
         ]
       }
+      enhanced_timeline_events: {
+        Row: {
+          category: string
+          chunk_id: string
+          confidence: number
+          context: string | null
+          corroboration_needed: string | null
+          created_at: string
+          description: string
+          event_date: string
+          event_time: string | null
+          evidence_type: string | null
+          file_id: string
+          id: string
+          legal_significance: string | null
+          potential_witnesses: string[] | null
+          title: string
+          user_id: string
+          verified: boolean | null
+        }
+        Insert: {
+          category: string
+          chunk_id: string
+          confidence?: number
+          context?: string | null
+          corroboration_needed?: string | null
+          created_at?: string
+          description: string
+          event_date: string
+          event_time?: string | null
+          evidence_type?: string | null
+          file_id: string
+          id?: string
+          legal_significance?: string | null
+          potential_witnesses?: string[] | null
+          title: string
+          user_id: string
+          verified?: boolean | null
+        }
+        Update: {
+          category?: string
+          chunk_id?: string
+          confidence?: number
+          context?: string | null
+          corroboration_needed?: string | null
+          created_at?: string
+          description?: string
+          event_date?: string
+          event_time?: string | null
+          evidence_type?: string | null
+          file_id?: string
+          id?: string
+          legal_significance?: string | null
+          potential_witnesses?: string[] | null
+          title?: string
+          user_id?: string
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
       entity_topics: {
         Row: {
           created_at: string
@@ -387,6 +510,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      evidence_comprehensive_analysis: {
+        Row: {
+          analysis_passes: Json
+          case_impact: string | null
+          confidence_score: number | null
+          created_at: string
+          evidence_gaps_identified: string[] | null
+          file_id: string
+          id: string
+          key_insights: string[] | null
+          legal_strength: number | null
+          pattern_connections: Json | null
+          strategic_recommendations: string[] | null
+          synthesis: Json
+          timeline_significance: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_passes?: Json
+          case_impact?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          evidence_gaps_identified?: string[] | null
+          file_id: string
+          id?: string
+          key_insights?: string[] | null
+          legal_strength?: number | null
+          pattern_connections?: Json | null
+          strategic_recommendations?: string[] | null
+          synthesis?: Json
+          timeline_significance?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_passes?: Json
+          case_impact?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          evidence_gaps_identified?: string[] | null
+          file_id?: string
+          id?: string
+          key_insights?: string[] | null
+          legal_strength?: number | null
+          pattern_connections?: Json | null
+          strategic_recommendations?: string[] | null
+          synthesis?: Json
+          timeline_significance?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       evidence_legal_connections: {
         Row: {
