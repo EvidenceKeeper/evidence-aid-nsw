@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { sanitizeFileName } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -107,7 +108,9 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
       const uid = session.user.id;
       const results = await Promise.all(
         uploadedFiles.map(async (file) => {
-          const path = `${uid}/${Date.now()}-${file.name}`;
+          const sanitizedName = sanitizeFileName(file.name);
+          const path = `${uid}/${Date.now()}-${sanitizedName}`;
+          console.log("[EvidenceWizard] Uploading file", { originalName: file.name, sanitizedName, path });
           const { error } = await supabase.storage
             .from("evidence")
             .upload(path, file, {
@@ -138,7 +141,7 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
 
     } catch (error: any) {
       console.error("Upload error:", error);
-      toast.error("Upload failed. Please try again.");
+      toast.error(`Upload failed: ${error?.message || 'Unknown error'}`);
     } finally {
       setUploading(false);
       setProcessing(false);

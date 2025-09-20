@@ -9,6 +9,7 @@ import { EvidenceWizard } from "@/components/evidence/EvidenceWizard";
 import { EvidenceAnalysisFeedback } from "@/components/evidence/EvidenceAnalysisFeedback";
 import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
 import { ProcessingStatus } from "@/components/evidence/ProcessingStatus";
+import { sanitizeFileName } from "@/lib/utils";
 import { 
   Plus, 
   FolderOpen, 
@@ -130,16 +131,6 @@ export default function Evidence() {
     loadFiles();
   }, [loadFiles]);
 
-  // Sanitize filename for storage while preserving original name
-  const sanitizeFileName = (filename: string): string => {
-    // Remove or replace problematic characters for Supabase Storage
-    return filename
-      .replace(/[\[\]{}()<>|:;"'?*\\]/g, '_') // Replace special chars with underscore
-      .replace(/\s+/g, '_') // Replace spaces with underscores
-      .replace(/_+/g, '_') // Replace multiple underscores with single
-      .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
-  };
-
   const onDrop = useCallback(async (dropped: File[]) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -174,6 +165,7 @@ export default function Evidence() {
         // Sanitize filename for storage path
         const sanitizedName = sanitizeFileName(file.name);
         const path = `${uid}/${Date.now()}-${sanitizedName}`;
+        console.log("[Evidence] Uploading file", { originalName: file.name, sanitizedName, path });
         
         for (let i = 0; i < attempts; i++) {
           const { error } = await supabase.storage.from("evidence").upload(path, file, {
