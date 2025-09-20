@@ -130,6 +130,16 @@ export default function Evidence() {
     loadFiles();
   }, [loadFiles]);
 
+  // Sanitize filename for storage while preserving original name
+  const sanitizeFileName = (filename: string): string => {
+    // Remove or replace problematic characters for Supabase Storage
+    return filename
+      .replace(/[\[\]{}()<>|:;"'?*\\]/g, '_') // Replace special chars with underscore
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/_+/g, '_') // Replace multiple underscores with single
+      .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+  };
+
   const onDrop = useCallback(async (dropped: File[]) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -161,16 +171,23 @@ export default function Evidence() {
       if (!valid.length) return;
 
       const uploadWithRetry = async (file: File, attempts = 3) => {
-        const path = `${uid}/${Date.now()}-${file.name}`;
+        // Sanitize filename for storage path
+        const sanitizedName = sanitizeFileName(file.name);
+        const path = `${uid}/${Date.now()}-${sanitizedName}`;
+        
         for (let i = 0; i < attempts; i++) {
           const { error } = await supabase.storage.from("evidence").upload(path, file, {
             cacheControl: "3600",
             upsert: false,
             contentType: file.type || "application/octet-stream",
+            metadata: {
+              originalName: file.name, // Preserve original filename in metadata
+            },
           });
           if (!error) return { ok: true as const, name: file.name, path };
           if (i === attempts - 1) {
             console.error("Upload failed:", file.name, error);
+            toast.error(`Upload failed for "${file.name}": ${error.message || 'Unknown error'}`);
             return { ok: false as const, name: file.name };
           }
           await new Promise((r) => setTimeout(r, 500 * (i + 1)));
