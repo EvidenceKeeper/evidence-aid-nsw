@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import AppLayout from "@/components/layout/AppLayout";
-import Dashboard from "@/pages/Dashboard";
+import MyCase from "@/pages/MyCase";
 import Evidence from "@/pages/Evidence";
 import CaseVisualization from "@/pages/CaseVisualization";
 import Forms from "@/pages/Forms";
@@ -16,11 +16,11 @@ import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 import AuthPage from "@/pages/Auth";
 import AuthGate from "@/components/auth/AuthGate";
-import Workspace from "@/pages/Workspace";
 import Taskboard from "@/pages/Taskboard";
 import LawyerConsultations from "@/pages/LawyerConsultations";
 import ConsultationDetail from "@/pages/ConsultationDetail";
 import LegalAssistant from "@/pages/LegalAssistant";
+import LegalProcess from "@/pages/LegalProcess";
 
 const queryClient = new QueryClient();
 
@@ -35,14 +35,14 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route element={<AuthGate />}>
                 <Route path="/" element={<AppLayout />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="workspace" element={<Workspace />} />
+                  <Route index element={<MyCase />} />
                   <Route path="evidence" element={<Evidence />} />
                   <Route path="timeline" element={<CaseVisualization />} />
                   <Route path="forms" element={<Forms />} />
                   <Route path="assistant" element={<Assistant />} />
                   <Route path="chat" element={<Assistant />} />
                   <Route path="legal" element={<LegalAssistant />} />
+                  <Route path="legal-process" element={<LegalProcess />} />
                   <Route path="search" element={<SearchPage />} />
                   <Route path="find-help" element={<FindHelp />} />
                   <Route path="taskboard" element={<Taskboard />} />
