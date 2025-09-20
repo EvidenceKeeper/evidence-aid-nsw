@@ -223,8 +223,9 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
             : msg
         ));
 
-        // Upload to storage
-        const fileName = `${Date.now()}-${file.name}`;
+        // Upload to storage with user ID path
+        const userId = sessionData.session.user.id;
+        const fileName = `${userId}/${Date.now()}-${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from("evidence")
           .upload(fileName, file);
@@ -239,7 +240,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
             storage_path: fileName,
             mime_type: file.type,
             size: file.size,
-            user_id: sessionData.session.user.id,
+            user_id: userId,
           })
           .select()
           .single();
