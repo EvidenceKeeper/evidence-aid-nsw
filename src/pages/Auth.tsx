@@ -82,28 +82,23 @@ export default function AuthPage() {
     }`}>
       <SEO title={pageTitle} description={pageDescription} />
       
-      {/* Enhanced background pattern */}
-      <div className={`absolute inset-0 opacity-[0.15] ${
+      {/* Simplified background pattern */}
+      <div className={`absolute inset-0 opacity-10 ${
         isCamouflaged
-          ? "bg-[radial-gradient(circle_at_30%_20%,hsl(142_70%_45%)_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(158_60%_50%)_0%,transparent_50%)]"
-          : "bg-[radial-gradient(circle_at_25%_25%,hsl(var(--primary))_0%,transparent_40%),radial-gradient(circle_at_75%_75%,hsl(var(--accent))_0%,transparent_40%)]"
+          ? "bg-gradient-to-br from-emerald-100 to-teal-100"
+          : "bg-gradient-to-br from-primary/10 to-accent/10"
       }`} />
       
-      {/* Subtle texture overlay */}
-      <div className="absolute inset-0 opacity-[0.02]" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-      }} />
-      
       <main className="relative w-full max-w-md">
-        <div className="text-center mb-10 animate-fade-in">
+        <div className="text-center mb-10 fade-in">
           <div className="flex items-center justify-center gap-3 mb-6">
             <div className={`p-4 rounded-2xl shadow-soft ${
               isCamouflaged ? "bg-emerald-100 dark:bg-emerald-900/20" : "bg-gradient-to-br from-primary/15 to-primary/10"
             }`}>
               {isCamouflaged ? (
-                <Heart className="h-10 w-10 text-emerald-600 dark:text-emerald-400 animate-gentle-bounce" />
+                <Heart className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <Shield className="h-10 w-10 text-primary animate-gentle-bounce" />
+                <Shield className="h-10 w-10 text-primary" />
               )}
             </div>
           </div>
@@ -168,7 +163,7 @@ export default function AuthPage() {
                 <span>
                   Need an account?{" "}
                   <button 
-                    className="text-primary hover:text-primary-soft font-semibold transition-colors hover:underline" 
+                    className="text-primary hover:text-primary/80 font-semibold transition-colors hover:underline"
                     onClick={() => setMode("signup")}
                   >
                     Sign up here
@@ -178,7 +173,7 @@ export default function AuthPage() {
                 <span>
                   Already have an account?{" "}
                   <button 
-                    className="text-primary hover:text-primary-soft font-semibold transition-colors hover:underline" 
+                    className="text-primary hover:text-primary/80 font-semibold transition-colors hover:underline" 
                     onClick={() => setMode("signin")}
                   >
                     Sign in instead
@@ -201,7 +196,7 @@ export default function AuthPage() {
                 </p>
                 <Link 
                   to="/" 
-                  className="text-primary hover:text-primary-soft font-medium transition-colors hover:underline inline-block"
+                  className="text-primary hover:text-primary/80 font-medium transition-colors hover:underline inline-block"
                 >
                   {dashboardLinkText}
                 </Link>
