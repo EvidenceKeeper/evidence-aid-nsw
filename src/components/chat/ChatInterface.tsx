@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, Loader2, Upload } from "lucide-react";
+import { Send, Paperclip, Loader2, Upload, Brain, TrendingUp, FileText, Calendar } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -9,6 +9,10 @@ import { ChatMessage } from "./ChatMessage";
 import { sanitizeFileName } from "@/lib/utils";
 import { useCaseSnapshot } from "@/hooks/useCaseSnapshot";
 import { generateDeepDiveAnalysis } from "@/utils/deepDiveAnalysis";
+import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
+import { CaseStrengthDisplay } from "@/components/memory/CaseStrengthDisplay";
+import { EvidenceIndexDisplay } from "@/components/memory/EvidenceIndexDisplay";
+import { MemoryAwareChat } from "@/components/memory/MemoryAwareChat";
 
 interface Message {
   id: string;
@@ -44,6 +48,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { snapshot, refreshSnapshot } = useCaseSnapshot();
+  const { caseMemory, updateThreadSummary } = useEnhancedMemory();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -163,6 +168,9 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Update thread summary with conversation context
+      await updateThreadSummary(`Asked: "${trimmedInput}". Response about ${data?.generatedText?.slice(0, 50)}...`);
 
       // Persist messages
       const uid = sessionData?.session?.user?.id;
@@ -608,8 +616,18 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b bg-card/60 backdrop-blur shrink-0">
         <div>
-          <h1 className="text-lg font-semibold">Veronica, Legal Assistant</h1>
-          <p className="text-sm text-muted-foreground">NSW Family Law & Domestic Violence Specialist</p>
+          <h1 className="text-lg font-semibold flex items-center gap-2">
+            Veronica, Legal Assistant
+            <Brain className="h-4 w-4 text-primary" />
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            NSW Family Law & Domestic Violence Specialist • Enhanced Memory Active
+          </p>
+          {caseMemory?.primary_goal && (
+            <p className="text-xs text-primary mt-1">
+              Working toward: {caseMemory.primary_goal}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           {/* Mode Toggle */}
@@ -646,6 +664,41 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         </div>
       </div>
 
+      {/* Enhanced Memory Context Bar */}
+      {!isModal && caseMemory && (
+        <div className="bg-muted/30 border-b px-4 py-2 shrink-0">
+          <div className="flex items-center gap-4 text-xs">
+            {caseMemory.case_strength_score && (
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-green-600" />
+                <span>Strength: {Math.round(caseMemory.case_strength_score)}%</span>
+              </div>
+            )}
+            {caseMemory.evidence_index?.length && (
+              <div className="flex items-center gap-1">
+                <FileText className="h-3 w-3 text-blue-600" />
+                <span>{caseMemory.evidence_index.length} exhibits indexed</span>
+              </div>
+            )}
+            {caseMemory.timeline_summary?.length && (
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3 text-purple-600" />
+                <span>{caseMemory.timeline_summary.length} timeline events</span>
+              </div>
+            )}
+            <div className="ml-auto">
+              <MemoryAwareChat 
+                onSendMessage={(message) => {
+                  setInput(message);
+                  setTimeout(() => sendMessage(), 100);
+                }}
+                userQuery={input}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Drag overlay */}
       {isDragActive && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
@@ -661,8 +714,31 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground py-8">
-            <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant.</p>
+            <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
             <p className="text-sm mb-2">Upload files or ask me about your case to get started.</p>
+            
+            {caseMemory?.primary_goal ? (
+              <div className="bg-primary/10 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                <p className="text-sm font-medium text-primary mb-2">I remember your goal:</p>
+                <p className="text-sm">{caseMemory.primary_goal}</p>
+                {caseMemory.case_strength_score && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Current case strength: {Math.round(caseMemory.case_strength_score)}%
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="bg-muted/50 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                <p className="text-sm mb-2">🎯 <strong>Enhanced Memory Features:</strong></p>
+                <div className="text-xs text-left space-y-1">
+                  <p>• Vector search across all your evidence</p>
+                  <p>• Proactive timeline and person detection</p>
+                  <p>• Case strength monitoring with boosters</p>
+                  <p>• Goal-focused conversation continuity</p>
+                </div>
+              </div>
+            )}
+
             <p className="text-xs text-muted-foreground mb-4">
               Supports: Documents, Audio, Video, Images, Emails, Archives
             </p>
@@ -694,7 +770,11 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about your NSW case, upload evidence, or get legal guidance..."
+            placeholder={
+              caseMemory?.primary_goal 
+                ? `Ask about your ${caseMemory.primary_goal} goal, upload evidence, or get legal guidance...`
+                : "Ask about your NSW case, upload evidence, or get legal guidance..."
+            }
             className="min-h-[60px] max-h-32 resize-none"
             disabled={loading}
           />
