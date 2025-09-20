@@ -223,19 +223,7 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
               )}
             </Button>
           </div>
-        ) : (
-          <div className="mt-6">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-green-600" />
-                <div>
-                  <p className="font-medium text-green-800">Your files are secure</p>
-                  <p className="text-sm text-green-700">All uploads are encrypted and private to your account</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        ) : null}
 
         {processing && (
           <Card className="mt-6 border-blue-200 bg-blue-50">
