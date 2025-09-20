@@ -337,40 +337,72 @@ export default function Evidence() {
       {/* Live case insights */}
       <LiveCaseInsights />
 
-      <header className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight mb-2">Your Evidence Library</h1>
-          <p className="text-muted-foreground">Your files are organized and secure. You're building a strong case.</p>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-8">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Evidence Library</h1>
+          <p className="text-lg text-muted-foreground">
+            Your files are organized and secure. Building a strong case together.
+          </p>
         </div>
-        <Button 
-          onClick={() => setShowWizard(true)}
-          size="lg"
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Evidence
-        </Button>
-      </header>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 rounded-lg text-sm">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            Auto-analysis enabled
+          </div>
+          <Button 
+            onClick={() => setShowWizard(true)}
+            size="lg"
+            className="px-6 py-3 font-medium"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Evidence
+          </Button>
+        </div>
+      </div>
 
       {files.length === 0 ? (
-        <Card className="text-center py-16">
-          <CardContent>
-            <FolderOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <CardTitle className="text-xl mb-2">Start Building Your Case</CardTitle>
-            <p className="text-muted-foreground mb-6">
-              Upload your evidence and we'll help organize everything automatically. 
-              Your information is private and secure.
-            </p>
-            <Button 
-              onClick={() => setShowWizard(true)}
-              size="lg"
-              className="flex items-center gap-2"
-            >
-              <Shield className="w-4 h-4" />
-              Upload First Evidence
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="max-w-2xl mx-auto">
+          <Card className="border-dashed border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+            <CardContent className="p-12 text-center">
+              <div className="space-y-6">
+                <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Shield className="w-10 h-10 text-primary" />
+                </div>
+                
+                <div className="space-y-2">
+                  <CardTitle className="text-2xl font-semibold">Start Building Your Legal Case</CardTitle>
+                  <p className="text-muted-foreground text-lg">
+                    Upload your evidence and we'll analyze everything automatically
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    Secure & Private
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                    AI-Powered Analysis
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-500"></div>
+                    Instant Organization
+                  </div>
+                </div>
+                
+                <Button 
+                  onClick={() => setShowWizard(true)}
+                  size="lg"
+                  className="px-8 py-3 text-lg font-medium"
+                >
+                  <Shield className="w-5 h-5 mr-2" />
+                  Upload Your First Evidence
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="space-y-8">
           {Object.entries(filesByCategory).map(([category, categoryFiles]) => {
@@ -452,14 +484,41 @@ export default function Evidence() {
             );
           })}
           
-          {/* Quick access to add more evidence */}
-          <Card className="border-dashed border-2 hover:border-primary/60 transition-colors cursor-pointer"
-                onClick={() => setShowWizard(true)}>
-            <CardContent className="text-center py-8">
-              <Plus className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Add more evidence - analysis happens automatically</p>
-            </CardContent>
-          </Card>
+          {/* Modern upload section */}
+          <div className="mt-8">
+            <Card className="border-dashed border-2 border-primary/30 hover:border-primary/50 transition-all duration-200 cursor-pointer group"
+                  onClick={() => setShowWizard(true)}>
+              <CardContent className="p-8 text-center">
+                <div className="space-y-4">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                    <Plus className="w-8 h-8 text-primary" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold">Add More Evidence</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Drop files here or click to browse • Analysis happens automatically
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      Documents
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Camera className="w-3 h-3" />
+                      Images
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3" />
+                      Messages
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </div>
