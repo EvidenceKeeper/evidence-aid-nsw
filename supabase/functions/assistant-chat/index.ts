@@ -548,6 +548,10 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
         console.error("Failed to update case memory:", error);
       }
     }
+
+    // Enhanced smart greeting with proactive context
+    let smartGreeting = "";
+    if (hasSubstantialEvidence && hasRecentUploads) {
       const fileNames = newlyProcessedFiles.map(f => f.name).join(', ');
       const chunkCount = totalChunks?.count || 0;
       
@@ -565,9 +569,6 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       const fileNames = newlyProcessedFiles.slice(0, 3).map(f => f.name).join(', ');
       smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
     }
-
-    // Combine all proactive context
-    const fullProactiveContext = proactiveContext + evidenceAnnouncement + caseStrengthAnnouncement;
 
     // Combine all proactive context
     const fullProactiveContext = proactiveContext + evidenceAnnouncement + caseStrengthAnnouncement;
