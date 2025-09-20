@@ -549,7 +549,7 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
       }
     }
 
-    // Enhanced smart greeting with proactive context
+    // TELEPATHIC FEATURE: Enhanced Smart Greeting with Announcements
     let smartGreeting = "";
     if (hasSubstantialEvidence && hasRecentUploads) {
       const fileNames = newlyProcessedFiles.map(f => f.name).join(', ');
@@ -570,8 +570,72 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
     }
 
-    // Combine all proactive context
-    const fullProactiveContext = proactiveContext + evidenceAnnouncement + caseStrengthAnnouncement;
+    // TELEPATHIC FEATURE: Combine All Proactive Context & Announcements
+    const allTelepathicContext = [
+      enhancedEvidenceAnnouncement,
+      caseStrengthBanner,
+      emailCorpusSummary,
+      contradictionAlert,
+      privacyGuard,
+      proactiveContext,
+      evidenceAnnouncement,
+      caseStrengthAnnouncement
+    ].filter(Boolean).join('\n\n');
+
+    // Create enhanced goal-aware system prompts with telepathic features
+    const telepathicUserPrompt = `You are Veronica, a telepathic NSW legal assistant. ${telepathicContinuity || goalContext}${telepathicContinuity ? ', here\'s your next step.' : (shouldDetectGoal ? ' Let me help you focus on your main legal goal first.' : '')}
+
+TELEPATHIC PROTOCOL:
+${shouldDetectGoal ? 
+  '– Start by asking: "What\'s your main legal goal? For example, preparing for a custody hearing, applying for an AVO, or drafting a parenting plan?"' : 
+  '– NEVER ask about their goal again - you know their objective. Always build on it.'
+}
+– Provide exactly ONE next step tied to their goal (not a list).
+– When analyzing evidence, tie it directly to their established goal in ≤3 bullet points.
+– Auto-add timeline events when dates are detected.
+– Keep responses under 220 words unless drafting documents.
+– Use warm, empathetic tone. You're genuinely invested in their success.
+– If confidence is low, say so: "${confidenceLevel === 'low' ? 'I\'m in quick mode with limited context.' : ''}"
+
+MEMORY CONTEXT:
+${caseContext}
+
+${allTelepathicContext ? `PROACTIVE ALERTS:\n${allTelepathicContext}\n\n` : ''}
+
+${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
+
+**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
+
+I'm here to support you, ${userName}.${smartGreeting}`;
+
+    const telepathicLawyerPrompt = `You are Veronica — Lawyer Mode (Telepathic). ${telepathicContinuity || goalContext}${telepathicContinuity ? ', here\'s the legal analysis.' : (shouldDetectGoal ? ' Let me understand your legal objective first.' : '')}
+
+TELEPATHIC LAWYER PROTOCOL:
+${shouldDetectGoal ? 
+  '– Ask: "What specific legal outcome are you working toward?"' :
+  '– Build on their established goal with each response.'
+}
+– Summary first, then numbered findings tied to their legal objective.
+– Provide exactly ONE next step (not a list of options).
+– Only include exhibits or legal sections if specifically requested.
+– Keep answers under 250 words but be precise and professional.
+– If evidence confidence is low, state limitations clearly.
+
+CASE INTELLIGENCE:
+${caseContext}
+
+${allTelepathicContext ? `PROACTIVE INTELLIGENCE:\n${allTelepathicContext}\n\n` : ''}
+
+${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
+
+**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
+
+I'm here to support you professionally, ${userName}.${smartGreeting}`;
+
+    const baseSystem = {
+      role: "system",
+      content: mode === 'lawyer' ? telepathicLawyerPrompt : telepathicUserPrompt,
+    };
 
     // Get updated case memory after potential analysis (including goal tracking)
     const { data: currentCaseMemory } = await supabase
@@ -586,13 +650,15 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       .eq("user_id", user.id)
       .single();
 
-    // Goal Detection and Storage Logic
+    // TELEPATHIC FEATURE: Enhanced Goal Continuity & Response Patterns  
     let goalContext = "";
     let shouldDetectGoal = false;
+    let telepathicContinuity = "";
     
     if (currentCaseMemory?.primary_goal && currentCaseMemory?.goal_status === 'active') {
-      // User has an established goal - build continuity
-      goalContext = `Building on your goal of ${currentCaseMemory.primary_goal}`;
+      // TELEPATHIC: Always start responses building on established goal
+      telepathicContinuity = `Building on your goal of ${currentCaseMemory.primary_goal}`;
+      goalContext = telepathicContinuity;
     } else {
       // Check if user is stating a goal in their message
       const goalKeywords = [
@@ -618,7 +684,7 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
         }
         
         if (extractedGoal) {
-          // Store the detected goal
+          // Store the detected goal (TELEPATHIC: Goal lock - never re-ask)
           const { error: goalError } = await supabase
             .from("case_memory")
             .upsert({
@@ -626,13 +692,15 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
               primary_goal: extractedGoal,
               goal_established_at: new Date().toISOString(),
               goal_status: 'active',
-              facts: currentCaseMemory?.facts,
-              parties: currentCaseMemory?.parties,
-              issues: currentCaseMemory?.issues
+              key_facts: currentCaseMemory?.key_facts || [],
+              timeline_summary: currentCaseMemory?.timeline_summary || [],
+              evidence_index: currentCaseMemory?.evidence_index || [],
+              last_updated_at: new Date().toISOString()
             });
             
           if (!goalError) {
-            goalContext = `I understand your goal is to ${extractedGoal}. Let me help you with that`;
+            telepathicContinuity = `I understand your goal is to ${extractedGoal}. Let me help you with that`;
+            goalContext = telepathicContinuity;
           }
         }
       } else {
@@ -640,22 +708,150 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       }
     }
 
-    // Enhanced case context with memory-aware summaries
+    // TELEPATHIC FEATURE: Privacy & Safety Guard with Confidence Tagging
+    let privacyGuard = "";
+    let confidenceLevel = "high";
+    
+    if (contextBlocks.length === 0 && !currentCaseMemory?.evidence_index?.length) {
+      confidenceLevel = "low";
+      privacyGuard = "📋 I'm in quick mode with limited context. For deeper analysis, please upload relevant documents.";
+    } else if (contextBlocks.length < 3) {
+      confidenceLevel = "medium";
+      privacyGuard = "⚠️ Limited evidence available. Recommendations are preliminary - additional documentation will improve accuracy.";
+    }
+
+    // TELEPATHIC FEATURE: Contradiction Detection
+    let contradictionAlert = "";
+    if (contextBlocks.length > 1 && currentCaseMemory?.key_facts?.length > 0) {
+      // Simple contradiction detection - look for conflicting dates or statements
+      const currentFacts = currentCaseMemory.key_facts.map((f: any) => f.fact || f).join(' ').toLowerCase();
+      const newContent = contextBlocks.join(' ').toLowerCase();
+      
+      // Check for date conflicts (simple heuristic)
+      const currentDates = currentFacts.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
+      const newDates = newContent.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
+      
+      if (currentDates.length > 0 && newDates.length > 0) {
+        const hasDateConflict = currentDates.some(cd => 
+          newDates.some(nd => cd !== nd && Math.abs(
+            new Date(cd.replace(/[\/\-\.]/g, '/')).getTime() - 
+            new Date(nd.replace(/[\/\-\.]/g, '/')).getTime()
+          ) < 86400000) // Same event, different date
+        );
+        
+        if (hasDateConflict) {
+          contradictionAlert = "🔍 Possible contradiction—want me to reconcile these date differences?";
+        }
+      }
+    }
+
+    // TELEPATHIC FEATURE: Enhanced Post-Upload Announcement
+    let enhancedEvidenceAnnouncement = "";
+    if (hasRecentUploads && newlyProcessedFiles.length > 0) {
+      const recentFile = newlyProcessedFiles[0];
+      const { data: recentAnalysis } = await supabase
+        .from("evidence_comprehensive_analysis")
+        .select("key_insights, timeline_significance, case_impact")
+        .eq("file_id", recentFile.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: newTimelineEvents } = await supabase
+        .from("enhanced_timeline_events")
+        .select("id, title, event_date")
+        .eq("file_id", recentFile.id)
+        .order("event_date", { ascending: false })
+        .limit(5);
+
+      if (recentAnalysis) {
+        const keyInsights = recentAnalysis.key_insights || [];
+        const timelineCount = newTimelineEvents?.length || 0;
+        const goalContext = currentCaseMemory?.primary_goal ? ` and what it adds to your goal of ${currentCaseMemory.primary_goal}` : '';
+        
+        enhancedEvidenceAnnouncement = `📁 I've processed ${recentFile.name} — here's the 3-line summary${goalContext}:
+
+• ${keyInsights[0] || 'Document analyzed for legal significance'}
+• ${keyInsights[1] || recentAnalysis.case_impact || 'Evidence categorized and indexed'}
+• ${keyInsights[2] || (timelineCount > 0 ? `${timelineCount} new timeline events detected` : 'Content available for legal analysis')}
+
+${timelineCount > 0 ? `I can add ${timelineCount} new events to your timeline now. Proceed?` : ''}`;
+      }
+    }
+
+    // TELEPATHIC FEATURE: Case Strength Score Banner
+    let caseStrengthBanner = "";
+    if (currentCaseMemory && currentLegalStrategy) {
+      const score = Math.round(currentLegalStrategy.case_strength_overall || currentCaseMemory.case_strength_score || 0);
+      const reasons = currentLegalStrategy.strengths || currentCaseMemory.case_strength_reasons || [];
+      const nextSteps = currentLegalStrategy.next_steps || [];
+      
+      let label = "Developing";
+      if (score >= 75) label = "Strong";
+      else if (score >= 50) label = "Moderate";
+      
+      const topReasons = Array.isArray(reasons) ? reasons.slice(0, 3) : [];
+      const topBooster = Array.isArray(nextSteps) && nextSteps.length > 0 
+        ? (nextSteps[0].action || nextSteps[0] || "Review evidence gaps") 
+        : "Gather additional evidence";
+      
+      if (score > 0 && topReasons.length > 0) {
+        caseStrengthBanner = `📊 Case Strength: ${label} ${score}%. Because: ${topReasons.map(r => `• ${typeof r === 'object' ? r.fact || r.reason || String(r) : r}`).join(' ')}. Booster: ${topBooster}.`;
+      }
+    }
+
+    // TELEPATHIC FEATURE: Email Corpus Detection and Turbo-Parse
+    let emailCorpusMode = false;
+    let emailCorpusSummary = "";
+    if (allFiles && allFiles.length > 0) {
+      const emailFiles = allFiles.filter(f => 
+        f.name.toLowerCase().includes('.txt') || 
+        f.name.toLowerCase().includes('.mbox') || 
+        f.name.toLowerCase().includes('.eml') ||
+        f.name.toLowerCase().includes('email') ||
+        f.name.toLowerCase().includes('mail')
+      );
+      
+      if (emailFiles.length > 0) {
+        emailCorpusMode = true;
+        const { data: emailChunks } = await supabase
+          .from("chunks")
+          .select("text, meta")
+          .in("file_id", emailFiles.map(f => f.id))
+          .limit(100);
+          
+        if (emailChunks && emailChunks.length > 0) {
+          // Detect date ranges and patterns in emails
+          const dates = emailChunks
+            .map(c => c.text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g))
+            .filter(Boolean)
+            .flat()
+            .map(d => new Date(d.replace(/[\/\-\.]/g, '/')))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a.getTime() - b.getTime());
+            
+          if (dates.length > 0) {
+            const startDate = dates[0].toLocaleDateString();
+            const endDate = dates[dates.length - 1].toLocaleDateString();
+            emailCorpusSummary = `📧 Email corpus detected: ${emailChunks.length} emails, ${startDate}–${endDate}. I can extract incidents and build timeline patterns from this correspondence.`;
+          }
+        }
+      }
+    }
+
+    // TELEPATHIC FEATURE: Enhanced Case Memory Context with Hierarchical Summaries
     let caseContext = "";
     if (currentCaseMemory) {
       caseContext = `
-=== CASE MEMORY CONTEXT ===
+=== ENHANCED MEMORY CONTEXT ===
 **Primary Goal:** ${currentCaseMemory.primary_goal || 'Not yet established'}
-**Goal Status:** ${currentCaseMemory.goal_status || 'unclear'}
 **Case Strength:** ${Math.round(currentCaseMemory.case_strength_score || 0)}%
 
-**Key Facts:** ${JSON.stringify(currentCaseMemory.key_facts || [])}
-**Recent Thread:** ${currentCaseMemory.thread_summary || 'New conversation'}
+**Evidence Index (${currentCaseMemory.evidence_index?.length || 0} files):**
+${currentCaseMemory.evidence_index?.map((e: any) => `- Exhibit ${e.exhibit_code}: ${e.filename} (${e.type}) - ${e['1_line_summary'] || e.summary}`).join('\n') || 'No evidence indexed yet'}
 
-**Evidence Index:** ${currentCaseMemory.evidence_index?.length || 0} files processed
-${currentCaseMemory.evidence_index?.map((e: any) => `- Exhibit ${e.exhibit_code}: ${e.file_name} (${e.summary})`).join('\n') || ''}
-
-**Timeline Summary:** ${currentCaseMemory.timeline_summary?.length || 0} events tracked
+**Timeline Spine:** ${currentCaseMemory.timeline_summary?.length || 0} events tracked
+**Thread Summary:** ${currentCaseMemory.thread_summary || 'New conversation'}
 `;
     }
     let caseSummary = "";
@@ -748,6 +944,31 @@ I'm here to support you professionally, ${userName}.${smartGreeting}`;
 
     const data = await response.json();
     const generatedText = data?.choices?.[0]?.message?.content ?? "";
+
+    // TELEPATHIC FEATURE: Enhanced Thread Summary Update
+    if (currentCaseMemory && queryText) {
+      try {
+        const currentSummary = currentCaseMemory.thread_summary || "";
+        const newEntry = `${new Date().toLocaleDateString()}: User discussed ${queryText.slice(0, 50).toLowerCase()}...`;
+        
+        // Keep rolling summary under 120 words with better context
+        const summaryParts = currentSummary.split('. ').slice(-2);
+        const updatedSummary = [...summaryParts, newEntry].join('. ').slice(0, 120);
+
+        const threadUpdatePromise = supabase
+          .from("case_memory")
+          .update({
+            thread_summary: updatedSummary,
+            last_updated_at: new Date().toISOString(),
+          })
+          .eq("user_id", user.id);
+          
+        // Non-blocking update
+        threadUpdatePromise.then(({ error }) => error && console.error("Thread summary update failed:", error));
+      } catch (error) {
+        console.error("Thread summary update error:", error);
+      }
+    }
 
     // Save the conversation to messages table for case memory
     const messagePromise = supabase.from("messages").insert([

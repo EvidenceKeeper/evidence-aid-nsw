@@ -1,18 +1,24 @@
-import { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, Loader2, Upload, Brain, TrendingUp, FileText, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Paperclip, X, Settings, ChevronLeft, ChevronRight, Brain, Loader2, Upload, TrendingUp, FileText, Calendar } from 'lucide-react';
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { ChatMessage } from "./ChatMessage";
-import { sanitizeFileName } from "@/lib/utils";
-import { useCaseSnapshot } from "@/hooks/useCaseSnapshot";
-import { generateDeepDiveAnalysis } from "@/utils/deepDiveAnalysis";
-import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
+import { FileUpload } from "./FileUpload";
 import { CaseStrengthDisplay } from "@/components/memory/CaseStrengthDisplay";
 import { EvidenceIndexDisplay } from "@/components/memory/EvidenceIndexDisplay";
 import { MemoryAwareChat } from "@/components/memory/MemoryAwareChat";
+import { TelepathicContextProvider, useTelepathicContext } from "@/components/memory/TelepathicContextProvider";
+import { TelepathicAnnouncementBanner } from "@/components/memory/TelepathicAnnouncementBanner";
+import { GoalLockDisplay } from "@/components/memory/GoalLockDisplay";
+import { TelepathicModeToggle } from "@/components/memory/TelepathicModeToggle";
+import { supabase } from "@/integrations/supabase/client";
+import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
+import { useToast } from "@/hooks/use-toast";
+import { useCaseSnapshot } from "@/hooks/useCaseSnapshot";
+import { generateDeepDiveAnalysis } from "@/utils/deepDiveAnalysis";
 import { useEnhancedMemoryContext } from "@/components/memory/EnhancedMemoryProvider";
 
 interface Message {
