@@ -97,7 +97,7 @@ serve(async (req) => {
 
     const hasSubstantialEvidence = (totalChunks?.count || 0) > 100; // Substantial evidence threshold
     
-    // Enhanced Intelligence Upgrades
+    // Enhanced Intelligence Upgrades - Get case memory and evidence analysis
     const { data: caseMemory } = await supabase
       .from("case_memory")
       .select("*")
@@ -120,13 +120,6 @@ serve(async (req) => {
     if (containsSensitiveInfo) {
       console.log("⚠️ Sensitive information detected in prompt");
     }
-
-    // Get case memory and evidence analysis for case summary
-    const { data: caseMemory } = await supabase
-      .from("case_memory")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
 
     const { data: legalStrategy } = await supabase
       .from("legal_strategy")
@@ -443,10 +436,26 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
       }
     }
 
-    // Proactive Memory Triggers and Context Enhancement
+    // Initialize telepathic variables
     let proactiveContext = "";
     let memoryUpdates: any = {};
+    let enhancedEvidenceAnnouncement = "";
+    let caseStrengthBanner = "";
+    let emailCorpusSummary = "";
+    let contradictionAlert = "";
+    let privacyGuard = "";
+    let confidenceLevel = "high";
+    let caseSummary = "";
+    let caseContext = "";
+    let telepathicContinuity = "";
+    let goalContext = "";
+    let shouldDetectGoal = false;
     
+    // Use caseMemory as currentCaseMemory for consistency
+    const currentCaseMemory = caseMemory;
+    const currentLegalStrategy = legalStrategy;
+    
+    // Proactive Memory Triggers and Context Enhancement
     if (queryText && currentCaseMemory) {
       console.log("🧠 Running proactive memory triggers...");
       
@@ -536,6 +545,39 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
         evidenceAnnouncement = `\n📈 **NEW EVIDENCE INDEXED:**\nJust processed "${recentFile.name}" and found ${recentAnalysis.key_insights?.length || 0} key insights. ${recentAnalysis.timeline_significance ? `Timeline impact: ${recentAnalysis.timeline_significance}` : ''}\n\n`;
       }
     }
+    // TELEPATHIC FEATURE: Privacy & Safety Guard with Confidence Tagging
+    if (contextBlocks.length === 0 && !currentCaseMemory?.evidence_index?.length) {
+      confidenceLevel = "low";
+      privacyGuard = "📋 I'm in quick mode with limited context. For deeper analysis, please upload relevant documents.";
+    } else if (contextBlocks.length < 3) {
+      confidenceLevel = "medium";
+      privacyGuard = "⚠️ Limited evidence available. Recommendations are preliminary - additional documentation will improve accuracy.";
+    }
+
+    // TELEPATHIC FEATURE: Contradiction Detection
+    if (contextBlocks.length > 1 && currentCaseMemory?.key_facts?.length > 0) {
+      // Simple contradiction detection - look for conflicting dates or statements
+      const currentFacts = currentCaseMemory.key_facts.map((f: any) => f.fact || f).join(' ').toLowerCase();
+      const newContent = contextBlocks.join(' ').toLowerCase();
+      
+      // Check for date conflicts (simple heuristic)
+      const currentDates = currentFacts.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
+      const newDates = newContent.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
+      
+      if (currentDates.length > 0 && newDates.length > 0) {
+        const hasDateConflict = currentDates.some(cd => 
+          newDates.some(nd => cd !== nd && Math.abs(
+            new Date(cd.replace(/[\/\-\.]/g, '/')).getTime() - 
+            new Date(nd.replace(/[\/\-\.]/g, '/')).getTime()
+          ) < 86400000) // Same event, different date
+        );
+        
+        if (hasDateConflict) {
+          contradictionAlert = "🔍 Possible contradiction—want me to reconcile these date differences?";
+        }
+      }
+    }
+
     // Case Strength Monitoring and Updates
     let caseStrengthAnnouncement = "";
     if (currentLegalStrategy && currentCaseMemory) {
@@ -661,23 +703,7 @@ I'm here to support you professionally, ${userName}.${smartGreeting}`;
       content: mode === 'lawyer' ? telepathicLawyerPrompt : telepathicUserPrompt,
     };
 
-    // Get updated case memory after potential analysis (including goal tracking)
-    const { data: currentCaseMemory } = await supabase
-      .from("case_memory")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-      
-    const { data: currentLegalStrategy } = await supabase
-      .from("legal_strategy")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    // TELEPATHIC FEATURE: Enhanced Goal Continuity & Response Patterns  
-    let goalContext = "";
-    let shouldDetectGoal = false;
-    let telepathicContinuity = "";
+    // TELEPATHIC FEATURE: Enhanced Goal Continuity & Response Patterns
     
     if (currentCaseMemory?.primary_goal && currentCaseMemory?.goal_status === 'active') {
       // TELEPATHIC: Always start responses building on established goal
@@ -732,40 +758,16 @@ I'm here to support you professionally, ${userName}.${smartGreeting}`;
       }
     }
 
-    // TELEPATHIC FEATURE: Privacy & Safety Guard with Confidence Tagging
-    let privacyGuard = "";
-    let confidenceLevel = "high";
-    
-    if (contextBlocks.length === 0 && !currentCaseMemory?.evidence_index?.length) {
-      confidenceLevel = "low";
-      privacyGuard = "📋 I'm in quick mode with limited context. For deeper analysis, please upload relevant documents.";
-    } else if (contextBlocks.length < 3) {
-      confidenceLevel = "medium";
-      privacyGuard = "⚠️ Limited evidence available. Recommendations are preliminary - additional documentation will improve accuracy.";
-    }
-
-    // TELEPATHIC FEATURE: Contradiction Detection
-    let contradictionAlert = "";
-    if (contextBlocks.length > 1 && currentCaseMemory?.key_facts?.length > 0) {
-      // Simple contradiction detection - look for conflicting dates or statements
-      const currentFacts = currentCaseMemory.key_facts.map((f: any) => f.fact || f).join(' ').toLowerCase();
-      const newContent = contextBlocks.join(' ').toLowerCase();
+    // Build case context and summary
+    if (currentCaseMemory) {
+      const goal = currentCaseMemory.primary_goal || 'general legal assistance';
+      const keyFacts = currentCaseMemory.key_facts || [];
+      const evidenceCount = currentCaseMemory.evidence_index?.length || 0;
       
-      // Check for date conflicts (simple heuristic)
-      const currentDates = currentFacts.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
-      const newDates = newContent.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
+      caseContext = `Goal: ${goal} | Evidence: ${evidenceCount} items | Case strength: ${currentCaseMemory.case_strength_score || 0}%`;
       
-      if (currentDates.length > 0 && newDates.length > 0) {
-        const hasDateConflict = currentDates.some(cd => 
-          newDates.some(nd => cd !== nd && Math.abs(
-            new Date(cd.replace(/[\/\-\.]/g, '/')).getTime() - 
-            new Date(nd.replace(/[\/\-\.]/g, '/')).getTime()
-          ) < 86400000) // Same event, different date
-        );
-        
-        if (hasDateConflict) {
-          contradictionAlert = "🔍 Possible contradiction—want me to reconcile these date differences?";
-        }
+      if (keyFacts.length > 0) {
+        caseSummary = `Key facts: ${keyFacts.slice(0, 3).map((f: any) => f.fact || f).join('; ')}`;
       }
     }
 
