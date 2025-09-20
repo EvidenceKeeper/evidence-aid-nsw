@@ -17,6 +17,10 @@ import { TelepathicModeToggle } from "@/components/memory/TelepathicModeToggle";
 import { HallucinationGuard } from "@/components/memory/HallucinationGuard";
 import { SpeedQualitySelector } from "@/components/memory/SpeedQualitySelector";
 import { TelepathicResponseTemplates } from "@/components/memory/TelepathicResponseTemplates";
+import { PredictiveActionEngine } from "@/components/memory/PredictiveActionEngine";
+import { EvidenceRelationshipMatrix } from "@/components/memory/EvidenceRelationshipMatrix";
+import { PatternRecognitionEngine } from "@/components/memory/PatternRecognitionEngine";
+import { useTelepathicIntelligence } from "@/hooks/useTelepathicIntelligence";
 import { supabase } from "@/integrations/supabase/client";
 import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
 import { useToast } from "@/hooks/use-toast";
@@ -65,6 +69,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const { caseMemory, updateThreadSummary, runProactiveMemoryTriggers } = useEnhancedMemory();
   const { isMemoryEnabled, announceMemoryUpdate } = useEnhancedMemoryContext();
   const { telepathicMode, addAnnouncement } = useTelepathicContext();
+  const { insights, isAnalyzing } = useTelepathicIntelligence();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -755,8 +760,15 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
 
         {/* Goal Lock Display */}
         {!isModal && telepathicMode && (
-          <div className="p-4 border-b">
+          <div className="p-4 border-b space-y-4">
             <GoalLockDisplay />
+            
+            {/* Telepathic Intelligence Components */}
+            <div className="space-y-3">
+              <PredictiveActionEngine />
+              <EvidenceRelationshipMatrix />
+              <PatternRecognitionEngine />
+            </div>
           </div>
         )}
         {!isModal && caseMemory && isMemoryEnabled && (
@@ -967,6 +979,19 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                 <h4 className="text-sm font-medium text-foreground">Evidence Index</h4>
                 <EvidenceIndexDisplay />
               </div>
+
+              {/* Telepathic Intelligence (when active) */}
+              {telepathicMode && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-foreground">Telepathic Intelligence</h4>
+                    <PredictiveActionEngine />
+                    <EvidenceRelationshipMatrix />
+                    <PatternRecognitionEngine />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
