@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { 
   Files, 
   MessageCircleQuestion, 
@@ -13,11 +14,12 @@ import {
   Gavel
 } from "lucide-react";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
-import { ChatButton } from "@/components/chat/ChatButton";
+import { ChatInterface } from "@/components/chat/ChatInterface";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Card } from "@/components/ui/card";
 
 // Organized navigation structure
 const navGroups = [
@@ -50,6 +52,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isAssistantPage = location.pathname === "/assistant";
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -63,6 +66,14 @@ export default function AppLayout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setIsChatOpen(true)}
+              size="lg"
+              className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6"
+            >
+              <MessageCircleQuestion className="h-5 w-5" />
+              Lawyer Chat
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -121,11 +132,17 @@ export default function AppLayout() {
           <div className="fade-in">
             <Outlet />
           </div>
-          
-          {/* Global Chat Button - Hidden on assistant page */}
-          {!isAssistantPage && <ChatButton />}
         </main>
       </div>
+
+      {/* Chat Modal */}
+      {isChatOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <Card className="w-full max-w-4xl h-[80vh] shadow-2xl border-0 overflow-hidden">
+            <ChatInterface isModal onClose={() => setIsChatOpen(false)} />
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
