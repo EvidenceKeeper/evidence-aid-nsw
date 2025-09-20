@@ -75,65 +75,72 @@ export default function AuthPage() {
   const dashboardLinkText = isCamouflaged ? "← Back to wellness" : "← Back to dashboard";
 
   return (
-    <div className={`min-h-screen flex items-center justify-center p-4 ${
+    <div className={`min-h-screen flex items-center justify-center p-6 ${
       isCamouflaged 
         ? "bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950/20 dark:via-green-950/20 dark:to-teal-950/20" 
-        : "bg-gradient-to-br from-primary-lighter via-background to-accent-soft/20"
+        : "bg-gradient-to-br from-warm-50 via-warm-100 to-warm-200"
     }`}>
       <SEO title={pageTitle} description={pageDescription} />
       
-      {/* Background pattern */}
-      <div className={`absolute inset-0 opacity-[0.03] ${
+      {/* Enhanced background pattern */}
+      <div className={`absolute inset-0 opacity-[0.15] ${
         isCamouflaged
           ? "bg-[radial-gradient(circle_at_30%_20%,hsl(142_70%_45%)_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(158_60%_50%)_0%,transparent_50%)]"
-          : "bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary))_0%,transparent_50%),radial-gradient(circle_at_80%_80%,hsl(var(--accent))_0%,transparent_50%)]"
+          : "bg-[radial-gradient(circle_at_25%_25%,hsl(var(--primary))_0%,transparent_40%),radial-gradient(circle_at_75%_75%,hsl(var(--accent))_0%,transparent_40%)]"
       }`} />
       
+      {/* Subtle texture overlay */}
+      <div className="absolute inset-0 opacity-[0.02]" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+      }} />
+      
       <main className="relative w-full max-w-md">
-        <div className="text-center mb-8 fade-in">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className={`p-3 rounded-xl ${
-              isCamouflaged ? "bg-emerald-100 dark:bg-emerald-900/20" : "bg-primary/10"
+        <div className="text-center mb-10 animate-fade-in">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className={`p-4 rounded-2xl shadow-soft ${
+              isCamouflaged ? "bg-emerald-100 dark:bg-emerald-900/20" : "bg-gradient-to-br from-primary/15 to-primary/10"
             }`}>
               {isCamouflaged ? (
-                <Heart className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                <Heart className="h-10 w-10 text-emerald-600 dark:text-emerald-400 animate-gentle-bounce" />
               ) : (
-                <Shield className="h-8 w-8 text-primary" />
+                <Shield className="h-10 w-10 text-primary animate-gentle-bounce" />
               )}
             </div>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">{appTitle}</h1>
-          <p className="text-muted-foreground">{appTagline}</p>
+          <h1 className="text-4xl font-bold tracking-tight mb-3 bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent">
+            {appTitle}
+          </h1>
+          <p className="text-muted-foreground text-lg leading-relaxed max-w-sm mx-auto">{appTagline}</p>
         </div>
 
-        <Card className={`${isCamouflaged ? "card-wellness" : "card-premium"}`}>
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl">
+        <Card className={`${isCamouflaged ? "card-wellness" : "card-premium"} overflow-hidden`}>
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-2xl font-semibold">
               {welcomeText}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium">Email address</Label>
+          <CardContent className="space-y-8 px-8 pb-8">
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label htmlFor="email" className="text-sm font-semibold text-foreground/90">Email address</Label>
                 <Input 
                   id="email" 
                   type="email" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                   placeholder={emailPlaceholder}
-                  className="focus-elegant"
+                  className="input-elegant focus-elegant"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+              <div className="space-y-3">
+                <Label htmlFor="password" className="text-sm font-semibold text-foreground/90">Password</Label>
                 <Input 
                   id="password" 
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                   placeholder="••••••••••••"
-                  className="focus-elegant"
+                  className="input-elegant focus-elegant"
                 />
               </div>
             </div>
@@ -142,7 +149,7 @@ export default function AuthPage() {
               <Button 
                 onClick={signIn} 
                 disabled={loading} 
-                className={`w-full h-11 ${isCamouflaged ? "btn-wellness" : "btn-premium"}`}
+                className={`w-full h-14 text-lg ${isCamouflaged ? "btn-wellness" : "btn-premium"}`}
               >
                 {loading ? "Signing in..." : signInText}
               </Button>
@@ -150,18 +157,18 @@ export default function AuthPage() {
               <Button 
                 onClick={signUp} 
                 disabled={loading}
-                className={`w-full h-11 ${isCamouflaged ? "btn-wellness" : "btn-premium"}`}
+                className={`w-full h-14 text-lg ${isCamouflaged ? "btn-wellness" : "btn-premium"}`}
               >
                 {loading ? "Creating account..." : signUpText}
               </Button>
             )}
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-base text-muted-foreground">
               {mode === "signin" ? (
                 <span>
                   Need an account?{" "}
                   <button 
-                    className="text-primary hover:underline font-medium transition-colors" 
+                    className="text-primary hover:text-primary-soft font-semibold transition-colors hover:underline" 
                     onClick={() => setMode("signup")}
                   >
                     Sign up here
@@ -171,7 +178,7 @@ export default function AuthPage() {
                 <span>
                   Already have an account?{" "}
                   <button 
-                    className="text-primary hover:underline font-medium transition-colors" 
+                    className="text-primary hover:text-primary-soft font-semibold transition-colors hover:underline" 
                     onClick={() => setMode("signin")}
                   >
                     Sign in instead
@@ -180,19 +187,24 @@ export default function AuthPage() {
               )}
             </div>
 
-            <div className="pt-4 border-t">
-              <div className="text-xs text-muted-foreground text-center space-y-2">
-                <p className="flex items-center justify-center gap-1">
+            <div className="pt-6 border-t border-border/40">
+              <div className="text-sm text-muted-foreground text-center space-y-3">
+                <p className="flex items-center justify-center gap-2">
                   {isCamouflaged ? (
-                    <Heart className="h-3 w-3" />
+                    <Heart className="h-4 w-4" />
                   ) : (
-                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                     </svg>
                   )}
                   {securityText}
                 </p>
-                <Link to="/" className="text-primary hover:underline">{dashboardLinkText}</Link>
+                <Link 
+                  to="/" 
+                  className="text-primary hover:text-primary-soft font-medium transition-colors hover:underline inline-block"
+                >
+                  {dashboardLinkText}
+                </Link>
               </div>
             </div>
           </CardContent>
