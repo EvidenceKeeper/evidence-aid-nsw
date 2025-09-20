@@ -1,13 +1,11 @@
 import { SEO } from "@/components/SEO";
-import HealthStatus from "@/components/HealthStatus";
 
 export default function Workspace() {
   return (
     <div className="container mx-auto px-6 py-8">
       <SEO title="Case Workspace | NSW Legal Evidence Manager" description="Organize files, see health status, and access quick actions for your case." />
-      <header className="flex items-center justify-between gap-4 mb-6">
+      <header className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">Case Workspace</h1>
-        <HealthStatus />
       </header>
       <section className="grid gap-4 md:grid-cols-2">
         <article className="rounded-lg border bg-card p-4">
