@@ -204,15 +204,6 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
 
         {uploadedFiles.length > 0 ? (
           <div className="space-y-4 mt-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-blue-600" />
-                <div>
-                  <p className="font-medium text-blue-800">Smart organization enabled</p>
-                  <p className="text-sm text-blue-700">We'll automatically categorize and analyze your files</p>
-                </div>
-              </div>
-            </div>
             <Button 
               onClick={handleUploadAndProcess}
               disabled={uploading}
