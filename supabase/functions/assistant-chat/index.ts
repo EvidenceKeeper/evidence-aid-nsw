@@ -955,7 +955,7 @@ I'm here to support you professionally, ${userName}.${smartGreeting}`;
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: chatMessages,
-        max_completion_tokens: 4000,
+        max_tokens: 4000,
       }),
     });
 
