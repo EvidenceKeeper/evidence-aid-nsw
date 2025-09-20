@@ -36,6 +36,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<'user' | 'lawyer'>('user');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -114,7 +115,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       }
 
       const { data, error } = await supabase.functions.invoke("assistant-chat", {
-        body: { prompt: input.trim() }
+        body: { prompt: input.trim(), mode }
       });
 
       if (error) {
@@ -358,11 +359,39 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
           <h1 className="text-lg font-semibold">Veronica, Legal Assistant</h1>
           <p className="text-sm text-muted-foreground">NSW Family Law & Domestic Violence Specialist</p>
         </div>
-        {isModal && onClose && (
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ×
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Mode:</span>
+            <div className="flex rounded-lg border p-1">
+              <button
+                onClick={() => setMode('user')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  mode === 'user' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                User
+              </button>
+              <button
+                onClick={() => setMode('lawyer')}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  mode === 'lawyer' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Lawyer
+              </button>
+            </div>
+          </div>
+          {isModal && onClose && (
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              ×
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Drag overlay */}
@@ -382,9 +411,13 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
           <div className="text-center text-muted-foreground py-8">
             <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant.</p>
             <p className="text-sm mb-2">Upload files or ask me about your case to get started.</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mb-4">
               Supports: Documents, Audio, Video, Images, Emails, Archives
             </p>
+            <div className="text-xs text-muted-foreground">
+              <p><strong>User Mode:</strong> Warm, supportive guidance focused on one goal</p>
+              <p><strong>Lawyer Mode:</strong> Professional analysis with structured findings</p>
+            </div>
           </div>
         )}
         

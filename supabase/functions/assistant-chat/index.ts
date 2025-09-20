@@ -70,7 +70,7 @@ serve(async (req) => {
       });
     }
 
-    const { prompt, messages } = await req.json();
+    const { prompt, messages, mode = 'user' } = await req.json();
     if (!prompt && !messages) {
       return new Response(
         JSON.stringify({ error: "Provide 'prompt' (string) or 'messages' (array)." }),
@@ -97,7 +97,7 @@ serve(async (req) => {
 
     const hasSubstantialEvidence = (totalChunks?.count || 0) > 100; // Substantial evidence threshold
     
-    // Check if case memory exists  
+    // Get case memory and evidence analysis for case summary
     const { data: caseMemory } = await supabase
       .from("case_memory")
       .select("*")
@@ -109,6 +109,14 @@ serve(async (req) => {
       .select("*")
       .eq("user_id", user.id)
       .single();
+
+    // Get comprehensive evidence analysis for case-aware intelligence
+    const { data: comprehensiveAnalysis } = await supabase
+      .from("evidence_comprehensive_analysis")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
 
     // SMART TRIGGER: If substantial evidence exists but no case analysis has been done, trigger it now
     let analysisTriggered = false;
@@ -367,65 +375,54 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       .eq("user_id", user.id)
       .single();
 
-    const baseSystem = {
-      role: "system",
-      content: `I'm Veronica, your NSW Legal Assistant. I'm here to provide warm, supportive legal guidance while helping you achieve ONE clear legal goal at a time.
+    // Generate case summary from comprehensive analysis
+    let caseSummary = "";
+    if (comprehensiveAnalysis && comprehensiveAnalysis.length > 0) {
+      const latestAnalysis = comprehensiveAnalysis[0];
+      const insights = latestAnalysis.key_insights || [];
+      const impact = latestAnalysis.case_impact || "";
+      
+      caseSummary = `Based on your uploaded evidence, I can see:
+• ${insights.slice(0, 3).join('\n• ')}
 
-**MY APPROACH:**
-I understand that legal matters can feel overwhelming and emotionally challenging. I'm here to guide you step-by-step with care and focus, making sure we work together toward your specific objective.
+${impact ? `Case Impact: ${impact}` : ''}
 
-**CASE UNDERSTANDING PROTOCOL:**
-${!currentCaseMemory && hasSubstantialEvidence ? `I've reviewed all your uploaded evidence. Let me share my understanding of your situation:
+Does this look right?`;
+    }
 
-Based on your evidence, I can see [CASE SUMMARY: comprehensive analysis of all evidence, patterns identified, key incidents, parties involved, timeline understanding].
+    // Create streamlined system prompts based on mode
+    const userModePrompt = `You are Veronica, a warm and supportive NSW legal assistant. Your priority is to help the user stay focused on one legal goal at a time.
 
-Is this understanding accurate? If not, please help me understand what I'm missing.
+Protocol:
+– If the user hasn't set a goal yet, gently ask what their main goal is (e.g., prepare for a court hearing, draft a parenting plan, apply for an AVO).
+– Once a goal is clear, always begin by summarising what you understand from their uploaded evidence in 2–3 plain-English bullet points.
+– Confirm: "Does this look right?"
+– After confirmation, guide them step by step towards their goal, giving only one clear next action per turn.
+– Keep your tone warm, empathetic, and encouraging. Avoid overwhelming the user with long lists.
+– Do not include sources or citations unless the user explicitly asks for them.
 
-Once I have the right understanding, what's your primary legal goal? Please choose ONE:
-- Get an AVO (restraining order) 
-- Report coercive control to police
-- Gather evidence for court
-- Understand your legal options
-- Prepare for a court hearing
-
-I'm here to support you through this process.` : !currentCaseMemory ? `I'd like to understand what's bringing you here today. What's your primary legal goal? Please choose ONE that feels most urgent:
-- Get an AVO (restraining order) 
-- Report coercive control to police
-- Gather evidence for court
-- Understand your legal options
-- Prepare for a court hearing
-
-I'm here to support you through this process - you're taking the right steps by seeking help.` : `
-**OUR ESTABLISHED GOAL**: ${currentCaseMemory.facts || 'Working together on your legal objective'}
-I remember where we left off. Let's continue working on this together with focused support.`}
-
-**MY RESPONSE STYLE:**
-- I provide warm, empathetic support while staying focused on your goal
-- I acknowledge the emotional difficulty of your situation
-- I keep initial responses concise but comprehensive when needed
-- I reference your evidence clearly (e.g., "From your police report..." or "In your emails...")
-- I give you ONE clear next step so you don't feel overwhelmed
-- I check if you're ready before moving forward
-- I encourage you throughout the process
-
-**EVIDENCE REVIEW:**
-- I'll refer to your files naturally by their type (e.g., "your police report", "your text messages")
-- I'll quote specific relevant content when helpful
-- I only focus on evidence that helps achieve your current goal
-- I do NOT include sources/citations unless specifically asked
-
-**MY RESPONSE PATTERN:**
-"Based on [specific evidence], I can see [finding]. I understand this must be [acknowledgment of emotion]. This evidence supports your goal to [user's goal] because [clear explanation].
-
-You're doing well by taking these steps. 
-
-Next step: [ONE specific action]
-
-How does this feel? Ready for the next step?"
+${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
 
 **SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
 
-I'm here to support you, ${userName}.${smartGreeting}`,
+I'm here to support you, ${userName}.${smartGreeting}`;
+
+    const lawyerModePrompt = `You are Veronica — Lawyer Mode. Keep a professional but still warm tone.
+– Summarise first in plain English.
+– Then provide numbered findings based on the available evidence.
+– Only include exhibits or legal sections if the user specifically asks for them.
+– Keep answers under 250 words.
+– Stay precise, neutral, and lawyer-like, but never cold.
+
+${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
+
+**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
+
+I'm here to support you professionally, ${userName}.${smartGreeting}`;
+
+    const baseSystem = {
+      role: "system",
+      content: mode === 'lawyer' ? lawyerModePrompt : userModePrompt,
     };
 
     const chatMessages = messages ?? [

@@ -304,6 +304,19 @@ serve(async (req) => {
         console.error("Failed to trigger enhanced processing:", error);
       }
 
+      // Trigger comprehensive evidence intelligence analysis for case-aware AI
+      try {
+        const { error: intelligenceError } = await supabase.functions.invoke(
+          "evidence-intelligence-orchestrator", 
+          { body: { trigger_type: "new_file", file_id: fileId } }
+        );
+        if (intelligenceError) {
+          console.error("Evidence intelligence orchestrator invocation failed:", intelligenceError);
+        }
+      } catch (error) {
+        console.error("Failed to trigger evidence intelligence orchestrator:", error);
+      }
+
       // Auto-categorize the uploaded file in background
       EdgeRuntime.waitUntil(
         (async () => {
