@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ChatMessage } from "./ChatMessage";
+import { sanitizeFileName } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -184,6 +185,48 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     }
   };
 
+  const sendPostUploadPrompt = async (userId: string, uploadedFiles: File[], timelineResults: any[]) => {
+    try {
+      // Create prompt for assistant to analyze the uploaded evidence
+      const fileNames = uploadedFiles.map(f => f.name).join(", ");
+      const eventSummary = timelineResults.length > 0 
+        ? `I found ${timelineResults.length} timeline events: ${timelineResults.map(e => `${e.event_date}: ${e.title}`).join("; ")}`
+        : "I didn't find any specific dated events";
+      
+      const prompt = `I've just processed ${uploadedFiles.length} new evidence file(s): ${fileNames}. ${eventSummary}. Please provide a brief 2-3 sentence summary of what this evidence contains and how it relates to the case. If timeline events were found, announce them. Keep it warm and supportive.`;
+
+      const { data, error } = await supabase.functions.invoke("assistant-chat", {
+        body: { prompt, mode }
+      });
+
+      if (error) {
+        console.warn("Post-upload assistant prompt failed:", error);
+        return;
+      }
+
+      const assistantMessage: Message = {
+        id: Math.random().toString(36).substring(7),
+        role: "assistant",
+        content: data?.generatedText || `I've processed your ${uploadedFiles.length === 1 ? 'file' : 'files'}: ${fileNames}. ${eventSummary.replace('I found', 'Found').replace('I didn\'t find', 'No specific dated events found, but I\'ll')}.`,
+        citations: Array.isArray(data?.citations) ? data.citations : [],
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Persist assistant message
+      const { error: insertErr } = await supabase.from("messages").insert({
+        user_id: userId,
+        role: "assistant",
+        content: assistantMessage.content,
+        citations: assistantMessage.citations || []
+      });
+      if (insertErr) console.warn("Post-upload assistant message insert failed", insertErr);
+    } catch (error) {
+      console.error("Post-upload prompt error:", error);
+    }
+  };
+
   const handleFileUpload = async (files: File[]) => {
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
@@ -196,6 +239,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     }
 
     const userId = sessionData.session.user.id;
+    const allTimelineResults: any[] = [];
     
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
@@ -288,28 +332,32 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         ));
       }
 
-      // Add Veronica's acknowledgment after all files processed
-      const acknowledgmentMessage: Message = {
-        id: Math.random().toString(36).substring(7),
-        role: "assistant",
-        content: `I've received your ${files.length === 1 ? 'file' : `${files.length} files`}: ${files.map(f => f.name).join(", ")}. I'm analyzing ${files.length === 1 ? 'it' : 'them'} now and will add any timeline events I find to your case timeline. This evidence will help strengthen your case documentation.`,
-        timestamp: new Date(),
-      };
+      // Query newly created timeline events to get actual results
+      let timelineResults: any[] = [];
+      if (allTimelineResults.length === 0) {
+        // If no results from function calls, query the database
+        const { data: newEvents } = await supabase
+          .from("timeline_events")
+          .select("event_date, title, description, category")
+          .eq("user_id", userId)
+          .gte("created_at", new Date(Date.now() - 60000).toISOString()) // Events created in last minute
+          .order("event_date", { ascending: false });
+        
+        timelineResults = newEvents || [];
+      } else {
+        timelineResults = allTimelineResults;
+      }
 
-      setMessages(prev => [...prev, acknowledgmentMessage]);
+      // Send intelligent post-upload prompt to assistant
+      await sendPostUploadPrompt(userId, files, timelineResults);
 
-      // Persist Veronica's acknowledgment
-      const { error: insertErr } = await supabase.from("messages").insert({
-        user_id: userId,
-        role: "assistant",
-        content: acknowledgmentMessage.content,
-        citations: []
-      });
-      if (insertErr) console.warn("acknowledgment message insert failed", insertErr);
+      const timelineMessage = timelineResults.length > 0 
+        ? `Found ${timelineResults.length} timeline events.`
+        : "No specific dated events found.";
 
       toast({
         title: "Files uploaded and analyzed",
-        description: `Successfully processed ${files.length} file(s). Timeline events are being extracted.`,
+        description: `Successfully processed ${files.length} file(s). ${timelineMessage}`,
       });
     } catch (error) {
       console.error("Upload error:", error);
