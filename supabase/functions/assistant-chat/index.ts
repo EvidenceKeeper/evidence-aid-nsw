@@ -182,10 +182,71 @@ serve(async (req) => {
       : null;
     const queryText = String(prompt ?? lastUserText ?? "").slice(0, 500);
 
-    // Enhanced retrieval: user files + NSW legal resources
+    // Enhanced retrieval: user files + NSW legal resources + evidence inventory
     let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any; type?: string }> = [];
     let contextBlocks: string[] = [];
     let nswLegalContext: string[] = [];
+    let evidenceInventory: string = "";
+
+    // Build comprehensive evidence inventory for AI context
+    if (allFiles && allFiles.length > 0) {
+      console.log(`Building evidence inventory for ${allFiles.length} files...`);
+      
+      // Get detailed file information with analysis
+      const { data: detailedFiles } = await supabase
+        .from("files")
+        .select(`
+          id, name, created_at, category, auto_category, meta, tags,
+          evidence_analysis (
+            analysis_type, content, legal_concepts, confidence_score, relevant_citations
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "processed")
+        .order("created_at", { ascending: false });
+
+      if (detailedFiles && detailedFiles.length > 0) {
+        const inventoryItems = detailedFiles.map((file: any, index: number) => {
+          const analysis = file.evidence_analysis?.[0];
+          const uploadDate = new Date(file.created_at).toLocaleDateString();
+          const category = file.category || file.auto_category || 'Uncategorized';
+          
+          let inventoryEntry = `
+**EXHIBIT ${String.fromCharCode(65 + index)} - ${file.name}**
+- Uploaded: ${uploadDate}
+- Category: ${category}
+- File ID: ${file.id}`;
+
+          if (analysis) {
+            inventoryEntry += `
+- Analysis: ${analysis.analysis_type}
+- Legal Concepts: ${JSON.stringify(analysis.legal_concepts)}
+- Confidence: ${Math.round((analysis.confidence_score || 0) * 100)}%
+- Key Findings: ${analysis.content?.substring(0, 200)}...`;
+            
+            if (analysis.relevant_citations) {
+              inventoryEntry += `
+- Legal Citations: ${JSON.stringify(analysis.relevant_citations)}`;
+            }
+          }
+
+          if (file.tags && file.tags.length > 0) {
+            inventoryEntry += `
+- Tags: ${file.tags.join(', ')}`;
+          }
+
+          return inventoryEntry;
+        }).join('\n\n');
+
+        evidenceInventory = `
+=== EVIDENCE INVENTORY (${detailedFiles.length} files) ===
+${inventoryItems}
+
+=== EVIDENCE ANALYSIS INSTRUCTIONS ===
+When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A shows..." or "In your uploaded police report (Exhibit B)..."). Always quote specific content from these files when providing analysis. Each exhibit has been analyzed for legal significance - reference the analysis findings to provide informed guidance.
+`;
+      }
+    }
 
     if (queryText) {
       // Expanded search terms for coercive control patterns
@@ -358,7 +419,10 @@ Priority-ranked actions toward your goal:
 4. **Safety Considerations** (continuous)
 
 **STEP 3: EVIDENCE CITATION RULES**
-- ALWAYS quote specific text from uploaded files using [CITATION n] format
+- ALWAYS reference uploaded files by their EXHIBIT designations (e.g., "Exhibit A", "Exhibit B")
+- Quote specific text from uploaded files using [CITATION n] format for context excerpts
+- Use the Evidence Inventory provided to understand what files contain
+- Reference analysis findings from each exhibit to provide informed guidance
 - Compare multiple pieces of evidence to show patterns
 - Explain WHY each piece of evidence matters legally
 - Teach the user about evidence strength and court admissibility
@@ -395,6 +459,7 @@ Address ${userName} personally and acknowledge their courage in documenting abus
 
     const chatMessages = messages ?? [
       baseSystem,
+      ...(evidenceInventory ? [{ role: "system", content: evidenceInventory }] : []),
       ...(contextBlocks.length ? [{ role: "system", content: `Context excerpts:\n${contextBlocks.join("\n\n")}` }] : []),
       { role: "user", content: String(queryText || prompt) },
     ];
