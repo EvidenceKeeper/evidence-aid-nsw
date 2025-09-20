@@ -1,7 +1,7 @@
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CaseStrengthMeter } from "@/components/case/CaseStrengthMeter";
+
 import { useCaseIntelligence } from "@/components/realtime/CaseIntelligenceProvider";
 import { Link } from "react-router-dom";
 import { 
@@ -144,8 +144,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Case Strength Meter */}
-          <CaseStrengthMeter />
         </div>
 
         {/* Your Next Small Steps */}
