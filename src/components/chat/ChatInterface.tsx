@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { ChatMessage } from "./ChatMessage";
 import { sanitizeFileName } from "@/lib/utils";
+import { useCaseSnapshot } from "@/hooks/useCaseSnapshot";
+import { generateDeepDiveAnalysis } from "@/utils/deepDiveAnalysis";
 
 interface Message {
   id: string;
@@ -41,6 +43,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { snapshot, refreshSnapshot } = useCaseSnapshot();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -92,10 +95,18 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
+    const trimmedInput = input.trim();
+    
+    // Check for deep dive trigger
+    if (trimmedInput.toLowerCase().includes('deep dive')) {
+      await handleDeepDive();
+      return;
+    }
+
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
       role: "user",
-      content: input.trim(),
+      content: trimmedInput,
       timestamp: new Date(),
     };
 
@@ -116,7 +127,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       }
 
       const { data, error } = await supabase.functions.invoke("assistant-chat", {
-        body: { prompt: input.trim(), mode }
+        body: { prompt: trimmedInput, mode }
       });
 
       if (error) {
@@ -185,43 +196,141 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     }
   };
 
-  const sendPostUploadPrompt = async (userId: string, uploadedFiles: File[], timelineResults: any[]) => {
+  const handleDeepDive = async () => {
+    setLoading(true);
     try {
-      // Create prompt for assistant to analyze the uploaded evidence
-      const fileNames = uploadedFiles.map(f => f.name).join(", ");
-      const eventSummary = timelineResults.length > 0 
-        ? `I found ${timelineResults.length} timeline events: ${timelineResults.map(e => `${e.event_date}: ${e.title}`).join("; ")}`
-        : "I didn't find any specific dated events";
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) return;
+
+      const analysis = await generateDeepDiveAnalysis(sessionData.session.user.id);
       
-      const prompt = `I've just processed ${uploadedFiles.length} new evidence file(s): ${fileNames}. ${eventSummary}. Please provide a brief 2-3 sentence summary of what this evidence contains and how it relates to the case. If timeline events were found, announce them. Keep it warm and supportive.`;
-
-      const { data, error } = await supabase.functions.invoke("assistant-chat", {
-        body: { prompt, mode }
-      });
-
-      if (error) {
-        console.warn("Post-upload assistant prompt failed:", error);
+      if (!analysis) {
+        const message: Message = {
+          id: Math.random().toString(36).substring(7),
+          role: "assistant",
+          content: "I don't have enough evidence to provide a deep dive analysis yet. Upload some documents or evidence first, and I'll be able to give you a comprehensive overview.",
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, message]);
         return;
+      }
+
+      const deepDiveContent = `**DEEP DIVE ANALYSIS**
+
+**Timeline Spine:**
+${analysis.timelineSpine.map(item => `• ${item}`).join('\n')}
+
+**Behavior Patterns:**
+${analysis.behaviorPatterns.map(item => `• ${item}`).join('\n')}
+
+**Possible Breaches:**
+${analysis.possibleBreaches.map(item => `• ${item}`).join('\n')}
+
+**Risks:**
+${analysis.risks.map(item => `• ${item}`).join('\n')}
+
+**Gaps & Quick Fixes:**
+${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
+
+**Next Step:** ${analysis.nextStep}`;
+
+      const assistantMessage: Message = {
+        id: Math.random().toString(36).substring(7),
+        role: "assistant",
+        content: deepDiveContent,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Persist message
+      await supabase.from("messages").insert({
+        user_id: sessionData.session.user.id,
+        role: "assistant",
+        content: assistantMessage.content,
+        citations: []
+      });
+    } catch (error) {
+      console.error("Deep dive analysis failed:", error);
+      toast({
+        title: "Analysis Failed",
+        description: "Could not generate deep dive analysis. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const sendPostUploadPrompt = async (userId: string, uploadedFiles: File[], timelineResults: any[], analysisResults: any[]) => {
+    try {
+      // Acknowledge file names
+      const fileNames = uploadedFiles.map(f => f.name).join(", ");
+      
+      // Get actual content summary from analysis
+      const contentSummary = analysisResults.length > 0 
+        ? analysisResults.map(a => a.case_impact || "Evidence processed").join(". ")
+        : "Documents processed and analyzed";
+      
+      // Timeline announcement
+      const timelineAnnouncement = timelineResults.length > 0 
+        ? `I added ${timelineResults.length} new event(s) from ${uploadedFiles.length === 1 ? uploadedFiles[0].name : 'your files'} to your timeline.`
+        : `No new dated events found in ${uploadedFiles.length === 1 ? 'this file' : 'these files'}—kept for your records.`;
+
+      // Create intelligent prompt
+      let content = `I've processed ${fileNames}. ${contentSummary}. ${timelineAnnouncement}`;
+      
+      // Add timeline details if events found
+      if (timelineResults.length > 0) {
+        const eventsList = timelineResults.slice(0, 3).map(e => 
+          `${e.event_date}: ${e.title}`
+        ).join('\n• ');
+        content += `\n\nKey events detected:\n• ${eventsList}`;
+        
+        if (timelineResults.length > 1) {
+          content += "\n\nAdd these to your timeline now?";
+        }
       }
 
       const assistantMessage: Message = {
         id: Math.random().toString(36).substring(7),
         role: "assistant",
-        content: data?.generatedText || `I've processed your ${uploadedFiles.length === 1 ? 'file' : 'files'}: ${fileNames}. ${eventSummary.replace('I found', 'Found').replace('I didn\'t find', 'No specific dated events found, but I\'ll')}.`,
-        citations: Array.isArray(data?.citations) ? data.citations : [],
+        content,
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
 
       // Persist assistant message
-      const { error: insertErr } = await supabase.from("messages").insert({
+      await supabase.from("messages").insert({
         user_id: userId,
         role: "assistant",
         content: assistantMessage.content,
-        citations: assistantMessage.citations || []
+        citations: []
       });
-      if (insertErr) console.warn("Post-upload assistant message insert failed", insertErr);
+
+      // Refresh case snapshot after processing
+      setTimeout(async () => {
+        await refreshSnapshot();
+        
+        // Offer case snapshot update
+        const snapshotMessage: Message = {
+          id: Math.random().toString(36).substring(7),
+          role: "assistant",
+          content: "I've updated your case snapshot with the latest evidence. Want a quick 6-line overview, or jump straight to the next step for your goal?",
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, snapshotMessage]);
+        
+        await supabase.from("messages").insert({
+          user_id: userId,
+          role: "assistant",
+          content: snapshotMessage.content,
+          citations: []
+        });
+      }, 2000);
+
     } catch (error) {
       console.error("Post-upload prompt error:", error);
     }
@@ -239,7 +348,12 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     }
 
     const userId = sessionData.session.user.id;
-    const allTimelineResults: any[] = [];
+    
+    // Get timeline events count before upload
+    const { count: timelineBeforeCount } = await supabase
+      .from("timeline_events")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
     
     const userMessage: Message = {
       id: Math.random().toString(36).substring(7),
@@ -332,24 +446,29 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         ));
       }
 
-      // Query newly created timeline events to get actual results
-      let timelineResults: any[] = [];
-      if (allTimelineResults.length === 0) {
-        // If no results from function calls, query the database
-        const { data: newEvents } = await supabase
-          .from("timeline_events")
-          .select("event_date, title, description, category")
-          .eq("user_id", userId)
-          .gte("created_at", new Date(Date.now() - 60000).toISOString()) // Events created in last minute
-          .order("event_date", { ascending: false });
-        
-        timelineResults = newEvents || [];
-      } else {
-        timelineResults = allTimelineResults;
-      }
+      // Wait a moment for processing to complete
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Get new timeline events
+      const { data: newEvents, count: timelineAfterCount } = await supabase
+        .from("timeline_events")
+        .select("event_date, title, description, category")
+        .eq("user_id", userId)
+        .gte("created_at", new Date(Date.now() - 120000).toISOString()) // Events created in last 2 minutes
+        .order("event_date", { ascending: false });
+      
+      const timelineResults = newEvents || [];
+      
+      // Get analysis results for content summary
+      const { data: analysisResults } = await supabase
+        .from("evidence_comprehensive_analysis")
+        .select("case_impact, key_insights")
+        .eq("user_id", userId)
+        .gte("created_at", new Date(Date.now() - 120000).toISOString())
+        .order("created_at", { ascending: false });
 
       // Send intelligent post-upload prompt to assistant
-      await sendPostUploadPrompt(userId, files, timelineResults);
+      await sendPostUploadPrompt(userId, files, timelineResults, analysisResults || []);
 
       const timelineMessage = timelineResults.length > 0 
         ? `Found ${timelineResults.length} timeline events.`
