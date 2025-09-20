@@ -301,7 +301,7 @@ ${text}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5-2025-08-07",
+        model: "gpt-4o-mini",
         messages: [
           { role: "user", content: extractionPrompt }
         ],
@@ -370,7 +370,7 @@ ${fullText.substring(0, 8000)} ${fullText.length > 8000 ? '...[content truncated
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5-2025-08-07",
+        model: "gpt-4o-mini",
         messages: [
           { role: "user", content: patternPrompt }
         ],

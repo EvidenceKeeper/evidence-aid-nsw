@@ -439,7 +439,7 @@ I'm here to support you professionally, ${userName}.${smartGreeting}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5-2025-08-07",
+        model: "gpt-4o-mini",
         messages: chatMessages,
         max_completion_tokens: 4000,
       }),
