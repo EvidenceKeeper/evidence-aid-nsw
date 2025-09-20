@@ -113,7 +113,7 @@ ${documentContent.substring(0, 15000)}...
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-2025-08-07',
         messages: [
           {
             role: 'system',
@@ -124,7 +124,7 @@ ${documentContent.substring(0, 15000)}...
             content: structurePrompt
           }
         ],
-        temperature: 0.1,
+        max_completion_tokens: 4000,
       }),
     });
 

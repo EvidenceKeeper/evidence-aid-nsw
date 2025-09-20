@@ -112,11 +112,11 @@ ${fullText}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-2025-08-07",
         messages: [
           { role: "user", content: extractionPrompt }
         ],
-        temperature: 0.1,
+        max_completion_tokens: 3000,
         response_format: { type: "json_object" }
       }),
     });

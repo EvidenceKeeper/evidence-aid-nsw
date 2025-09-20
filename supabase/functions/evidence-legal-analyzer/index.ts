@@ -300,7 +300,7 @@ Look for:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-2025-08-07',
       messages: [
         {
           role: 'system',
@@ -311,8 +311,7 @@ Look for:
           content: systemPrompt
         }
       ],
-      temperature: 0.3,
-      max_tokens: 1500
+      max_completion_tokens: 2000
     }),
   });
 
@@ -416,7 +415,7 @@ Only include connections with relevance_score > 0.6. Connection types:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-2025-08-07',
           messages: [
             {
               role: 'system', 
@@ -427,8 +426,7 @@ Only include connections with relevance_score > 0.6. Connection types:
               content: prompt
             }
           ],
-          temperature: 0.2,
-          max_tokens: 2000
+          max_completion_tokens: 2500
         }),
       });
 

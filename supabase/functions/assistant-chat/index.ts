@@ -442,9 +442,9 @@ I'm here to support you, ${userName}.${smartGreeting}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-2025-08-07",
         messages: chatMessages,
-        temperature: 0.3,
+        max_completion_tokens: 4000,
       }),
     });
 
