@@ -218,25 +218,34 @@ export type Database = {
       case_memory: {
         Row: {
           facts: string | null
+          goal_established_at: string | null
+          goal_status: string | null
           id: string
           issues: Json | null
           parties: Json | null
+          primary_goal: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           facts?: string | null
+          goal_established_at?: string | null
+          goal_status?: string | null
           id?: string
           issues?: Json | null
           parties?: Json | null
+          primary_goal?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           facts?: string | null
+          goal_established_at?: string | null
+          goal_status?: string | null
           id?: string
           issues?: Json | null
           parties?: Json | null
+          primary_goal?: string | null
           updated_at?: string
           user_id?: string
         }

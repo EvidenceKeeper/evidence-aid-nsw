@@ -264,6 +264,13 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
 
   const sendPostUploadPrompt = async (userId: string, uploadedFiles: File[], timelineResults: any[], analysisResults: any[]) => {
     try {
+      // Get user's goal from case memory for context
+      const { data: caseMemory } = await supabase
+        .from("case_memory")
+        .select("primary_goal")
+        .eq("user_id", userId)
+        .single();
+        
       // Acknowledge file names
       const fileNames = uploadedFiles.map(f => f.name).join(", ");
       
@@ -277,8 +284,13 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         ? `I added ${timelineResults.length} new event(s) from ${uploadedFiles.length === 1 ? uploadedFiles[0].name : 'your files'} to your timeline.`
         : `No new dated events found in ${uploadedFiles.length === 1 ? 'this file' : 'these files'}—kept for your records.`;
 
-      // Create intelligent prompt
-      let content = `I've processed ${fileNames}. ${contentSummary}. ${timelineAnnouncement}`;
+      // Create goal-aware intelligent prompt
+      let content = "";
+      if (caseMemory?.primary_goal) {
+        content = `Building on your goal of ${caseMemory.primary_goal}, I've analyzed ${fileNames}. ${contentSummary}. ${timelineAnnouncement}`;
+      } else {
+        content = `I've processed ${fileNames}. ${contentSummary}. ${timelineAnnouncement}`;
+      }
       
       // Add timeline details if events found
       if (timelineResults.length > 0) {

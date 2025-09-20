@@ -362,7 +362,7 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
     }
 
-    // Get updated case memory after potential analysis
+    // Get updated case memory after potential analysis (including goal tracking)
     const { data: currentCaseMemory } = await supabase
       .from("case_memory")
       .select("*")
@@ -374,6 +374,60 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       .select("*")
       .eq("user_id", user.id)
       .single();
+
+    // Goal Detection and Storage Logic
+    let goalContext = "";
+    let shouldDetectGoal = false;
+    
+    if (currentCaseMemory?.primary_goal && currentCaseMemory?.goal_status === 'active') {
+      // User has an established goal - build continuity
+      goalContext = `Building on your goal of ${currentCaseMemory.primary_goal}`;
+    } else {
+      // Check if user is stating a goal in their message
+      const goalKeywords = [
+        'custody', 'parenting plan', 'court hearing', 'full custody', 'shared custody',
+        'avo', 'restraining order', 'divorce', 'property settlement', 'child support',
+        'domestic violence', 'coercive control', 'family law', 'litigation'
+      ];
+      
+      const userMessage = String(prompt || '').toLowerCase();
+      const detectedGoal = goalKeywords.find(keyword => userMessage.includes(keyword));
+      
+      if (detectedGoal || userMessage.includes('prepare for') || userMessage.includes('want to') || userMessage.includes('need to')) {
+        // Extract and store potential goal
+        let extractedGoal = "";
+        if (userMessage.includes('prepare for')) {
+          extractedGoal = userMessage.match(/prepare for ([^.!?]+)/i)?.[1]?.trim();
+        } else if (userMessage.includes('custody')) {
+          extractedGoal = userMessage.includes('full custody') ? 'prepare for full custody hearing' : 'prepare for custody proceedings';
+        } else if (userMessage.includes('avo')) {
+          extractedGoal = 'apply for an AVO';
+        } else if (detectedGoal) {
+          extractedGoal = `resolve ${detectedGoal} matter`;
+        }
+        
+        if (extractedGoal) {
+          // Store the detected goal
+          const { error: goalError } = await supabase
+            .from("case_memory")
+            .upsert({
+              user_id: user.id,
+              primary_goal: extractedGoal,
+              goal_established_at: new Date().toISOString(),
+              goal_status: 'active',
+              facts: currentCaseMemory?.facts,
+              parties: currentCaseMemory?.parties,
+              issues: currentCaseMemory?.issues
+            });
+            
+          if (!goalError) {
+            goalContext = `I understand your goal is to ${extractedGoal}. Let me help you with that`;
+          }
+        }
+      } else {
+        shouldDetectGoal = true;
+      }
+    }
 
     // Generate case summary from comprehensive analysis
     let caseSummary = "";
@@ -390,16 +444,20 @@ ${impact ? `Case Impact: ${impact}` : ''}
 Does this look right?`;
     }
 
-    // Create streamlined system prompts based on mode
-    const userModePrompt = `You are Veronica, a warm and supportive NSW legal assistant. Your priority is to help the user stay focused on one legal goal at a time.
+    // Create goal-aware system prompts based on mode
+    const userModePrompt = `You are Veronica, a warm and supportive NSW legal assistant. ${goalContext ? goalContext + ', here\'s how this evidence helps.' : (shouldDetectGoal ? 'Let me help you focus on your main legal goal.' : '')}
 
 Protocol:
-– If the user hasn't set a goal yet, gently ask what their main goal is (e.g., prepare for a court hearing, draft a parenting plan, apply for an AVO).
-– Once a goal is clear, always begin by summarising what you understand from their uploaded evidence in 2–3 plain-English bullet points.
-– Confirm: "Does this look right?"
-– After confirmation, guide them step by step towards their goal, giving only one clear next action per turn.
-– Keep your tone warm, empathetic, and encouraging. Avoid overwhelming the user with long lists.
-– Do not include sources or citations unless the user explicitly asks for them.
+${shouldDetectGoal ? 
+  '– Start by asking: "What\'s your main legal goal? For example, preparing for a custody hearing, applying for an AVO, or drafting a parenting plan?"' : 
+  '– Never ask "what is your goal?" again - you already know their objective.'
+}
+– When analyzing new evidence, tie it directly back to their established goal in ≤3 bullet points.
+– Add timeline events automatically when dates are found.
+– If evidence isn't directly relevant, briefly acknowledge this but suggest a goal-relevant next step.
+– Only ask clarifying questions when truly necessary to proceed.
+– Keep your tone warm, empathetic, and encouraging. Avoid overwhelming lists.
+– Do not include sources or citations unless explicitly requested.
 
 ${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
 
@@ -407,12 +465,18 @@ ${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
 
 I'm here to support you, ${userName}.${smartGreeting}`;
 
-    const lawyerModePrompt = `You are Veronica — Lawyer Mode. Keep a professional but still warm tone.
-– Summarise first in plain English.
-– Then provide numbered findings based on the available evidence.
-– Only include exhibits or legal sections if the user specifically asks for them.
-– Keep answers under 250 words.
-– Stay precise, neutral, and lawyer-like, but never cold.
+    const lawyerModePrompt = `You are Veronica — Lawyer Mode. ${goalContext ? goalContext + ', here\'s the legal analysis.' : (shouldDetectGoal ? 'Let me understand your legal objective first.' : '')}
+
+Protocol:
+${shouldDetectGoal ? 
+  '– Ask: "What specific legal outcome are you working toward?"' :
+  '– Build on the established goal with each response.'
+}
+– Summarize evidence in ≤3 bullets tied to their legal objective.
+– Provide numbered findings based on available evidence.
+– Only include exhibits or legal sections if specifically requested.
+– Keep answers under 250 words but be precise and lawyer-like.
+– Stay professional but warm, never cold.
 
 ${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
 

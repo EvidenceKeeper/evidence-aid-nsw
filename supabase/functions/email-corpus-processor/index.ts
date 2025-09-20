@@ -161,6 +161,21 @@ serve(async (req) => {
       timeline_significance: `${timelineEvents.length} events added to case timeline`
     });
 
+    // Get user's goal for context-aware messaging
+    const { data: caseMemory } = await supabase
+      .from("case_memory")
+      .select("primary_goal")
+      .eq("user_id", user.id)
+      .single();
+
+    // Create goal-aware proactive message
+    let goalContext = "";
+    if (caseMemory?.primary_goal) {
+      goalContext = `Building on your goal of ${caseMemory.primary_goal}, here's what I found in your email evidence:`;
+    } else {
+      goalContext = `I found ${emails.length} emails spanning ${dateRange ? `${dateRange.start} → ${dateRange.end}` : 'multiple dates'}.`;
+    }
+
     return new Response(JSON.stringify({
       success: true,
       emails_processed: emails.length,
@@ -169,13 +184,15 @@ serve(async (req) => {
       date_range: dateRange,
       patterns: patterns.length,
       proactive_message: {
-        summary: `I found ${emails.length} emails spanning ${dateRange ? `${dateRange.start} → ${dateRange.end}` : 'multiple dates'}.`,
+        summary: goalContext,
         key_findings: [
           `${incidents.length} legally significant incidents identified`,
           `${patterns.length} behavior patterns detected`,
           `${timelineEvents.length} timeline events ready to add`
         ],
-        offer: `I can add ${timelineEvents.length} dated events to your timeline now. Proceed?`,
+        offer: timelineEvents.length > 0 
+          ? `I can add ${timelineEvents.length} dated events to your timeline now. Proceed?`
+          : `No specific dates found, but I've analyzed the content patterns for your case.`,
         lawyer_summary: lawyerSummary
       }
     }), {
