@@ -68,8 +68,6 @@ interface EvidenceWizardProps {
 }
 
 export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
-  const [step, setStep] = useState(1);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [processing, setProcessing] = useState(false);
@@ -127,17 +125,16 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
           
           if (processError) console.warn("Auto-processing failed:", processError);
           
-          return { name: file.name, path, category: selectedCategory };
+          return { name: file.name, path };
         })
       );
 
-      toast.success(`Successfully uploaded ${results.length} files! They're being organized automatically.`);
-      setStep(4);
+      toast.success(`Successfully uploaded ${results.length} files! They're being categorized automatically.`);
       
-      // Auto-advance to completion after showing success
+      // Auto-advance to completion
       setTimeout(() => {
         onComplete();
-      }, 2000);
+      }, 1500);
 
     } catch (error: any) {
       console.error("Upload error:", error);
@@ -152,168 +149,80 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
     setUploadedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  if (step === 1) {
-    return (
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader className="text-center pb-6">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-primary" />
+  return (
+    <Card className="max-w-2xl mx-auto">
+      <CardHeader className="text-center pb-6">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Shield className="w-8 h-8 text-primary" />
+        </div>
+        <CardTitle className="text-2xl mb-2">Upload your evidence</CardTitle>
+        <p className="text-muted-foreground">
+          Drag and drop your files or click to browse. We'll automatically organize everything for you.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div
+          {...getRootProps()}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragActive 
+              ? 'border-primary bg-primary/5' 
+              : 'border-border hover:border-primary/50'
+          }`}
+        >
+          <input {...getInputProps()} />
+          <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          {isDragActive ? (
+            <p className="text-lg">Drop your files here...</p>
+          ) : (
+            <div>
+              <p className="text-lg mb-2">Drag and drop your files here</p>
+              <p className="text-muted-foreground">or click to browse • PDF, images, documents, audio, video</p>
+            </div>
+          )}
+        </div>
+
+        {uploadedFiles.length > 0 && (
+          <div className="mt-6">
+            <h4 className="font-medium mb-3">Files ready to upload ({uploadedFiles.length})</h4>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {uploadedFiles.map((file, index) => (
+                <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
+                  <span className="text-sm truncate">{file.name}</span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => removeFile(index)}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    ×
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
-          <CardTitle className="text-2xl mb-2">Let's organize your evidence together</CardTitle>
-          <p className="text-muted-foreground">
-            This is a safe space. Your information is private and secure. We'll help you organize everything step by step.
-          </p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        )}
+
+        {uploadedFiles.length > 0 ? (
+          <div className="space-y-4 mt-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <div className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-green-600" />
+                <Check className="w-5 h-5 text-blue-600" />
                 <div>
-                  <p className="font-medium text-green-800">You're taking an important step</p>
-                  <p className="text-sm text-green-700">Organizing your evidence helps build a stronger case</p>
+                  <p className="font-medium text-blue-800">Smart organization enabled</p>
+                  <p className="text-sm text-blue-700">We'll automatically categorize and analyze your files</p>
                 </div>
               </div>
             </div>
             <Button 
-              onClick={() => setStep(2)} 
-              className="w-full" 
-              size="lg"
-            >
-              Start organizing my evidence
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (step === 2) {
-    return (
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl mb-2">What type of evidence are you adding?</CardTitle>
-          <p className="text-muted-foreground">Choose the category that best fits your files</p>
-          <Progress value={33} className="w-full mt-4" />
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {evidenceCategories.map((category) => {
-              const Icon = category.icon;
-              return (
-                <Card 
-                  key={category.id}
-                  className={`cursor-pointer transition-all border-2 ${
-                    selectedCategory === category.id 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                  onClick={() => setSelectedCategory(category.id)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className={`p-3 rounded-lg ${category.color}`}>
-                        <Icon className="w-6 h-6" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium mb-1">{category.name}</h3>
-                        <p className="text-sm text-muted-foreground">{category.description}</p>
-                      </div>
-                      {selectedCategory === category.id && (
-                        <Check className="w-5 h-5 text-primary" />
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-          <div className="flex justify-between mt-8">
-            <Button variant="outline" onClick={() => setStep(1)}>
-              Back
-            </Button>
-            <Button 
-              onClick={() => setStep(3)} 
-              disabled={!selectedCategory}
-            >
-              Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (step === 3) {
-    const selectedCat = evidenceCategories.find(c => c.id === selectedCategory);
-    const Icon = selectedCat?.icon || FileText;
-
-    return (
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader className="text-center">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${selectedCat?.color}`}>
-            <Icon className="w-8 h-8" />
-          </div>
-          <CardTitle className="text-xl mb-2">Upload your {selectedCat?.name}</CardTitle>
-          <p className="text-muted-foreground">{selectedCat?.description}</p>
-          <Progress value={66} className="w-full mt-4" />
-        </CardHeader>
-        <CardContent>
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isDragActive 
-                ? 'border-primary bg-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-          >
-            <input {...getInputProps()} />
-            <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            {isDragActive ? (
-              <p className="text-lg">Drop your files here...</p>
-            ) : (
-              <div>
-                <p className="text-lg mb-2">Drag and drop your files here</p>
-                <p className="text-muted-foreground">or click to browse</p>
-              </div>
-            )}
-          </div>
-
-          {uploadedFiles.length > 0 && (
-            <div className="mt-6">
-              <h4 className="font-medium mb-3">Files ready to upload ({uploadedFiles.length})</h4>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
-                {uploadedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded">
-                    <span className="text-sm truncate">{file.name}</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => removeFile(index)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      ×
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between mt-8">
-            <Button variant="outline" onClick={() => setStep(2)}>
-              Back
-            </Button>
-            <Button 
               onClick={handleUploadAndProcess}
-              disabled={uploadedFiles.length === 0 || uploading}
+              disabled={uploading}
+              className="w-full"
+              size="lg"
             >
               {uploading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Uploading & organizing...
+                  Uploading & analyzing...
                 </>
               ) : (
                 <>
@@ -323,23 +232,34 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
               )}
             </Button>
           </div>
-        </CardContent>
-      </Card>
-    );
-  }
+        ) : (
+          <div className="mt-6">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-green-600" />
+                <div>
+                  <p className="font-medium text-green-800">Your files are secure</p>
+                  <p className="text-sm text-green-700">All uploads are encrypted and private to your account</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-  return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader className="text-center">
-        <div className="w-16 h-16 bg-green-50 border border-green-200 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Check className="w-8 h-8 text-green-600" />
-        </div>
-        <CardTitle className="text-2xl mb-2 text-green-800">Evidence uploaded successfully!</CardTitle>
-        <p className="text-muted-foreground">
-          Your files are being organized automatically. You can view them in your evidence library.
-        </p>
-        <Progress value={100} className="w-full mt-4" />
-      </CardHeader>
+        {processing && (
+          <Card className="mt-6 border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                <div>
+                  <p className="font-medium text-blue-800">Processing complete!</p>
+                  <p className="text-sm text-blue-700">Your files have been uploaded and organized</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </CardContent>
     </Card>
   );
 }

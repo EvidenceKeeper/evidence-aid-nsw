@@ -41,6 +41,8 @@ export default function Evidence() {
     mimeType?: string;
     updated_at?: string;
     signedUrl?: string;
+    auto_category?: string;
+    tags?: string[];
   };
 
   const [files, setFiles] = useState<EvidenceItem[]>([]);
@@ -297,6 +299,26 @@ export default function Evidence() {
   };
 
   const detectFileCategory = (file: EvidenceItem) => {
+    // Check if file has auto_category from AI categorization first
+    const metaCategory = file.auto_category;
+    if (metaCategory) {
+      // Map AI categories to display categories
+      const categoryMap = {
+        'police_report': 'Official Documents',
+        'medical_record': 'Medical Records', 
+        'financial_document': 'Financial Evidence',
+        'court_document': 'Official Documents',
+        'correspondence': 'Messages & Communication',
+        'incident_report': 'Official Documents',
+        'evidence_photo': 'Photos & Videos',
+        'witness_statement': 'Witness Statements',
+        'legal_notice': 'Official Documents',
+        'other': 'Other Documents'
+      };
+      return categoryMap[metaCategory as keyof typeof categoryMap] || 'Other Documents';
+    }
+
+    // Fallback to filename-based detection
     if (file.mimeType?.startsWith('image/')) return 'Photos & Videos';
     if (file.name.toLowerCase().includes('message') || file.name.toLowerCase().includes('text')) return 'Messages & Communication';
     if (file.name.toLowerCase().includes('medical') || file.name.toLowerCase().includes('doctor')) return 'Medical Records';
@@ -430,13 +452,20 @@ export default function Evidence() {
                             </div>
                           )}
                           
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium truncate" title={item.name}>
-                              {item.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {formatBytes(item.size)}
-                            </p>
+                           <div className="space-y-2">
+                             <p className="text-sm font-medium truncate" title={item.name}>
+                               {item.name}
+                             </p>
+                             <div className="flex items-center gap-2">
+                               <p className="text-xs text-muted-foreground">
+                                 {formatBytes(item.size)}
+                               </p>
+                               {item.auto_category && (
+                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-50 text-blue-700 border border-blue-200">
+                                   Auto-categorized
+                                 </span>
+                               )}
+                             </div>
                             
                             <div className="flex gap-2">
                               <Button

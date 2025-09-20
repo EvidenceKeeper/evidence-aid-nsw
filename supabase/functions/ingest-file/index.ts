@@ -304,6 +304,21 @@ serve(async (req) => {
         console.error("Failed to trigger enhanced processing:", error);
       }
 
+      // Auto-categorize the uploaded file in background
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            console.log("🏷️ Triggering file categorization...");
+            await supabase.functions.invoke("categorize-file", {
+              body: { file_id: fileId }
+            });
+            console.log("✅ File categorization completed");
+          } catch (error) {
+            console.error("❌ File categorization failed:", error);
+          }
+        })()
+      );
+
       const analysisResponse = await supabase.functions.invoke('continuous-case-analysis', {
         body: { 
           file_id: fileId, 
