@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, Loader2, Upload, Brain, TrendingUp, FileText, Calendar } from "lucide-react";
+import { Send, Paperclip, Loader2, Upload, Brain, TrendingUp, FileText, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
 import { CaseStrengthDisplay } from "@/components/memory/CaseStrengthDisplay";
 import { EvidenceIndexDisplay } from "@/components/memory/EvidenceIndexDisplay";
 import { MemoryAwareChat } from "@/components/memory/MemoryAwareChat";
+import { useEnhancedMemoryContext } from "@/components/memory/EnhancedMemoryProvider";
 
 interface Message {
   id: string;
@@ -43,12 +44,16 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [memoryLoading, setMemoryLoading] = useState(false);
   const [mode, setMode] = useState<'user' | 'lawyer'>('user');
+  const [memorySidebarOpen, setMemorySidebarOpen] = useState(false);
+  const [proactiveTriggersActive, setProactiveTriggersActive] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { snapshot, refreshSnapshot } = useCaseSnapshot();
-  const { caseMemory, updateThreadSummary } = useEnhancedMemory();
+  const { caseMemory, updateThreadSummary, runProactiveMemoryTriggers } = useEnhancedMemory();
+  const { isMemoryEnabled, announceMemoryUpdate } = useEnhancedMemoryContext();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -119,6 +124,23 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     setInput("");
     setLoading(true);
 
+    // Run proactive memory triggers if enabled
+    if (isMemoryEnabled && caseMemory) {
+      setProactiveTriggersActive(true);
+      try {
+        setMemoryLoading(true);
+        const proactiveContext = await runProactiveMemoryTriggers(trimmedInput, []);
+        if (proactiveContext) {
+          announceMemoryUpdate("Found relevant context from your case memory");
+        }
+      } catch (error) {
+        console.error("Proactive memory trigger failed:", error);
+      } finally {
+        setMemoryLoading(false);
+        setProactiveTriggersActive(false);
+      }
+    }
+
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
@@ -170,7 +192,17 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       setMessages(prev => [...prev, assistantMessage]);
 
       // Update thread summary with conversation context
-      await updateThreadSummary(`Asked: "${trimmedInput}". Response about ${data?.generatedText?.slice(0, 50)}...`);
+      if (isMemoryEnabled) {
+        setMemoryLoading(true);
+        try {
+          await updateThreadSummary(`Asked: "${trimmedInput}". Response about ${data?.generatedText?.slice(0, 50)}...`);
+          announceMemoryUpdate("Conversation context updated in case memory");
+        } catch (error) {
+          console.error("Failed to update thread summary:", error);
+        } finally {
+          setMemoryLoading(false);
+        }
+      }
 
       // Persist messages
       const uid = sessionData?.session?.user?.id;
@@ -607,206 +639,281 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
   return (
     <div 
       {...getRootProps()}
-      className={`flex flex-col h-screen bg-background overflow-hidden ${
+      className={`flex h-screen bg-background overflow-hidden ${
         isDragActive ? 'bg-primary/5 border-2 border-dashed border-primary' : ''
       }`}
     >
       <input {...getInputProps()} />
       
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-card/60 backdrop-blur shrink-0">
-        <div>
-          <h1 className="text-lg font-semibold flex items-center gap-2">
-            Veronica, Legal Assistant
-            <Brain className="h-4 w-4 text-primary" />
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            NSW Family Law & Domestic Violence Specialist • Enhanced Memory Active
-          </p>
-          {caseMemory?.primary_goal && (
-            <p className="text-xs text-primary mt-1">
-              Working toward: {caseMemory.primary_goal}
+      {/* Main Chat Area */}
+      <div className={`flex flex-col flex-1 transition-all duration-300 ${memorySidebarOpen ? 'mr-80' : ''}`}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b bg-card/60 backdrop-blur shrink-0">
+          <div>
+            <h1 className="text-lg font-semibold flex items-center gap-2">
+              Veronica, Legal Assistant
+              <Brain className={`h-4 w-4 transition-colors ${
+                memoryLoading || proactiveTriggersActive ? 'text-primary animate-pulse' : 'text-primary'
+              }`} />
+              {(memoryLoading || proactiveTriggersActive) && (
+                <Loader2 className="h-3 w-3 text-primary animate-spin" />
+              )}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              NSW Family Law & Domestic Violence Specialist • Enhanced Memory {isMemoryEnabled ? 'Active' : 'Disabled'}
             </p>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Mode:</span>
-            <div className="flex rounded-lg border p-1">
-              <button
-                onClick={() => setMode('user')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  mode === 'user' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+            {caseMemory?.primary_goal && (
+              <p className="text-xs text-primary mt-1">
+                Working toward: {caseMemory.primary_goal}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Memory Sidebar Toggle */}
+            {!isModal && isMemoryEnabled && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMemorySidebarOpen(!memorySidebarOpen)}
+                className="flex items-center gap-2"
               >
-                User
-              </button>
-              <button
-                onClick={() => setMode('lawyer')}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
-                  mode === 'lawyer' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Lawyer
-              </button>
-            </div>
-          </div>
-          {isModal && onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              ×
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Enhanced Memory Context Bar */}
-      {!isModal && caseMemory && (
-        <div className="bg-muted/30 border-b px-4 py-2 shrink-0">
-          <div className="flex items-center gap-4 text-xs">
-            {caseMemory.case_strength_score && (
-              <div className="flex items-center gap-1">
-                <TrendingUp className="h-3 w-3 text-green-600" />
-                <span>Strength: {Math.round(caseMemory.case_strength_score)}%</span>
-              </div>
+                {memorySidebarOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                Memory
+              </Button>
             )}
-            {caseMemory.evidence_index?.length && (
-              <div className="flex items-center gap-1">
-                <FileText className="h-3 w-3 text-blue-600" />
-                <span>{caseMemory.evidence_index.length} exhibits indexed</span>
-              </div>
-            )}
-            {caseMemory.timeline_summary?.length && (
-              <div className="flex items-center gap-1">
-                <Calendar className="h-3 w-3 text-purple-600" />
-                <span>{caseMemory.timeline_summary.length} timeline events</span>
-              </div>
-            )}
-            <div className="ml-auto">
-              <MemoryAwareChat 
-                onSendMessage={(message) => {
-                  setInput(message);
-                  setTimeout(() => sendMessage(), 100);
-                }}
-                userQuery={input}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Drag overlay */}
-      {isDragActive && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
-          <div className="text-center">
-            <Upload className="h-12 w-12 mx-auto mb-4 text-primary" />
-            <p className="text-lg font-medium text-primary">Drop files to upload</p>
-            <p className="text-sm text-muted-foreground">Audio, video, documents, images, and more</p>
-          </div>
-        </div>
-      )}
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center text-muted-foreground py-8">
-            <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
-            <p className="text-sm mb-2">Upload files or ask me about your case to get started.</p>
             
-            {caseMemory?.primary_goal ? (
-              <div className="bg-primary/10 rounded-lg p-4 mb-4 max-w-md mx-auto">
-                <p className="text-sm font-medium text-primary mb-2">I remember your goal:</p>
-                <p className="text-sm">{caseMemory.primary_goal}</p>
-                {caseMemory.case_strength_score && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Current case strength: {Math.round(caseMemory.case_strength_score)}%
-                  </p>
-                )}
+            {/* Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Mode:</span>
+              <div className="flex rounded-lg border p-1">
+                <button
+                  onClick={() => setMode('user')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    mode === 'user' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  User
+                </button>
+                <button
+                  onClick={() => setMode('lawyer')}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                    mode === 'lawyer' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Lawyer
+                </button>
               </div>
-            ) : (
-              <div className="bg-muted/50 rounded-lg p-4 mb-4 max-w-md mx-auto">
-                <p className="text-sm mb-2">🎯 <strong>Enhanced Memory Features:</strong></p>
-                <div className="text-xs text-left space-y-1">
-                  <p>• Vector search across all your evidence</p>
-                  <p>• Proactive timeline and person detection</p>
-                  <p>• Case strength monitoring with boosters</p>
-                  <p>• Goal-focused conversation continuity</p>
+            </div>
+            {isModal && onClose && (
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                ×
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Enhanced Memory Context Bar */}
+        {!isModal && caseMemory && isMemoryEnabled && (
+          <div className="bg-muted/30 border-b px-4 py-2 shrink-0">
+            <div className="flex items-center gap-4 text-xs">
+              {caseMemory.case_strength_score && (
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  <span>Strength: {Math.round(caseMemory.case_strength_score)}%</span>
                 </div>
+              )}
+              {caseMemory.evidence_index?.length && (
+                <div className="flex items-center gap-1">
+                  <FileText className="h-3 w-3 text-blue-600" />
+                  <span>{caseMemory.evidence_index.length} exhibits indexed</span>
+                </div>
+              )}
+              {caseMemory.timeline_summary?.length && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3 text-purple-600" />
+                  <span>{caseMemory.timeline_summary.length} timeline events</span>
+                </div>
+              )}
+              {proactiveTriggersActive && (
+                <div className="flex items-center gap-1 text-primary">
+                  <Brain className="h-3 w-3 animate-pulse" />
+                  <span>Analyzing context...</span>
+                </div>
+              )}
+              <div className="ml-auto">
+                <MemoryAwareChat 
+                  onSendMessage={(message) => {
+                    setInput(message);
+                    setTimeout(() => sendMessage(), 100);
+                  }}
+                  userQuery={input}
+                />
               </div>
-            )}
-
-            <p className="text-xs text-muted-foreground mb-4">
-              Supports: Documents, Audio, Video, Images, Emails, Archives
-            </p>
-            <div className="text-xs text-muted-foreground">
-              <p><strong>User Mode:</strong> Warm, supportive guidance focused on one goal</p>
-              <p><strong>Lawyer Mode:</strong> Professional analysis with structured findings</p>
             </div>
           </div>
         )}
-        
-        {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
-        ))}
-        
-        {loading && (
-          <div className="flex items-center space-x-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Veronica is thinking...</span>
+
+        {/* Drag overlay */}
+        {isDragActive && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-primary/10 backdrop-blur-sm">
+            <div className="text-center">
+              <Upload className="h-12 w-12 mx-auto mb-4 text-primary" />
+              <p className="text-lg font-medium text-primary">Drop files to upload</p>
+              <p className="text-sm text-muted-foreground">Audio, video, documents, images, and more</p>
+            </div>
           </div>
         )}
-        
-        <div ref={messagesEndRef} />
-      </div>
 
-      {/* Input */}
-      <div className="p-4 border-t bg-card/60 backdrop-blur shrink-0">
-        <div className="flex items-end space-x-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              caseMemory?.primary_goal 
-                ? `Ask about your ${caseMemory.primary_goal} goal, upload evidence, or get legal guidance...`
-                : "Ask about your NSW case, upload evidence, or get legal guidance..."
-            }
-            className="min-h-[60px] max-h-32 resize-none"
-            disabled={loading}
-          />
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-muted-foreground py-8">
+              <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
+              <p className="text-sm mb-2">Upload files or ask me about your case to get started.</p>
+              
+              {caseMemory?.primary_goal ? (
+                <div className="bg-primary/10 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                  <p className="text-sm font-medium text-primary mb-2">I remember your goal:</p>
+                  <p className="text-sm">{caseMemory.primary_goal}</p>
+                  {caseMemory.case_strength_score && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Current case strength: {Math.round(caseMemory.case_strength_score)}%
+                    </p>
+                  )}
+                </div>
+              ) : isMemoryEnabled ? (
+                <div className="bg-muted/50 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                  <p className="text-sm mb-2">🎯 <strong>Enhanced Memory Features:</strong></p>
+                  <div className="text-xs text-left space-y-1">
+                    <p>• Vector search across all your evidence</p>
+                    <p>• Proactive timeline and person detection</p>
+                    <p>• Case strength monitoring with boosters</p>
+                    <p>• Goal-focused conversation continuity</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-muted/50 rounded-lg p-4 mb-4 max-w-md mx-auto">
+                  <p className="text-sm mb-2">💡 <strong>Memory System Disabled</strong></p>
+                  <p className="text-xs">Enable enhanced memory in settings for advanced features.</p>
+                </div>
+              )}
+
+              <p className="text-xs text-muted-foreground mb-4">
+                Supports: Documents, Audio, Video, Images, Emails, Archives
+              </p>
+              <div className="text-xs text-muted-foreground">
+                <p><strong>User Mode:</strong> Warm, supportive guidance focused on one goal</p>
+                <p><strong>Lawyer Mode:</strong> Professional analysis with structured findings</p>
+              </div>
+            </div>
+          )}
           
-          <div className="flex space-x-1 shrink-0">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileInputChange}
-              multiple
-              accept=".txt,.csv,.rtf,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.mp3,.wav,.m4a,.ogg,.flac,.aac,.mp4,.mov,.avi,.webm,.mkv,.msg,.eml,.zip,.rar"
-              className="hidden"
+          {messages.map((message) => (
+            <ChatMessage key={message.id} message={message} />
+          ))}
+          
+          {loading && (
+            <div className="flex items-center space-x-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Veronica is thinking...</span>
+              {memoryLoading && (
+                <span className="text-xs text-primary">• Memory active</span>
+              )}
+            </div>
+          )}
+          
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="p-4 border-t bg-card/60 backdrop-blur shrink-0">
+          <div className="flex items-end space-x-2">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                caseMemory?.primary_goal 
+                  ? `Ask about your ${caseMemory.primary_goal} goal, upload evidence, or get legal guidance...`
+                  : isMemoryEnabled 
+                    ? "Ask about your NSW case, upload evidence, or get legal guidance..."
+                    : "Ask about your NSW case or upload evidence..."
+              }
+              className="min-h-[60px] max-h-32 resize-none"
+              disabled={loading}
             />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="shrink-0"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
             
-            <Button
-              onClick={sendMessage}
-              disabled={loading || !input.trim()}
-              className="shrink-0"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex space-x-1 shrink-0">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileInputChange}
+                multiple
+                accept=".txt,.csv,.rtf,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.mp3,.wav,.m4a,.ogg,.flac,.aac,.mp4,.mov,.avi,.webm,.mkv,.msg,.eml,.zip,.rar"
+                className="hidden"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="shrink-0"
+                disabled={loading}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              
+              <Button
+                onClick={sendMessage}
+                disabled={loading || !input.trim()}
+                className="shrink-0"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Memory Sidebar */}
+      {!isModal && isMemoryEnabled && memorySidebarOpen && (
+        <div className="fixed right-0 top-0 h-full w-80 bg-card border-l border-border z-40 transition-transform duration-300">
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-primary" />
+                  Enhanced Memory
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMemorySidebarOpen(false)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Case Strength Display */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-foreground">Case Strength</h4>
+                <CaseStrengthDisplay />
+              </div>
+              
+              {/* Evidence Index Display */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-foreground">Evidence Index</h4>
+                <EvidenceIndexDisplay />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
