@@ -10,10 +10,13 @@ import { FileUpload } from "./FileUpload";
 import { CaseStrengthDisplay } from "@/components/memory/CaseStrengthDisplay";
 import { EvidenceIndexDisplay } from "@/components/memory/EvidenceIndexDisplay";
 import { MemoryAwareChat } from "@/components/memory/MemoryAwareChat";
-import { TelepathicContextProvider, useTelepathicContext } from "@/components/memory/TelepathicContextProvider";
+import { useTelepathicContext } from "@/components/memory/TelepathicContextProvider";
 import { TelepathicAnnouncementBanner } from "@/components/memory/TelepathicAnnouncementBanner";
 import { GoalLockDisplay } from "@/components/memory/GoalLockDisplay";
 import { TelepathicModeToggle } from "@/components/memory/TelepathicModeToggle";
+import { HallucinationGuard } from "@/components/memory/HallucinationGuard";
+import { SpeedQualitySelector } from "@/components/memory/SpeedQualitySelector";
+import { TelepathicResponseTemplates } from "@/components/memory/TelepathicResponseTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +51,7 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [responseMode, setResponseMode] = useState<'fast' | 'balanced' | 'detailed'>('balanced');
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -60,6 +64,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const { snapshot, refreshSnapshot } = useCaseSnapshot();
   const { caseMemory, updateThreadSummary, runProactiveMemoryTriggers } = useEnhancedMemory();
   const { isMemoryEnabled, announceMemoryUpdate } = useEnhancedMemoryContext();
+  const { telepathicMode, addAnnouncement } = useTelepathicContext();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,7 +165,12 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       }
 
       const { data, error } = await supabase.functions.invoke("assistant-chat", {
-        body: { prompt: trimmedInput, mode }
+        body: { 
+          prompt: trimmedInput, 
+          mode,
+          responseMode,
+          telepathicMode
+        }
       });
 
       if (error) {
@@ -196,6 +206,13 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Process telepathic announcements from response
+      if (data?.announcements && telepathicMode) {
+        data.announcements.forEach((announcement: any) => {
+          addAnnouncement(announcement);
+        });
+      }
 
       // Update thread summary with conversation context
       if (isMemoryEnabled) {
@@ -675,6 +692,17 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* Speed/Quality Selector */}
+            {telepathicMode && (
+              <SpeedQualitySelector 
+                mode={responseMode} 
+                onModeChange={setResponseMode}
+              />
+            )}
+            
+            {/* Telepathic Mode Toggle */}
+            <TelepathicModeToggle />
+            
             {/* Memory Sidebar Toggle */}
             {!isModal && isMemoryEnabled && (
               <Button
@@ -722,7 +750,15 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           </div>
         </div>
 
-        {/* Enhanced Memory Context Bar */}
+        {/* Telepathic Announcements */}
+        <TelepathicAnnouncementBanner />
+
+        {/* Goal Lock Display */}
+        {!isModal && telepathicMode && (
+          <div className="p-4 border-b">
+            <GoalLockDisplay />
+          </div>
+        )}
         {!isModal && caseMemory && isMemoryEnabled && (
           <div className="bg-muted/30 border-b px-4 py-2 shrink-0">
             <div className="flex items-center gap-4 text-xs">
@@ -775,7 +811,10 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         )}
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <TelepathicResponseTemplates 
+          complexity={messages.length > 10 ? 'complex' : messages.length > 3 ? 'moderate' : 'simple'}
+        >
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
@@ -819,7 +858,18 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           )}
           
           {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <div key={message.id} className="space-y-2">
+              <ChatMessage message={message} />
+              {message.role === 'assistant' && telepathicMode && (
+                <HallucinationGuard 
+                  confidence={0.85} // This would come from AI response metadata
+                  sources={message.citations?.length || 0}
+                  onRequestClarification={() => {
+                    setInput("Can you clarify that last response?");
+                  }}
+                />
+              )}
+            </div>
           ))}
           
           {loading && (
@@ -833,7 +883,8 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           )}
           
           <div ref={messagesEndRef} />
-        </div>
+          </div>
+        </TelepathicResponseTemplates>
 
         {/* Input */}
         <div className="p-4 border-t bg-card/60 backdrop-blur shrink-0">

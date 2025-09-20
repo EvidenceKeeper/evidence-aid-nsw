@@ -97,6 +97,30 @@ serve(async (req) => {
 
     const hasSubstantialEvidence = (totalChunks?.count || 0) > 100; // Substantial evidence threshold
     
+    // Enhanced Intelligence Upgrades
+    const { data: caseMemory } = await supabase
+      .from("case_memory")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    // Email corpus detection
+    const isEmailCorpus = allFiles?.some(file => 
+      file.name.toLowerCase().includes('email') || 
+      file.name.toLowerCase().includes('.eml') ||
+      file.name.toLowerCase().includes('inbox')
+    );
+
+    // Privacy/Safety Guard - detect sensitive information
+    const containsSensitiveInfo = prompt?.toLowerCase().includes('ssn') || 
+      prompt?.toLowerCase().includes('social security') ||
+      prompt?.toLowerCase().includes('credit card') ||
+      prompt?.toLowerCase().includes('password');
+
+    if (containsSensitiveInfo) {
+      console.log("⚠️ Sensitive information detected in prompt");
+    }
+
     // Get case memory and evidence analysis for case summary
     const { data: caseMemory } = await supabase
       .from("case_memory")

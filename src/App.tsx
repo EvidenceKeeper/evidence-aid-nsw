@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { TelepathicContextProvider } from "@/components/memory/TelepathicContextProvider";
+import { EnhancedMemoryProvider } from "@/components/memory/EnhancedMemoryProvider";
 import AppLayout from "@/components/layout/AppLayout";
 import MyCase from "@/pages/MyCase";
 import Evidence from "@/pages/Evidence";
@@ -29,9 +31,11 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <HelmetProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+        <EnhancedMemoryProvider>
+          <TelepathicContextProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<AuthPage />} />
               <Route element={<AuthGate />}>
@@ -55,7 +59,9 @@ const App = () => (
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
-        </BrowserRouter>
+            </BrowserRouter>
+          </TelepathicContextProvider>
+        </EnhancedMemoryProvider>
       </TooltipProvider>
     </HelmetProvider>
   </QueryClientProvider>
