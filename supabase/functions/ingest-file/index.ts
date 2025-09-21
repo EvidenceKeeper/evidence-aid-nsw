@@ -86,7 +86,7 @@ async function ocrImageFromUrl(url: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-5-2025-08-07",
       messages: [
         {
           role: "user",

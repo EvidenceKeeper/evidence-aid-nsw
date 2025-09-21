@@ -183,14 +183,14 @@ Provide your analysis in this JSON format:
       'Authorization': `Bearer ${openAIApiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyze this evidence collection:\n\n${allText}` }
-      ],
-      max_completion_tokens: 2000,
-    }),
+      body: JSON.stringify({
+        model: 'gpt-5-2025-08-07',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Analyze this evidence collection:\n\n${allText}` }
+        ],
+        max_completion_tokens: 2000,
+      }),
   });
 
   if (!response.ok) {

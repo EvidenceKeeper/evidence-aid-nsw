@@ -311,7 +311,7 @@ Provide specific recommendations for addressing each identified gap.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-2025-08-07",
         messages: [
           {
             role: "system",
@@ -382,7 +382,7 @@ Respond in JSON format with detailed explanations.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-2025-08-07",
         messages: [
           {
             role: "system",
@@ -442,7 +442,7 @@ Return JSON with 'events' array.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-2025-08-07",
         messages: [
           { role: "user", content: timelinePrompt }
         ],

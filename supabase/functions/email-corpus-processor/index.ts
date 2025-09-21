@@ -240,10 +240,9 @@ ${text.slice(0, 50000)}`; // Limit input size
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-5-2025-08-07",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 4000,
-      temperature: 0.1
     }),
   });
 
@@ -297,10 +296,9 @@ Return JSON array of incidents:`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-5-2025-08-07",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 3000,
-      temperature: 0.2
     }),
   });
 
@@ -350,10 +348,9 @@ Return JSON array:`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-5-2025-08-07",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 2000,
-      temperature: 0.3
     }),
   });
 
@@ -403,10 +400,9 @@ ${emailSummary.slice(0, 30000)}`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: "gpt-5-2025-08-07",
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 1500,
-      temperature: 0.2
     }),
   });
 

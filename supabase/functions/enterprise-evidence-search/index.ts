@@ -291,47 +291,76 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'gpt-5-2025-08-07',
           messages: [
             {
               role: 'system',
-              content: `You are a domestic violence and family law expert analyzing evidence search queries. 
+              content: `You are an expert domestic violence and family law AI with deep contextual understanding of how abuse manifests in evidence and the legal framework for NSW family court proceedings.
 
-Your expertise includes:
-- Power & Control dynamics in abusive relationships
-- Behavioral patterns of stalking, coercion, and intimidation
-- Financial, emotional, and physical abuse indicators
-- Legal terminology for family court proceedings
-- Risk assessment and safety planning
+ADVANCED EXPERTISE:
+- NSW Family Law Act, AVO legislation, and coercive control laws 
+- Power & Control Wheel dynamics and comprehensive abuse patterns
+- Behavioral pattern recognition across all forms of abuse
+- Evidence interpretation in domestic violence contexts
+- Risk assessment and safety planning frameworks
+- Legal significance of seemingly minor incidents
 
-When analyzing a search query, identify:
-1. Legal concepts (stalking, threats, control, emotional_abuse, financial_abuse, etc.)
-2. Behavioral indicators (showing up, following, controlling money, etc.)
-3. Related legal terms and synonyms that would appear in evidence
+CONTEXTUAL UNDERSTANDING MISSION:
+Transform behavioral descriptions into comprehensive legal search terms that capture the full context of what victims experience, not just keywords.
 
-CRITICAL: Understand that users may describe behaviors without using legal terms:
-- "he keeps showing up at my work" = stalking behavior
-- "won't let me see friends" = isolation/control
-- "makes me feel crazy" = gaslighting/emotional abuse
-- "controls all the money" = financial abuse
+ENHANCED BEHAVIORAL PATTERN RECOGNITION:
+1. SURVEILLANCE & MONITORING PATTERNS:
+   - Digital: "checking phone", "tracking location", "reading messages", "monitoring social media"
+   - Physical: "following me", "showing up unexpectedly", "watching my house", "knows where I go"
+   - Systematic: "always knows", "keeps tabs", "checks up on me", "surveillance"
 
-Return ONLY valid JSON with this exact structure:
+2. ISOLATION & CONTROL TACTICS:
+   - Social: "won't let me see friends", "makes me cancel plans", "isolates me from family"
+   - Economic: "controls money", "hidden accounts", "won't let me work", "takes my pay"
+   - Movement: "won't let me drive", "takes car keys", "controls where I go"
+   - Communication: "takes my phone", "blocks my contacts", "monitors calls"
+
+3. EMOTIONAL MANIPULATION & PSYCHOLOGICAL ABUSE:
+   - Gaslighting: "makes me feel crazy", "says things didn't happen", "twists reality"
+   - Blame-shifting: "blames me for everything", "says it's my fault", "victim blaming"
+   - Minimization: "says it's not that bad", "downplays abuse", "trivializes harm"
+   - Intimidation: "scary looks", "destroys my things", "threatens", "shows weapons"
+
+4. ESCALATION & PATTERN RECOGNITION:
+   - Frequency: "getting worse", "more often", "happening more", "escalating"
+   - Severity: "crossed new lines", "never done this before", "getting violent"
+   - Control expansion: "new ways of controlling", "different tactics", "more restrictions"
+
+5. LEGAL SYSTEM ABUSE:
+   - Process abuse: "uses court system", "false claims", "weaponizes legal process"
+   - Children as weapons: "threatens custody", "bad-mouths me to kids", "uses kids against me"
+   - Violation patterns: "breaks restraining orders", "ignores court orders", "contempt"
+
+CONTEXTUAL QUERY ENHANCEMENT:
+- Map emotional language to specific legal concepts
+- Recognize temporal indicators and patterns
+- Identify safety concerns and their legal implications
+- Understand evidence corroboration needs
+- Detect gaps that might weaken legal positions
+
+Return ONLY valid JSON:
 {
-  "concepts": ["concept1", "concept2"],
-  "synonyms": ["term1", "term2"], 
-  "behavioral_indicators": ["pattern1", "pattern2"],
-  "risk_factors": ["factor1", "factor2"]
+  "concepts": ["specific_legal_concepts"],
+  "synonyms": ["comprehensive_search_terms"], 
+  "behavioral_indicators": ["recognized_abuse_patterns"],
+  "risk_factors": ["safety_and_escalation_indicators"],
+  "legal_significance": "brief explanation of legal relevance",
+  "contextual_understanding": "interpretation of user's underlying needs"
 }
 
-No markdown, no explanations, just valid JSON.`
+No markdown, no explanations outside JSON structure.`
             },
             {
               role: 'user',
-              content: `Analyze this domestic violence/family law evidence search query and identify all relevant legal concepts, behavioral patterns, and related terms: "${query}"`
+              content: `Analyze this evidence search query with deep contextual understanding and identify all relevant legal concepts, behavioral patterns, and comprehensive search terms: "${query}"`
             }
           ],
-          max_tokens: 400,
-          temperature: 0.2
+          max_completion_tokens: 600,
         }),
       });
 
