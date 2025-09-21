@@ -291,7 +291,7 @@ Return as JSON with structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'gpt-5',
         messages: [
           { 
             role: 'system', 
@@ -398,7 +398,7 @@ Return array of chunks with natural breaks, maintaining legal context.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: 'Split legal text intelligently while preserving legal context and meaning.' },
           { role: 'user', content: splitPrompt }
@@ -482,7 +482,7 @@ Return as JSON array:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5-mini-2025-08-07',
+        model: 'gpt-5-mini',
           messages: [
             { role: 'system', content: 'You are an expert at extracting and formatting Australian legal citations with perfect accuracy.' },
             { role: 'user', content: citationPrompt }

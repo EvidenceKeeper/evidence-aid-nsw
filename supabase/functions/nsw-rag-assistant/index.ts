@@ -160,7 +160,7 @@ Respond in JSON format with: intent_type, legal_concepts[], citation_types[], ns
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: 'You are a NSW legal expert analyzing queries for intent and required legal sources.' },
           { role: 'user', content: intentPrompt }
@@ -306,7 +306,7 @@ async function generateGroundedResponse(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'gpt-5',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: contextPrompt }
