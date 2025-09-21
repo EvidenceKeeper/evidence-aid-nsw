@@ -455,9 +455,158 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
     const currentCaseMemory = caseMemory;
     const currentLegalStrategy = legalStrategy;
     
+    // === VERONICA'S SYSTEMATIC PRE-ANSWER RETRIEVAL ===
+    // STEP 1: Case Memory Retrieval (Always-On)
+    console.log("🧠 Step 1: Case Memory Retrieval...");
+    if (currentCaseMemory) {
+      goalContext = `
+=== CURRENT CASE GOAL ===
+Primary Goal: ${currentCaseMemory.primary_goal || 'No goal set'}
+Goal Status: ${currentCaseMemory.goal_status || 'inactive'}
+Goal Progress: ${currentCaseMemory.goal_progress || 0}%
+
+=== KEY FACTS ===
+${JSON.stringify(currentCaseMemory.key_facts || [])}
+
+=== TIMELINE SUMMARY ===
+${currentCaseMemory.timeline_summary || 'No timeline available'}
+
+=== EVIDENCE INDEX ===
+${JSON.stringify(currentCaseMemory.evidence_index || {})}
+
+=== CASE STRENGTH ===
+Overall Score: ${currentCaseMemory.case_strength_overall || 0}/10
+Strength Reasons: ${JSON.stringify(currentCaseMemory.case_strength_reasons || [])}
+
+=== THREAD SUMMARY ===
+${currentCaseMemory.thread_summary || 'No previous conversation context'}`;
+
+      caseSummary = currentCaseMemory.primary_goal ? 
+        `Your client's primary goal is: ${currentCaseMemory.primary_goal}. Current case strength: ${currentCaseMemory.case_strength_overall || 0}/10.` : 
+        'No primary case goal has been established yet.';
+    }
+
+    // STEP 2: Goal-Aware Evidence Vector Search  
+    console.log("🔍 Step 2: Goal-Aware Evidence Vector Search...");
+    if (queryText && queryEmbedding) {
+      // Enhanced search with goal filtering
+      const goalTags = currentCaseMemory?.primary_goal ? 
+        [currentCaseMemory.primary_goal.toLowerCase().replace(/\s+/g, '-')] : [];
+      
+      const { data: goalAwareResults, error: goalError } = await supabase.rpc(
+        "match_user_chunks",
+        {
+          query_embedding: queryEmbedding,
+          match_threshold: 0.5, // Lower threshold for goal-aware search
+          match_count: 8, // Top 8 as requested
+          filter_user_id: user.id,
+        }
+      );
+
+      if (!goalError && goalAwareResults?.length) {
+        console.log(`✅ Goal-aware search found ${goalAwareResults.length} enhanced matches`);
+        // Replace or enhance existing vector results with goal-aware ones
+        vectorSearchResults = goalAwareResults;
+        
+        citations = goalAwareResults.map((result: any, i: number) => ({
+          index: i + 1,
+          file_id: result.file_id,
+          file_name: result.file_name,
+          seq: result.seq,
+          excerpt: result.text.slice(0, 500),
+          meta: result.meta,
+          type: "goal_aware_vector",
+          similarity: Math.round(result.similarity * 100),
+        }));
+
+        contextBlocks = citations.map((c) => 
+          `[GOAL-AWARE CITATION ${c.index}] ${c.file_name}#${c.seq} (${c.similarity}% relevance): ${c.excerpt}`
+        );
+      }
+    }
+
+    // STEP 3: Smart Timeline Event Matching
+    console.log("📅 Step 3: Smart Timeline Event Matching...");
+    let timelineContext = "";
+    if (queryText) {
+      // Extract dates, people, locations using OpenAI
+      try {
+        const entityPrompt = `Extract entities for timeline matching from this user message:
+"${queryText}"
+
+Return JSON with:
+{
+  "dates": ["YYYY-MM-DD or relative dates like 'last week'"],
+  "people": ["person names mentioned"],
+  "locations": ["locations, addresses, places mentioned"],
+  "events": ["event types or keywords for timeline matching"]
+}`;
+
+        const entityResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openAIApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'gpt-5-mini',
+            messages: [
+              { role: 'system', content: 'Extract entities for precise timeline matching.' },
+              { role: 'user', content: entityPrompt }
+            ],
+            max_completion_tokens: 300,
+          }),
+        });
+
+        if (entityResponse.ok) {
+          const entityData = await entityResponse.json();
+          const entities = JSON.parse(entityData.choices[0].message.content);
+          
+          // Query timeline events based on extracted entities
+          let timelineQuery = supabase
+            .from("enhanced_timeline_events")
+            .select("*")
+            .eq("user_id", user.id)
+            .order("event_date", { ascending: false })
+            .limit(10);
+
+          // Add entity-based filtering
+          if (entities.people?.length) {
+            timelineQuery = timelineQuery.or(
+              entities.people.map((person: string) => `description.ilike.%${person}%`).join(',')
+            );
+          }
+          
+          if (entities.locations?.length) {
+            timelineQuery = timelineQuery.or(
+              entities.locations.map((loc: string) => `description.ilike.%${loc}%`).join(',')
+            );
+          }
+
+          const { data: timelineEvents } = await timelineQuery;
+          
+          if (timelineEvents?.length) {
+            console.log(`📅 Found ${timelineEvents.length} matching timeline events`);
+            timelineContext = `
+=== RELEVANT TIMELINE EVENTS ===
+${timelineEvents.map(event => `
+📅 ${event.event_date} - ${event.title}
+${event.description}
+Legal Significance: ${event.legal_significance || 'Standard'}
+Evidence Type: ${event.evidence_type || 'General'}
+${event.potential_witnesses ? `Potential Witnesses: ${event.potential_witnesses.join(', ')}` : ''}
+${event.corroboration_needed ? `Corroboration Needed: ${event.corroboration_needed}` : ''}
+`).join('\n')}`;
+          }
+        }
+      } catch (error) {
+        console.error('Entity extraction for timeline matching failed:', error);
+      }
+    }
+
     // Proactive Memory Triggers and Context Enhancement
     if (queryText && currentCaseMemory) {
-      console.log("🧠 Running proactive memory triggers...");
+      console.log("🧠 Running additional proactive memory triggers...");
       
       // Date Detection Trigger
       const dateRegex = /\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})\b/g;
