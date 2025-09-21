@@ -18,7 +18,10 @@ import {
   Camera,
   FileText,
   Heart,
-  DollarSign
+  DollarSign,
+  Bot,
+  Target,
+  Search
 } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -199,6 +202,32 @@ export function LiveCaseTimeline() {
       {/* Timeline Content */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
+          {/* Timeline Auto-Building System - Always Visible */}
+          <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-primary" />
+                <CardTitle className="text-sm">Timeline Auto-Building</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <Target className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground">AI automatically extracts timeline events based on your case goals and evidence</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Search className="h-3 w-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground">Gap analysis identifies missing evidence types for stronger case building</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Clock className="h-3 w-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground">Real-time confidence scoring helps prioritize verification of AI-extracted events</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Recent Insights */}
           {intelligence.insights.length > 0 && (
             <Card className="border-primary/20 bg-primary/5">
@@ -262,9 +291,9 @@ export function LiveCaseTimeline() {
               <Card className="text-center py-6">
                 <CardContent>
                   <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <h4 className="text-sm font-medium mb-1">Timeline Auto-Building</h4>
+                  <h4 className="text-sm font-medium mb-1">No Events Yet</h4>
                   <p className="text-xs text-muted-foreground">
-                    Upload evidence and your timeline will automatically populate with goal-aware events. Watch as your case builds itself visually, showing you exactly where you need more evidence.
+                    Upload evidence to begin building your timeline.
                   </p>
                 </CardContent>
               </Card>
