@@ -859,10 +859,11 @@ I'm here to support you, ${userName}.${smartGreeting}`;
       { role: "user", content: String(queryText || prompt) },
     ];
 
-    // Resilient model fallback system
+    // Resilient model fallback system with correct GPT-5 model names
     const modelConfigs = [
-      { model: "gpt-5-2025-08-07", max_completion_tokens: 4000 },
-      { model: "gpt-4.1-2025-04-14", max_completion_tokens: 4000 },
+      { model: "gpt-5", max_completion_tokens: 4000 },
+      { model: "gpt-5-mini", max_completion_tokens: 4000 },
+      { model: "gpt-4.1", max_completion_tokens: 4000 },
       { model: "gpt-4o-mini", max_tokens: 4000, temperature: 0.7 }
     ];
 
