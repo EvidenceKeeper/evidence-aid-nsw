@@ -856,7 +856,17 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           
           {messages.map((message) => (
             <div key={message.id} className="space-y-2">
-              <ChatMessage message={message} />
+              <ChatMessage 
+                message={message} 
+                onActionClick={(actionText) => {
+                  setInput(actionText);
+                  // Auto-focus the input
+                  setTimeout(() => {
+                    const textarea = document.querySelector('textarea[placeholder*="message"]') as HTMLTextAreaElement;
+                    if (textarea) textarea.focus();
+                  }, 100);
+                }}
+              />
               {message.role === 'assistant' && telepathicMode && (
                 <HallucinationGuard 
                   confidence={0.85} // This would come from AI response metadata

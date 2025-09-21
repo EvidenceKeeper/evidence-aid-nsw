@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CitationAwareResponse from "@/components/legal/CitationAwareResponse";
+import { ActionSuggestions } from "./ActionSuggestions";
 
 interface Message {
   id: string;
@@ -44,9 +45,10 @@ interface Message {
 
 interface ChatMessageProps {
   message: Message;
+  onActionClick?: (actionText: string) => void;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
   const { toast } = useToast();
 
   const openCitation = async (citation: {
@@ -185,6 +187,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Action Suggestions - Only for assistant messages */}
+            {!isUser && onActionClick && (
+              <ActionSuggestions 
+                content={message.content} 
+                onActionClick={onActionClick}
+              />
             )}
           </CardContent>
         </Card>
