@@ -71,6 +71,19 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const { telepathicMode, addAnnouncement } = useTelepathicContext();
   const { insights, isAnalyzing } = useTelepathicIntelligence();
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      handleFileUpload(Array.from(e.target.files));
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -652,7 +665,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
   return (
     <div 
       {...getRootProps()}
-      className={`flex h-[100vh] max-h-[100vh] bg-background overflow-hidden ${
+      className={`flex h-full bg-background overflow-hidden rounded-lg ${
         isDragActive ? 'bg-primary/5 border-2 border-dashed border-primary' : ''
       }`}
     >
@@ -660,25 +673,80 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
       
       {/* Main Chat Area */}
       <div className={`flex flex-col flex-1 min-h-0 transition-all duration-300 ${memorySidebarOpen ? 'mr-80' : ''}`}>
-        {/* Header - Compact */}
-        <div className="flex items-center justify-between p-2 border-b bg-card/60 backdrop-blur shrink-0">
-          <div>
-            <h1 className="text-base font-medium flex items-center gap-2">
-              Veronica
-              <Brain className={`h-3 w-3 transition-colors ${
-                memoryLoading || proactiveTriggersActive ? 'text-primary animate-pulse' : 'text-primary'
+        {/* Header - Apple-inspired */}
+        <div className="flex items-center justify-between p-6 border-b border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-t-lg">
+          <div className="flex items-center gap-4">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-sm">
+              <Brain className={`h-5 w-5 text-primary-foreground transition-colors ${
+                memoryLoading || proactiveTriggersActive ? 'animate-pulse' : ''
               }`} />
-              {(memoryLoading || proactiveTriggersActive) && (
-                <Loader2 className="h-3 w-3 text-primary animate-spin" />
-              )}
-            </h1>
-            {caseMemory?.primary_goal && (
-              <p className="text-xs text-primary">
-                Goal: {caseMemory.primary_goal}
-              </p>
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold flex items-center gap-3">
+                Veronica
+                {(memoryLoading || proactiveTriggersActive) && (
+                  <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                )}
+              </h1>
+              <p className="text-sm text-muted-foreground">NSW Legal Evidence Manager</p>
+            </div>
+          <div className="flex items-center gap-3">
+            {/* Speed/Quality Selector */}
+            {telepathicMode && (
+              <SpeedQualitySelector 
+                mode={responseMode} 
+                onModeChange={setResponseMode}
+              />
+            )}
+            
+            {/* Telepathic Mode Toggle */}
+            <TelepathicModeToggle />
+            
+            {/* Memory Sidebar Toggle */}
+            {!isModal && isMemoryEnabled && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMemorySidebarOpen(!memorySidebarOpen)}
+                className="flex items-center gap-2 h-9"
+              >
+                {memorySidebarOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                <span className="text-sm">Memory</span>
+              </Button>
+            )}
+            
+            {/* Mode Toggle */}
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-md border p-1">
+                <button
+                  onClick={() => setMode('user')}
+                  className={`px-3 py-1 text-sm font-medium rounded-sm transition-colors ${
+                    mode === 'user' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  User
+                </button>
+                <button
+                  onClick={() => setMode('lawyer')}
+                  className={`px-3 py-1 text-sm font-medium rounded-sm transition-colors ${
+                    mode === 'lawyer' 
+                      ? 'bg-primary text-primary-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Lawyer
+                </button>
+              </div>
+            </div>
+            {isModal && onClose && (
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-9">
+                <X className="h-4 w-4" />
+              </Button>
             )}
           </div>
-          <div className="flex items-center gap-2">
+        </div>
             {/* Speed/Quality Selector */}
             {telepathicMode && (
               <SpeedQualitySelector 
@@ -795,7 +863,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         <TelepathicResponseTemplates 
           complexity={messages.length > 10 ? 'complex' : messages.length > 3 ? 'moderate' : 'simple'}
         >
-          <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-3 space-y-3 min-h-0">
+          <div className="max-h-[calc(100vh-300px)] overflow-y-auto p-6 space-y-6 min-h-0">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
@@ -877,9 +945,9 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           </div>
         </TelepathicResponseTemplates>
 
-        {/* Input */}
-        <div className="p-3 border-t bg-card/60 backdrop-blur shrink-0">
-          <div className="flex items-end space-x-2">
+        {/* Input - Apple-inspired */}
+        <div className="p-6 border-t border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-b-lg">
+          <div className="flex items-end space-x-3">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -891,11 +959,11 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                     ? "Ask about your NSW case, upload evidence, or get legal guidance..."
                     : "Ask about your NSW case or upload evidence..."
               }
-              className="min-h-[80px] max-h-40 resize-none"
+              className="min-h-[100px] max-h-48 resize-none text-base"
               disabled={loading}
             />
             
-            <div className="flex space-x-1 shrink-0">
+            <div className="flex space-x-2 shrink-0">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -908,7 +976,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                 variant="ghost"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="shrink-0"
+                className="shrink-0 h-9 w-9 p-0"
                 disabled={loading}
               >
                 <Paperclip className="h-4 w-4" />
@@ -917,7 +985,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
               <Button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="shrink-0"
+                className="shrink-0 h-9 w-9 p-0"
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
