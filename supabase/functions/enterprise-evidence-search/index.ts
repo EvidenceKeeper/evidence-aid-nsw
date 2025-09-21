@@ -71,32 +71,50 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
           messages: [
             {
               role: 'system',
-              content: `You are a legal evidence search expert. Given a search query, extract key concepts and suggest related legal terms. 
+              content: `You are a legal evidence search expert. Extract key concepts and suggest related legal terms. Return ONLY a valid JSON object with exactly this structure:
+              {"concepts": ["concept1"], "synonyms": ["term1"], "behavioral_indicators": ["pattern1"]}
               
-              Return a JSON object with:
-              - "concepts": array of legal concepts (e.g., "domestic violence", "coercion")
-              - "synonyms": array of related terms and phrases
-              - "behavioral_indicators": array of behavioral patterns to look for
-              
-              Focus on family law, domestic violence, and evidence patterns.`
+              Do not use markdown formatting or explanatory text.`
             },
             {
               role: 'user',
-              content: `Analyze this evidence search query: "${query}"`
+              content: `Extract legal concepts and synonyms for: "${query}"`
             }
           ],
-          max_completion_tokens: 300,
+          max_tokens: 300,
           temperature: 0.3
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const analysis = JSON.parse(data.choices[0].message.content);
+        let content = data.choices[0]?.message?.content;
         
-        if (analysis.synonyms) expandedTerms.push(...analysis.synonyms);
-        if (analysis.concepts) matchedConcepts.push(...analysis.concepts);
-        if (analysis.behavioral_indicators) expandedTerms.push(...analysis.behavioral_indicators);
+        if (content) {
+          // Clean any markdown formatting
+          content = content.replace(/```json\s*/, '').replace(/```\s*$/, '').trim();
+          
+          // Extract JSON if wrapped in other text
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            content = jsonMatch[0];
+          }
+          
+          try {
+            const analysis = JSON.parse(content);
+            if (analysis.synonyms && Array.isArray(analysis.synonyms)) {
+              expandedTerms.push(...analysis.synonyms);
+            }
+            if (analysis.concepts && Array.isArray(analysis.concepts)) {
+              matchedConcepts.push(...analysis.concepts);
+            }
+            if (analysis.behavioral_indicators && Array.isArray(analysis.behavioral_indicators)) {
+              expandedTerms.push(...analysis.behavioral_indicators);
+            }
+          } catch (parseError) {
+            console.log('Failed to parse AI response JSON:', parseError);
+          }
+        }
       }
     } catch (error) {
       console.log('AI query expansion failed, using rule-based expansion:', error);
