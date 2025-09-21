@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import DisclaimerBanner from "@/components/DisclaimerBanner";
 import { ChatInterface } from "@/components/chat/ChatInterface";
+import { GlobalEvidenceSearch } from "@/components/search/GlobalEvidenceSearch";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ export default function AppLayout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <GlobalEvidenceSearch />
             <Button
               onClick={() => navigate('/lawyer-chat')}
               size="lg"
