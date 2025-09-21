@@ -876,52 +876,96 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           </div>
         </TelepathicResponseTemplates>
 
-          {/* Input - Apple-inspired */}
-          <div className="p-4 sm:p-6 border-t border-border/30 bg-background/95 backdrop-blur shrink-0">
-          <div className="flex items-end space-x-4">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                caseMemory?.primary_goal 
-                  ? `Ask about your ${caseMemory.primary_goal} goal, upload evidence, or get legal guidance...`
-                  : isMemoryEnabled 
-                    ? "Ask about your NSW case, upload evidence, or get legal guidance..."
-                    : "Ask about your NSW case or upload evidence..."
-              }
-              className="min-h-[54px] sm:min-h-[60px] max-h-32 resize-none text-base sm:text-lg"
-              disabled={loading}
-            />
-            
-            <div className="flex space-x-3 shrink-0">
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileInputChange}
-                multiple
-                accept=".txt,.csv,.rtf,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.mp3,.wav,.m4a,.ogg,.flac,.aac,.mp4,.mov,.avi,.webm,.mkv,.msg,.eml,.zip,.rar"
-                className="hidden"
-              />
-              <Button
-                variant="ghost"
-                size="lg"
-                onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 h-12 w-12 p-0"
-                disabled={loading}
-              >
-                <Paperclip className="h-5 w-5" />
-              </Button>
-              
-              <Button
-                onClick={sendMessage}
-                disabled={loading || !input.trim()}
-                size="lg"
-                className="shrink-0 h-12 w-12 p-0"
-              >
-                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-              </Button>
+          {/* Friendly Chat Input Area */}
+          <div className="p-6 sm:p-8 bg-gradient-to-t from-warm-50 to-background/95 border-t border-primary/20 backdrop-blur shrink-0">
+            {/* Welcome prompt */}
+            <div className="mb-4 text-center">
+              <p className="text-sm text-muted-foreground animate-gentle-bounce">
+                💬 {caseMemory?.primary_goal ? `Let's work on your ${caseMemory.primary_goal} together` : "I'm here to help with your legal questions"}
+              </p>
             </div>
+            
+            <div className="flex items-end gap-4 max-w-4xl mx-auto">
+              <div className="flex-1 relative group">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    caseMemory?.primary_goal 
+                      ? `Tell me more about your ${caseMemory.primary_goal}... I'm listening 👂`
+                      : input.length === 0
+                        ? "What's on your mind today? Ask anything about your case... 💭"
+                        : "Keep going, I'm following along... ✨"
+                  }
+                  className="min-h-[60px] sm:min-h-[70px] max-h-36 resize-none text-lg sm:text-xl 
+                           bg-card/90 border-2 border-primary/30 rounded-2xl px-6 py-4
+                           shadow-warm hover:shadow-elegant transition-all duration-300
+                           focus:border-primary focus:shadow-elegant focus:ring-4 focus:ring-primary/20
+                           placeholder:text-muted-foreground/80 placeholder:font-normal
+                           group-hover:bg-card/95"
+                  disabled={loading}
+                />
+                
+                {/* Character counter - friendly */}
+                {input.length > 0 && (
+                  <div className="absolute bottom-3 right-4 text-xs text-muted-foreground/70 bg-background/80 px-2 py-1 rounded-full">
+                    {input.length > 100 ? '📝 Great detail!' : input.length > 50 ? '✍️ Keep going' : '💡 Tell me more'}
+                  </div>
+                )}
+              </div>
+              
+              {/* Friendly Action Buttons */}
+              <div className="flex gap-3 shrink-0">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileInputChange}
+                  multiple
+                  accept=".txt,.csv,.rtf,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.bmp,.tiff,.webp,.svg,.mp3,.wav,.m4a,.ogg,.flac,.aac,.mp4,.mov,.avi,.webm,.mkv,.msg,.eml,.zip,.rar"
+                  className="hidden"
+                />
+                
+                {/* Upload Button */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-14 w-14 rounded-2xl border-2 border-primary/30 bg-warm-50 hover:bg-primary/10 
+                           hover:border-primary hover:shadow-warm transition-all duration-300 
+                           hover:scale-105 active:scale-95 group"
+                  disabled={loading}
+                  title="Upload files 📎"
+                >
+                  <Paperclip className="h-6 w-6 text-primary group-hover:animate-gentle-bounce" />
+                </Button>
+                
+                {/* Send Button */}
+                <Button
+                  onClick={sendMessage}
+                  disabled={loading || !input.trim()}
+                  size="lg"
+                  className="h-14 w-14 rounded-2xl bg-gradient-to-r from-primary to-primary-soft 
+                           hover:from-primary-soft hover:to-primary shadow-warm hover:shadow-elegant
+                           transition-all duration-300 hover:scale-105 active:scale-95
+                           disabled:opacity-50 disabled:hover:scale-100 group"
+                  title={input.trim() ? "Send message 🚀" : "Type something first 💭"}
+                >
+                  {loading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-primary-foreground" />
+                  ) : (
+                    <Send className="h-6 w-6 text-primary-foreground group-hover:animate-gentle-bounce" />
+                  )}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Helpful hint */}
+            <div className="mt-4 text-center">
+              <p className="text-xs text-muted-foreground/60">
+                💡 Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to send, 
+                <kbd className="px-2 py-1 bg-muted rounded text-xs ml-1">Shift+Enter</kbd> for new line
+              </p>
             </div>
           </div>
         </div>
