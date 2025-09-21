@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Paperclip, X, Settings, ChevronLeft, ChevronRight, Brain, Loader2, Upload, TrendingUp, FileText, Calendar } from 'lucide-react';
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
@@ -92,11 +92,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    loadChatHistory();
-  }, []);
-
-  const loadChatHistory = async () => {
+  const loadChatHistory = useCallback(async () => {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       if (!sessionData.session) return;
@@ -132,7 +128,11 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
     } catch (error) {
       console.error("Failed to load chat history:", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadChatHistory();
+  }, [loadChatHistory]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -657,9 +657,10 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
       <input {...getInputProps()} />
       
       {/* Main Chat Area */}
-      <div className={`flex flex-col flex-1 min-h-0 transition-all duration-300 ${memorySidebarOpen ? 'mr-80' : ''}`}>
-        {/* Header - Apple-inspired */}
-        <div className="flex items-center justify-between p-2 sm:p-3 border-b border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-t-lg">
+      <div className="flex flex-col flex-1 min-h-0 relative">
+        <div className={`absolute inset-0 transition-transform duration-300 ${memorySidebarOpen ? '-translate-x-80' : 'translate-x-0'} flex flex-col`}>
+          {/* Header - Apple-inspired */}
+          <div className="flex items-center justify-between p-2 sm:p-3 border-b border-border/30 bg-background/95 backdrop-blur shrink-0">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-sm">
               <Brain className={`h-5 w-5 text-primary-foreground transition-colors ${
@@ -793,7 +794,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         <TelepathicResponseTemplates 
           complexity={messages.length > 10 ? 'complex' : messages.length > 3 ? 'moderate' : 'simple'}
         >
-          <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4 min-h-0">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-3 min-h-0">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
@@ -875,8 +876,8 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
           </div>
         </TelepathicResponseTemplates>
 
-        {/* Input - Apple-inspired */}
-        <div className="p-2 sm:p-3 border-t border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-b-lg">
+          {/* Input - Apple-inspired */}
+          <div className="p-2 sm:p-3 border-t border-border/30 bg-background/95 backdrop-blur shrink-0">
           <div className="flex items-end space-x-3">
             <Textarea
               value={input}
@@ -889,7 +890,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                     ? "Ask about your NSW case, upload evidence, or get legal guidance..."
                     : "Ask about your NSW case or upload evidence..."
               }
-              className="min-h-[40px] sm:min-h-[48px] max-h-32 resize-none text-base"
+              className="min-h-[36px] sm:min-h-[40px] max-h-24 resize-none text-sm sm:text-base"
               disabled={loading}
             />
             
@@ -919,6 +920,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
               >
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
+            </div>
             </div>
           </div>
         </div>
@@ -972,7 +974,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             </div>
           </div>
         </div>
-        )}
+      )}
     </div>
   );
 }

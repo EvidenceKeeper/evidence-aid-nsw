@@ -31,7 +31,9 @@ export function ChatButton() {
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
           <Card className="w-full max-w-4xl h-[80vh] shadow-2xl border-0 overflow-hidden">
-            <ChatInterface isModal onClose={() => setIsOpen(false)} />
+            <div className="h-full">
+              <ChatInterface isModal onClose={() => setIsOpen(false)} />
+            </div>
           </Card>
         </div>
       )}
