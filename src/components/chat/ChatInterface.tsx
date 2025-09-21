@@ -877,8 +877,8 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         </TelepathicResponseTemplates>
 
           {/* Input - Apple-inspired */}
-          <div className="p-2 sm:p-3 border-t border-border/30 bg-background/95 backdrop-blur shrink-0">
-          <div className="flex items-end space-x-3">
+          <div className="p-4 sm:p-6 border-t border-border/30 bg-background/95 backdrop-blur shrink-0">
+          <div className="flex items-end space-x-4">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -890,11 +890,11 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                     ? "Ask about your NSW case, upload evidence, or get legal guidance..."
                     : "Ask about your NSW case or upload evidence..."
               }
-              className="min-h-[36px] sm:min-h-[40px] max-h-24 resize-none text-sm sm:text-base"
+              className="min-h-[54px] sm:min-h-[60px] max-h-32 resize-none text-base sm:text-lg"
               disabled={loading}
             />
             
-            <div className="flex space-x-2 shrink-0">
+            <div className="flex space-x-3 shrink-0">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -905,20 +905,21 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
               />
               <Button
                 variant="ghost"
-                size="sm"
+                size="lg"
                 onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 h-9 w-9 p-0"
+                className="shrink-0 h-12 w-12 p-0"
                 disabled={loading}
               >
-                <Paperclip className="h-4 w-4" />
+                <Paperclip className="h-5 w-5" />
               </Button>
               
               <Button
                 onClick={sendMessage}
                 disabled={loading || !input.trim()}
-                className="shrink-0 h-9 w-9 p-0"
+                size="lg"
+                className="shrink-0 h-12 w-12 p-0"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </Button>
             </div>
             </div>
