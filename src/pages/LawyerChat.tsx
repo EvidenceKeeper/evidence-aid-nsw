@@ -7,13 +7,13 @@ import { CaseIntelligenceProvider } from "@/components/realtime/CaseIntelligence
 export default function LawyerChat() {
   return (
     <CaseIntelligenceProvider>
-      <div className="h-[100vh] bg-background p-8">
+      <div className="h-screen bg-background p-2">
         <SEO 
           title="Lawyer Chat | NSW Legal Evidence Manager" 
           description="Chat with your AI legal assistant while monitoring real-time case progress and analysis." 
         />
         
-        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-4rem)] rounded-xl overflow-hidden border border-border/20 shadow-lg">
+        <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-1rem)] rounded-lg overflow-hidden border border-border/20 shadow-md">
           {/* Chat Interface (Left) */}
           <ResizablePanel defaultSize={50} minSize={30} maxSize={70}>
             <div className="h-full p-2">
