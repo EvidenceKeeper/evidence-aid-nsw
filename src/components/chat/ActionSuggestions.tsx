@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Calendar, FileSearch, Zap, Target, BarChart3 } from "lucide-react";
 
 interface SuggestedAction {
   id: string;
@@ -75,8 +75,14 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   };
   
   const getActionIcon = (type: SuggestedAction['action_type']) => {
-    // Return appropriate Lucide icon component based on type
-    return <ChevronRight className="h-3 w-3" />;
+    switch (type) {
+      case 'timeline': return <Calendar className="h-3 w-3" />;
+      case 'analysis': return <FileSearch className="h-3 w-3" />;
+      case 'evidence': return <Zap className="h-3 w-3" />;
+      case 'summary': return <BarChart3 className="h-3 w-3" />;
+      case 'strategy': return <Target className="h-3 w-3" />;
+      default: return <ChevronRight className="h-3 w-3" />;
+    }
   };
   
   const actions = extractActions(content);
@@ -95,7 +101,9 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
             variant="outline"
             size="sm"
             onClick={() => onActionClick(action.text)}
-            className="h-auto p-2 text-xs font-normal justify-start gap-1 bg-background/50 hover:bg-accent/80 border-border/40 text-foreground"
+            className={`h-auto p-2 text-xs font-normal justify-start gap-1 bg-background/50 hover:bg-accent/80 border-border/40 text-foreground ${
+              action.priority === 'high' ? 'border-primary/40 bg-primary/5' : ''
+            }`}
           >
             {getActionIcon(action.action_type)}
             <span className="line-clamp-2 text-left">{action.text}</span>
