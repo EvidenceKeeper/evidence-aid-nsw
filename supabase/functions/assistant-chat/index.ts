@@ -636,7 +636,100 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
     }
 
-    // TELEPATHIC FEATURE: Combine All Proactive Context & Announcements
+    // MOVE ALL CONTEXT COMPUTATION LOGIC HERE TO AVOID ORDERING ISSUES
+    
+    // Compute case context and summary from current case memory
+    if (currentCaseMemory) {
+      const goal = currentCaseMemory.primary_goal || 'general legal assistance';
+      const keyFacts = currentCaseMemory.key_facts || [];
+      const evidenceCount = currentCaseMemory.evidence_index?.length || 0;
+      
+      caseContext = `Goal: ${goal} | Evidence: ${evidenceCount} items | Case strength: ${currentCaseMemory.case_strength_score || 0}%`;
+      
+      if (keyFacts.length > 0) {
+        caseSummary = `Key facts: ${keyFacts.slice(0, 3).map((f: any) => f.fact || f).join('; ')}`;
+      }
+    }
+
+    // Compute enhanced evidence announcement after case context
+    if (hasRecentUploads && newlyProcessedFiles.length > 0) {
+      const recentFile = newlyProcessedFiles[0];
+      const { data: recentAnalysis } = await supabase
+        .from("evidence_comprehensive_analysis")
+        .select("key_insights, timeline_significance, case_impact")
+        .eq("file_id", recentFile.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (recentAnalysis) {
+        const keyInsights = recentAnalysis.key_insights || [];
+        const goalContext = currentCaseMemory?.primary_goal ? ` and what it adds to your goal of ${currentCaseMemory.primary_goal}` : '';
+        
+        enhancedEvidenceAnnouncement = `📁 I've processed ${recentFile.name} — here's the 3-line summary${goalContext}:
+
+• ${keyInsights[0] || 'Document analyzed for legal significance'}
+• ${keyInsights[1] || recentAnalysis.case_impact || 'Evidence categorized and indexed'}
+• ${keyInsights[2] || 'Content available for legal analysis'}`;
+      }
+    }
+
+    // Compute case strength banner
+    if (currentCaseMemory && currentLegalStrategy) {
+      const score = Math.round(currentLegalStrategy.case_strength_overall || currentCaseMemory.case_strength_score || 0);
+      const reasons = currentLegalStrategy.strengths || currentCaseMemory.case_strength_reasons || [];
+      const nextSteps = currentLegalStrategy.next_steps || [];
+      
+      let label = "Developing";
+      if (score >= 75) label = "Strong";
+      else if (score >= 50) label = "Moderate";
+      
+      const topReasons = Array.isArray(reasons) ? reasons.slice(0, 3) : [];
+      const topBooster = Array.isArray(nextSteps) && nextSteps.length > 0 
+        ? (nextSteps[0].action || nextSteps[0] || "Review evidence gaps") 
+        : "Gather additional evidence";
+      
+      if (score > 0 && topReasons.length > 0) {
+        caseStrengthBanner = `📊 Case Strength: ${label} ${score}%. Because: ${topReasons.map(r => `• ${typeof r === 'object' ? r.fact || r.reason || String(r) : r}`).join(' ')}. Booster: ${topBooster}.`;
+      }
+    }
+
+    // Compute email corpus summary
+    if (allFiles && allFiles.length > 0) {
+      const emailFiles = allFiles.filter(f => 
+        f.name.toLowerCase().includes('.txt') || 
+        f.name.toLowerCase().includes('.mbox') || 
+        f.name.toLowerCase().includes('.eml') ||
+        f.name.toLowerCase().includes('email') ||
+        f.name.toLowerCase().includes('mail')
+      );
+      
+      if (emailFiles.length > 0) {
+        const { data: emailChunks } = await supabase
+          .from("chunks")
+          .select("text, meta")
+          .in("file_id", emailFiles.map(f => f.id))
+          .limit(100);
+          
+        if (emailChunks && emailChunks.length > 0) {
+          const dates = emailChunks
+            .map(c => c.text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g))
+            .filter(Boolean)
+            .flat()
+            .map(d => new Date(d.replace(/[\/\-\.]/g, '/')))
+            .filter(d => !isNaN(d.getTime()))
+            .sort((a, b) => a.getTime() - b.getTime());
+            
+          if (dates.length > 0) {
+            const startDate = dates[0].toLocaleDateString();
+            const endDate = dates[dates.length - 1].toLocaleDateString();
+            emailCorpusSummary = `📧 Email corpus detected: ${emailChunks.length} emails, ${startDate}–${endDate}. I can extract incidents and build timeline patterns from this correspondence.`;
+          }
+        }
+      }
+    }
+
+    // TELEPATHIC FEATURE: Combine All Proactive Context & Announcements (after all context is computed)
     const allTelepathicContext = [
       enhancedEvidenceAnnouncement,
       caseStrengthBanner,
@@ -647,61 +740,6 @@ I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evide
       evidenceAnnouncement,
       caseStrengthAnnouncement
     ].filter(Boolean).join('\n\n');
-
-    // Create enhanced goal-aware system prompts with telepathic features
-    const telepathicUserPrompt = `You are Veronica, a telepathic NSW legal assistant. ${telepathicContinuity || goalContext}${telepathicContinuity ? ', here\'s your next step.' : (shouldDetectGoal ? ' Let me help you focus on your main legal goal first.' : '')}
-
-TELEPATHIC PROTOCOL:
-${shouldDetectGoal ? 
-  '– Start by asking: "What\'s your main legal goal? For example, preparing for a custody hearing, applying for an AVO, or drafting a parenting plan?"' : 
-  '– NEVER ask about their goal again - you know their objective. Always build on it.'
-}
-– Provide exactly ONE next step tied to their goal (not a list).
-– When analyzing evidence, tie it directly to their established goal in ≤3 bullet points.
-– Auto-add timeline events when dates are detected.
-– Keep responses under 220 words unless drafting documents.
-– Use warm, empathetic tone. You're genuinely invested in their success.
-– If confidence is low, say so: "${confidenceLevel === 'low' ? 'I\'m in quick mode with limited context.' : ''}"
-
-MEMORY CONTEXT:
-${caseContext}
-
-${allTelepathicContext ? `PROACTIVE ALERTS:\n${allTelepathicContext}\n\n` : ''}
-
-${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
-
-**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
-
-I'm here to support you, ${userName}.${smartGreeting}`;
-
-    const telepathicLawyerPrompt = `You are Veronica — Lawyer Mode (Telepathic). ${telepathicContinuity || goalContext}${telepathicContinuity ? ', here\'s the legal analysis.' : (shouldDetectGoal ? ' Let me understand your legal objective first.' : '')}
-
-TELEPATHIC LAWYER PROTOCOL:
-${shouldDetectGoal ? 
-  '– Ask: "What specific legal outcome are you working toward?"' :
-  '– Build on their established goal with each response.'
-}
-– Summary first, then numbered findings tied to their legal objective.
-– Provide exactly ONE next step (not a list of options).
-– Only include exhibits or legal sections if specifically requested.
-– Keep answers under 250 words but be precise and professional.
-– If evidence confidence is low, state limitations clearly.
-
-CASE INTELLIGENCE:
-${caseContext}
-
-${allTelepathicContext ? `PROACTIVE INTELLIGENCE:\n${allTelepathicContext}\n\n` : ''}
-
-${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
-
-**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
-
-I'm here to support you professionally, ${userName}.${smartGreeting}`;
-
-    const baseSystem = {
-      role: "system",
-      content: mode === 'lawyer' ? telepathicLawyerPrompt : telepathicUserPrompt,
-    };
 
     // TELEPATHIC FEATURE: Enhanced Goal Continuity & Response Patterns
     
@@ -758,164 +796,15 @@ I'm here to support you professionally, ${userName}.${smartGreeting}`;
       }
     }
 
-    // Build case context and summary
-    if (currentCaseMemory) {
-      const goal = currentCaseMemory.primary_goal || 'general legal assistance';
-      const keyFacts = currentCaseMemory.key_facts || [];
-      const evidenceCount = currentCaseMemory.evidence_index?.length || 0;
-      
-      caseContext = `Goal: ${goal} | Evidence: ${evidenceCount} items | Case strength: ${currentCaseMemory.case_strength_score || 0}%`;
-      
-      if (keyFacts.length > 0) {
-        caseSummary = `Key facts: ${keyFacts.slice(0, 3).map((f: any) => f.fact || f).join('; ')}`;
-      }
-    }
+    // (Evidence announcement computation moved to unified context section)
 
-    // TELEPATHIC FEATURE: Enhanced Post-Upload Announcement
-    let enhancedEvidenceAnnouncement = "";
-    if (hasRecentUploads && newlyProcessedFiles.length > 0) {
-      const recentFile = newlyProcessedFiles[0];
-      const { data: recentAnalysis } = await supabase
-        .from("evidence_comprehensive_analysis")
-        .select("key_insights, timeline_significance, case_impact")
-        .eq("file_id", recentFile.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    // (Note: Case strength banner and email corpus summary are computed earlier to avoid duplication)
 
-      const { data: newTimelineEvents } = await supabase
-        .from("enhanced_timeline_events")
-        .select("id, title, event_date")
-        .eq("file_id", recentFile.id)
-        .order("event_date", { ascending: false })
-        .limit(5);
+    // (Case memory context computation moved to unified context section)
 
-      if (recentAnalysis) {
-        const keyInsights = recentAnalysis.key_insights || [];
-        const timelineCount = newTimelineEvents?.length || 0;
-        const goalContext = currentCaseMemory?.primary_goal ? ` and what it adds to your goal of ${currentCaseMemory.primary_goal}` : '';
-        
-        enhancedEvidenceAnnouncement = `📁 I've processed ${recentFile.name} — here's the 3-line summary${goalContext}:
-
-• ${keyInsights[0] || 'Document analyzed for legal significance'}
-• ${keyInsights[1] || recentAnalysis.case_impact || 'Evidence categorized and indexed'}
-• ${keyInsights[2] || (timelineCount > 0 ? `${timelineCount} new timeline events detected` : 'Content available for legal analysis')}
-
-${timelineCount > 0 ? `I can add ${timelineCount} new events to your timeline now. Proceed?` : ''}`;
-      }
-    }
-
-    // TELEPATHIC FEATURE: Case Strength Score Banner
-    let caseStrengthBanner = "";
-    if (currentCaseMemory && currentLegalStrategy) {
-      const score = Math.round(currentLegalStrategy.case_strength_overall || currentCaseMemory.case_strength_score || 0);
-      const reasons = currentLegalStrategy.strengths || currentCaseMemory.case_strength_reasons || [];
-      const nextSteps = currentLegalStrategy.next_steps || [];
-      
-      let label = "Developing";
-      if (score >= 75) label = "Strong";
-      else if (score >= 50) label = "Moderate";
-      
-      const topReasons = Array.isArray(reasons) ? reasons.slice(0, 3) : [];
-      const topBooster = Array.isArray(nextSteps) && nextSteps.length > 0 
-        ? (nextSteps[0].action || nextSteps[0] || "Review evidence gaps") 
-        : "Gather additional evidence";
-      
-      if (score > 0 && topReasons.length > 0) {
-        caseStrengthBanner = `📊 Case Strength: ${label} ${score}%. Because: ${topReasons.map(r => `• ${typeof r === 'object' ? r.fact || r.reason || String(r) : r}`).join(' ')}. Booster: ${topBooster}.`;
-      }
-    }
-
-    // TELEPATHIC FEATURE: Email Corpus Detection and Turbo-Parse
-    let emailCorpusMode = false;
-    let emailCorpusSummary = "";
-    if (allFiles && allFiles.length > 0) {
-      const emailFiles = allFiles.filter(f => 
-        f.name.toLowerCase().includes('.txt') || 
-        f.name.toLowerCase().includes('.mbox') || 
-        f.name.toLowerCase().includes('.eml') ||
-        f.name.toLowerCase().includes('email') ||
-        f.name.toLowerCase().includes('mail')
-      );
-      
-      if (emailFiles.length > 0) {
-        emailCorpusMode = true;
-        const { data: emailChunks } = await supabase
-          .from("chunks")
-          .select("text, meta")
-          .in("file_id", emailFiles.map(f => f.id))
-          .limit(100);
-          
-        if (emailChunks && emailChunks.length > 0) {
-          // Detect date ranges and patterns in emails
-          const dates = emailChunks
-            .map(c => c.text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g))
-            .filter(Boolean)
-            .flat()
-            .map(d => new Date(d.replace(/[\/\-\.]/g, '/')))
-            .filter(d => !isNaN(d.getTime()))
-            .sort((a, b) => a.getTime() - b.getTime());
-            
-          if (dates.length > 0) {
-            const startDate = dates[0].toLocaleDateString();
-            const endDate = dates[dates.length - 1].toLocaleDateString();
-            emailCorpusSummary = `📧 Email corpus detected: ${emailChunks.length} emails, ${startDate}–${endDate}. I can extract incidents and build timeline patterns from this correspondence.`;
-          }
-        }
-      }
-    }
-
-    // TELEPATHIC FEATURE: Enhanced Case Memory Context with Hierarchical Summaries
-    let caseContext = "";
-    if (currentCaseMemory) {
-      caseContext = `
-=== ENHANCED MEMORY CONTEXT ===
-**Primary Goal:** ${currentCaseMemory.primary_goal || 'Not yet established'}
-**Case Strength:** ${Math.round(currentCaseMemory.case_strength_score || 0)}%
-
-**Evidence Index (${currentCaseMemory.evidence_index?.length || 0} files):**
-${currentCaseMemory.evidence_index?.map((e: any) => `- Exhibit ${e.exhibit_code}: ${e.filename} (${e.type}) - ${e['1_line_summary'] || e.summary}`).join('\n') || 'No evidence indexed yet'}
-
-**Timeline Spine:** ${currentCaseMemory.timeline_summary?.length || 0} events tracked
-**Thread Summary:** ${currentCaseMemory.thread_summary || 'New conversation'}
-`;
-    }
-    let caseSummary = "";
-    if (comprehensiveAnalysis && comprehensiveAnalysis.length > 0) {
-      const latestAnalysis = comprehensiveAnalysis[0];
-      const insights = latestAnalysis.key_insights || [];
-      const impact = latestAnalysis.case_impact || "";
-      
-      caseSummary = `Based on your uploaded evidence, I can see:
-• ${insights.slice(0, 3).join('\n• ')}
-
-${impact ? `Case Impact: ${impact}` : ''}
-
-Does this look right?`;
-    }
-
-    // Create goal-aware system prompts based on mode
-    const userModePrompt = `You are Veronica, a warm and supportive NSW legal assistant. ${goalContext ? goalContext + ', here\'s how this evidence helps.' : (shouldDetectGoal ? 'Let me help you focus on your main legal goal.' : '')}
-
-Protocol:
-${shouldDetectGoal ? 
-  '– Start by asking: "What\'s your main legal goal? For example, preparing for a custody hearing, applying for an AVO, or drafting a parenting plan?"' : 
-  '– Never ask "what is your goal?" again - you already know their objective.'
-}
-– When analyzing new evidence, tie it directly back to their established goal in ≤3 bullet points.
-– Add timeline events automatically when dates are found.
-– If evidence isn't directly relevant, briefly acknowledge this but suggest a goal-relevant next step.
-– Only ask clarifying questions when truly necessary to proceed.
-– Keep your tone warm, empathetic, and encouraging. Avoid overwhelming lists.
-– Do not include sources or citations unless explicitly requested.
-
-${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
-
-**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
-
-I'm here to support you, ${userName}.${smartGreeting}`;
-
-    const lawyerModePrompt = `You are Veronica — Lawyer Mode. ${goalContext ? goalContext + ', here\'s the legal analysis.' : (shouldDetectGoal ? 'Let me understand your legal objective first.' : '')}
+    // Create unified goal-aware system prompts with all computed context
+    const systemPrompt = mode === 'lawyer' 
+      ? `You are Veronica — Lawyer Mode. ${goalContext ? goalContext + ', here\'s the legal analysis.' : (shouldDetectGoal ? 'Let me understand your legal objective first.' : '')}
 
 Protocol:
 ${shouldDetectGoal ? 
@@ -928,15 +817,39 @@ ${shouldDetectGoal ?
 – Keep answers under 250 words but be precise and lawyer-like.
 – Stay professional but warm, never cold.
 
-${caseSummary ? `\n\nCASE SUMMARY:\n${caseSummary}` : ''}
+${allTelepathicContext ? `PROACTIVE INTELLIGENCE:\n${allTelepathicContext}\n\n` : ''}
+
+${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
 
 **SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
 
-I'm here to support you professionally, ${userName}.${smartGreeting}`;
+I'm here to support you professionally, ${userName}.${smartGreeting}`
+      : `You are Veronica, a warm and supportive NSW legal assistant. ${goalContext ? goalContext + ', here\'s how this evidence helps.' : (shouldDetectGoal ? 'Let me help you focus on your main legal goal.' : '')}
+
+Protocol:
+${shouldDetectGoal ? 
+  '– Start by asking: "What\'s your main legal goal? For example, preparing for a custody hearing, applying for an AVO, or drafting a parenting plan?"' : 
+  '– Never ask "what is your goal?" again - you already know their objective.'
+}
+– When analyzing new evidence, tie it directly back to their established goal in ≤3 bullet points.
+– Add timeline events automatically when dates are found.
+– If evidence isn't directly relevant, briefly acknowledge this but suggest a goal-relevant next step.
+– Only ask clarifying questions when truly necessary to proceed.
+– Keep your tone warm, empathetic, and encouraging. Avoid overwhelming lists.
+– Do not include sources or citations unless explicitly requested.
+– If confidence is low, say so: "${confidenceLevel === 'low' ? 'I\'m in quick mode with limited context.' : ''}"
+
+${allTelepathicContext ? `PROACTIVE ALERTS:\n${allTelepathicContext}\n\n` : ''}
+
+${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
+
+**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
+
+I'm here to support you, ${userName}.${smartGreeting}`;
 
     const baseSystem = {
       role: "system",
-      content: mode === 'lawyer' ? lawyerModePrompt : userModePrompt,
+      content: systemPrompt,
     };
 
     const chatMessages = messages ?? [
