@@ -659,7 +659,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
       {/* Main Chat Area */}
       <div className={`flex flex-col flex-1 min-h-0 transition-all duration-300 ${memorySidebarOpen ? 'mr-80' : ''}`}>
         {/* Header - Apple-inspired */}
-        <div className="flex items-center justify-between p-6 border-b border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-t-lg">
+        <div className="flex items-center justify-between p-3 sm:p-6 border-b border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-t-lg">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-sm">
               <Brain className={`h-5 w-5 text-primary-foreground transition-colors ${
@@ -675,6 +675,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
               </h1>
               <p className="text-sm text-muted-foreground">NSW Legal Evidence Manager</p>
             </div>
+          </div>
           <div className="flex items-center gap-3">
             {/* Speed/Quality Selector */}
             {telepathicMode && (
@@ -728,62 +729,6 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             {isModal && onClose && (
               <Button variant="ghost" size="sm" onClick={onClose} className="h-9">
                 <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-            {/* Speed/Quality Selector */}
-            {telepathicMode && (
-              <SpeedQualitySelector 
-                mode={responseMode} 
-                onModeChange={setResponseMode}
-              />
-            )}
-            
-            {/* Telepathic Mode Toggle */}
-            <TelepathicModeToggle />
-            
-            {/* Memory Sidebar Toggle */}
-            {!isModal && isMemoryEnabled && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setMemorySidebarOpen(!memorySidebarOpen)}
-                className="flex items-center gap-1 h-7"
-              >
-                {memorySidebarOpen ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-                <span className="text-xs">Memory</span>
-              </Button>
-            )}
-            
-            {/* Mode Toggle */}
-            <div className="flex items-center gap-1">
-              <div className="flex rounded-md border p-0.5">
-                <button
-                  onClick={() => setMode('user')}
-                  className={`px-2 py-1 text-xs font-medium rounded-sm transition-colors ${
-                    mode === 'user' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  User
-                </button>
-                <button
-                  onClick={() => setMode('lawyer')}
-                  className={`px-2 py-1 text-xs font-medium rounded-sm transition-colors ${
-                    mode === 'lawyer' 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Lawyer
-                </button>
-              </div>
-            </div>
-            {isModal && onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose} className="h-7">
-                ×
               </Button>
             )}
           </div>
@@ -848,7 +793,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         <TelepathicResponseTemplates 
           complexity={messages.length > 10 ? 'complex' : messages.length > 3 ? 'moderate' : 'simple'}
         >
-          <div className="max-h-[calc(100vh-300px)] overflow-y-auto p-6 space-y-6 min-h-0">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-6 min-h-0">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
@@ -931,7 +876,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         </TelepathicResponseTemplates>
 
         {/* Input - Apple-inspired */}
-        <div className="p-6 border-t border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-b-lg">
+        <div className="p-3 sm:p-6 border-t border-border/30 bg-background/95 backdrop-blur shrink-0 rounded-b-lg">
           <div className="flex items-end space-x-3">
             <Textarea
               value={input}
@@ -944,7 +889,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                     ? "Ask about your NSW case, upload evidence, or get legal guidance..."
                     : "Ask about your NSW case or upload evidence..."
               }
-              className="min-h-[100px] max-h-48 resize-none text-base"
+              className="min-h-[60px] sm:min-h-[80px] max-h-48 resize-none text-base"
               disabled={loading}
             />
             
@@ -977,9 +922,10 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Memory Sidebar */}
-        {!isModal && isMemoryEnabled && memorySidebarOpen && (
+      {/* Memory Sidebar */}
+      {!isModal && isMemoryEnabled && memorySidebarOpen && (
         <div className="fixed right-0 top-0 h-full w-80 bg-card border-l border-border z-40 transition-transform duration-300">
           <div className="flex flex-col h-full">
             <div className="p-4 border-b">
