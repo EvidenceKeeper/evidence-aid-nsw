@@ -125,7 +125,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       )}
       
       <div className={`max-w-[80%] space-y-2 ${isUser ? "items-end" : "items-start"}`}>
-        <Card className={`${isUser ? "bg-primary text-primary-foreground" : "bg-card"}`}>
+        <Card className={`${isUser ? "bg-primary text-primary-foreground border-primary/20" : "bg-card"}`}>
           <CardContent className="p-3">
             {/* Files */}
             {message.files && message.files.length > 0 && (

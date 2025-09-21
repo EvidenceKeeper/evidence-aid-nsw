@@ -859,30 +859,67 @@ I'm here to support you, ${userName}.${smartGreeting}`;
       { role: "user", content: String(queryText || prompt) },
     ];
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openAIApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-5-2025-08-07",
-        messages: chatMessages,
-        max_completion_tokens: 4000,
-      }),
-    });
+    // Resilient model fallback system
+    const modelConfigs = [
+      { model: "gpt-5-2025-08-07", max_completion_tokens: 4000 },
+      { model: "gpt-4.1-2025-04-14", max_completion_tokens: 4000 },
+      { model: "gpt-4o-mini", max_tokens: 4000, temperature: 0.7 }
+    ];
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("OpenAI error", errText);
+    let generatedText = "";
+    let lastError = null;
+
+    for (const config of modelConfigs) {
+      try {
+        console.log(`🤖 Attempting model: ${config.model}`);
+        
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openAIApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...config,
+            messages: chatMessages,
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.log(`❌ ${config.model} failed:`, errText);
+          lastError = errText;
+          
+          // Check if it's a model access error, try next model
+          if (errText.includes("model_not_found") || errText.includes("does not have access")) {
+            continue;
+          }
+          
+          // For other errors, still try fallback
+          continue;
+        }
+
+        const data = await response.json();
+        generatedText = data?.choices?.[0]?.message?.content ?? "";
+        
+        if (generatedText) {
+          console.log(`✅ Success with model: ${config.model}`);
+          break;
+        }
+      } catch (error) {
+        console.log(`❌ ${config.model} exception:`, error);
+        lastError = error;
+        continue;
+      }
+    }
+
+    if (!generatedText) {
+      console.error("All models failed, last error:", lastError);
       return new Response(
-        JSON.stringify({ error: "OpenAI request failed", details: errText }),
+        JSON.stringify({ error: "All AI models unavailable", details: lastError }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    const data = await response.json();
-    const generatedText = data?.choices?.[0]?.message?.content ?? "";
 
     // TELEPATHIC FEATURE: Enhanced Thread Summary Update
     if (currentCaseMemory && queryText) {

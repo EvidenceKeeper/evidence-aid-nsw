@@ -92,12 +92,15 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         .from("messages")
         .select("*")
         .eq("user_id", sessionData.session.user.id)
+        .in("role", ["user", "assistant"])
         .order("created_at", { ascending: true })
         .limit(50);
 
       if (error) throw error;
 
-      const formattedMessages: Message[] = data.map((msg) => ({
+      console.log(`💬 Loaded ${data?.length || 0} chat messages`);
+
+      const formattedMessages: Message[] = (data || []).map((msg) => ({
         id: msg.id,
         role: msg.role as "user" | "assistant",
         content: msg.content,
@@ -232,26 +235,8 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
         }
       }
 
-      // Persist messages
-      const uid = sessionData?.session?.user?.id;
-      if (uid) {
-        const inserts = [
-          {
-            user_id: uid,
-            role: "user",
-            content: userMessage.content
-          },
-          {
-            user_id: uid,
-            role: "assistant",
-            content: assistantMessage.content,
-            citations: assistantMessage.citations
-          }
-        ];
-        
-        const { error: insertErr } = await supabase.from("messages").insert(inserts);
-        if (insertErr) console.warn("message insert failed", insertErr);
-      }
+      // Messages are now saved by the edge function to prevent duplicates
+      console.log("📝 Message exchange completed - saved by edge function");
     } catch (error) {
       console.error("Chat error:", error);
       toast({
