@@ -614,21 +614,6 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0) {
-      handleFileUpload(files);
-    }
-    // Reset input to allow selecting the same file again
-    e.target.value = '';
-  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFileUpload,
@@ -992,10 +977,9 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Memory Sidebar */}
-      {!isModal && isMemoryEnabled && memorySidebarOpen && (
+        {/* Memory Sidebar */}
+        {!isModal && isMemoryEnabled && memorySidebarOpen && (
         <div className="fixed right-0 top-0 h-full w-80 bg-card border-l border-border z-40 transition-transform duration-300">
           <div className="flex flex-col h-full">
             <div className="p-4 border-b">
@@ -1042,7 +1026,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             </div>
           </div>
         </div>
-      )}
+        )}
     </div>
   );
 }
