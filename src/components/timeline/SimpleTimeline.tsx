@@ -96,6 +96,14 @@ export function SimpleTimeline() {
       witness: "bg-purple-50 text-purple-700 border-purple-200",
       photo: "bg-indigo-50 text-indigo-700 border-indigo-200",
       document: "bg-gray-50 text-gray-700 border-gray-200",
+      coercive_control: "bg-orange-50 text-orange-700 border-orange-200",
+      threat: "bg-red-50 text-red-700 border-red-200",
+      monitoring: "bg-purple-50 text-purple-700 border-purple-200",
+      isolation: "bg-gray-50 text-gray-700 border-gray-200",
+      financial_control: "bg-yellow-50 text-yellow-700 border-yellow-200",
+      emotional_abuse: "bg-pink-50 text-pink-700 border-pink-200",
+      custody_related: "bg-blue-50 text-blue-700 border-blue-200",
+      child_welfare: "bg-green-50 text-green-700 border-green-200",
     };
     return colors[category as keyof typeof colors] || colors.document;
   };
@@ -125,10 +133,15 @@ export function SimpleTimeline() {
       <Card className="text-center py-12">
         <CardContent>
           <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No timeline events yet</h3>
-          <p className="text-muted-foreground">
-            Once you upload and process evidence files, we'll automatically create a timeline of events for you.
+          <h3 className="text-lg font-medium mb-2">Your Case Timeline</h3>
+          <p className="text-muted-foreground mb-4">
+            Upload evidence files and your timeline will automatically build itself, showing you exactly where you need more evidence to strengthen your case.
           </p>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>• Timeline events are extracted automatically from every upload</p>
+            <p>• Events are filtered based on your legal goal</p>
+            <p>• Visual gaps show where you need more evidence</p>
+          </div>
         </CardContent>
       </Card>
     );

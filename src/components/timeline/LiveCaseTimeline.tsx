@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { TimelineGapAnalysis } from "./TimelineGapAnalysis";
 
 interface TimelineEvent {
   id: string;
@@ -39,6 +40,7 @@ interface TimelineEvent {
 export function LiveCaseTimeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userGoal, setUserGoal] = useState<string>('');
   const { intelligence } = useCaseIntelligence();
 
   useEffect(() => {
@@ -78,10 +80,21 @@ export function LiveCaseTimeline() {
         `)
         .eq('user_id', user.id)
         .order("event_date", { ascending: false })
-        .limit(10);
+        .limit(20);
 
       if (error) throw error;
       setEvents(data || []);
+
+      // Load user's goal for gap analysis
+      const { data: caseMemory } = await supabase
+        .from('case_memory')
+        .select('primary_goal')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (caseMemory?.primary_goal) {
+        setUserGoal(caseMemory.primary_goal);
+      }
     } catch (error) {
       console.error("Error loading timeline:", error);
     } finally {
@@ -111,6 +124,14 @@ export function LiveCaseTimeline() {
       witness: "bg-purple-100 text-purple-700",
       photo: "bg-indigo-100 text-indigo-700",
       document: "bg-gray-100 text-gray-700",
+      coercive_control: "bg-orange-100 text-orange-700",
+      threat: "bg-red-100 text-red-700",
+      monitoring: "bg-purple-100 text-purple-700",
+      isolation: "bg-gray-100 text-gray-700",
+      financial_control: "bg-yellow-100 text-yellow-700",
+      emotional_abuse: "bg-pink-100 text-pink-700",
+      custody_related: "bg-blue-100 text-blue-700",
+      child_welfare: "bg-green-100 text-green-700",
     };
     return colors[category as keyof typeof colors] || colors.document;
   };
@@ -241,8 +262,9 @@ export function LiveCaseTimeline() {
               <Card className="text-center py-6">
                 <CardContent>
                   <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <h4 className="text-sm font-medium mb-1">Timeline Auto-Building</h4>
                   <p className="text-xs text-muted-foreground">
-                    No timeline events yet. Upload evidence to get started.
+                    Upload evidence and your timeline will automatically populate with goal-aware events. Watch as your case builds itself visually, showing you exactly where you need more evidence.
                   </p>
                 </CardContent>
               </Card>
@@ -280,14 +302,14 @@ export function LiveCaseTimeline() {
                           <div className="flex items-center gap-2">
                             <Badge className={`text-xs ${getCategoryColor(event.category)}`}>
                               <CategoryIcon className="w-2 h-2 mr-1" />
-                              {event.category}
+                              {event.category.replace('_', ' ')}
                             </Badge>
                             
                             {event.verified ? (
                               <CheckCircle className="w-3 h-3 text-green-600" />
                             ) : (
                               <div className="text-xs text-muted-foreground">
-                                {Math.round(event.confidence * 100)}% confident
+                                AI: {Math.round(event.confidence * 100)}%
                               </div>
                             )}
                           </div>
@@ -299,6 +321,11 @@ export function LiveCaseTimeline() {
               })
             )}
           </div>
+
+          {/* Gap Analysis */}
+          {events.length > 2 && (
+            <TimelineGapAnalysis events={events} userGoal={userGoal} />
+          )}
 
           {/* Next Steps */}
           {intelligence.nextSteps.length > 0 && (

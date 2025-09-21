@@ -177,6 +177,26 @@ async function extractTimelineEvents(supabase: any, file: any, userId: string) {
     return { timeline_events: 0 };
   }
 
+  // Get user's goal context for goal-aware extraction
+  const { data: caseMemory } = await supabase
+    .from('case_memory')
+    .select('primary_goal, case_type, legal_objectives')
+    .eq('user_id', userId)
+    .single();
+
+  const goalContext = caseMemory ? `
+USER'S LEGAL GOAL: ${caseMemory.primary_goal || 'Not specified'}
+CASE TYPE: ${caseMemory.case_type || 'General'}
+OBJECTIVES: ${caseMemory.legal_objectives || 'Not specified'}
+
+GOAL-AWARE EXTRACTION INSTRUCTIONS:
+- For CUSTODY cases: prioritize parenting moments, school events, medical appointments, child interactions, communication about children
+- For AVO/DOMESTIC VIOLENCE cases: prioritize incidents, threats, controlling behaviors, safety concerns, escalation patterns
+- For DIVORCE cases: prioritize financial events, property matters, relationship deterioration, asset discussions
+- For COERCIVE CONTROL cases: prioritize monitoring behaviors, isolation tactics, financial control, emotional manipulation
+- Filter out events that are not relevant to the user's specific legal goal
+` : '';
+
   // Process chunks in batches for large files
   const BATCH_SIZE = 20;
   const chunks = file.chunks.sort((a: any, b: any) => a.seq - b.seq);
@@ -246,17 +266,21 @@ async function extractEventsFromText(text: string, fileName: string): Promise<an
                         text.includes('Subject:');
 
   const extractionPrompt = isEmailContent ? `
+${goalContext}
+
 You are a legal expert specializing in domestic violence and coercive control cases. Analyze this email content to extract significant events and behaviors that may indicate coercive control, manipulation, or abuse.
+
+GOAL-AWARE EXTRACTION: Only extract events that are directly relevant to the user's legal objectives above. Filter out irrelevant events.
 
 For each event, provide:
 1. Date (YYYY-MM-DD format, estimate if unclear from context)
 2. Time (HH:MM format if mentioned)
 3. Brief title (2-6 words focusing on the controlling behavior)
 4. Description (1-2 sentences highlighting coercive control elements)
-5. Category: coercive_control, threat, monitoring, isolation, financial_control, emotional_abuse, communication, incident, other
+5. Category: coercive_control, threat, monitoring, isolation, financial_control, emotional_abuse, communication, incident, custody_related, child_welfare, other
 6. Confidence (0.1-1.0 based on clarity and significance)
 
-Focus on:
+Focus on behaviors most relevant to the user's goal:
 - Controlling language and demands
 - Monitoring and surveillance behaviors
 - Isolation tactics and restrictions
@@ -265,28 +289,35 @@ Focus on:
 - Emotional manipulation and gaslighting
 - Escalation patterns in communication
 - Violations of boundaries or court orders
+- Child-related control or manipulation (if custody case)
 
-Only extract events with clear behavioral significance for a coercive control case.
+Only extract events with clear behavioral significance for the user's specific legal case.
 
 Email content:
 ${text}
 ` : `
+${goalContext}
+
 You are a legal document analysis expert. Extract all significant dates, events, and timeline information from this document.
+
+GOAL-AWARE EXTRACTION: Prioritize events that are directly relevant to the user's legal objectives above. Filter out irrelevant events.
 
 For each event, provide:
 1. Date (YYYY-MM-DD format, or estimate if unclear)
 2. Time (HH:MM format if mentioned)
 3. Brief title (2-6 words)
 4. Description (1-2 sentences)
-5. Category (incident, communication, legal_action, medical, financial, other)
+5. Category (incident, communication, legal_action, medical, financial, custody_related, child_welfare, property, other)
 6. Confidence (0.1-1.0 based on how certain the date/event is)
 
-Focus on:
+Focus on events most relevant to the user's case type:
 - Specific incidents or events
 - Communications (calls, emails, meetings)
 - Legal actions (court dates, filings, notices)
 - Medical appointments or treatments
 - Financial transactions
+- Child-related events (for custody cases)
+- Property matters (for divorce cases)
 - Any dated interactions between parties
 
 Document text:
