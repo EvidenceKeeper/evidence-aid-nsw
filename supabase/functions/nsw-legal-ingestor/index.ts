@@ -557,7 +557,7 @@ Return as JSON array of strings.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: 'Extract NSW-specific legal concepts with precision.' },
           { role: 'user', content: conceptPrompt }
