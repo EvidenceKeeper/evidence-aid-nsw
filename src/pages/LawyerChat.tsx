@@ -16,7 +16,7 @@ export default function LawyerChat() {
         <ResizablePanelGroup direction="horizontal" className="h-[calc(100vh-4rem)] rounded-xl overflow-hidden border border-border/20 shadow-lg">
           {/* Chat Interface (Left) */}
           <ResizablePanel defaultSize={50} minSize={30} maxSize={70}>
-            <div className="h-full p-6">
+            <div className="h-full p-2">
               <ChatInterface />
             </div>
           </ResizablePanel>
@@ -25,7 +25,7 @@ export default function LawyerChat() {
           
           {/* Live Timeline (Right) */}
           <ResizablePanel defaultSize={50} minSize={30} maxSize={70}>
-            <div className="h-full border-l border-border/20 p-6">
+            <div className="h-full border-l border-border/20 p-2">
               <LiveCaseTimeline />
             </div>
           </ResizablePanel>
