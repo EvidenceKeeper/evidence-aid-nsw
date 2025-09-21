@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Search, Filter, Clock, FileText, Scale, X, Loader2 } from "lucide-react";
+import { Search, Filter, Clock, FileText, Scale, X, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface SearchResult {
   evidence_id: string;
@@ -18,10 +19,14 @@ interface SearchResult {
   excerpt: string;
   relevance_score: number;
   concepts_matched: string[];
-  legal_significance: string;
+  legal_significance?: string;
   category: string;
   created_at: string;
   highlighted_text: string;
+  // Navigation data for click-to-evidence functionality
+  chunk_id?: string;
+  chunk_sequence?: number;
+  navigation_url?: string;
 }
 
 interface SearchResponse {
@@ -36,12 +41,14 @@ const RECENT_SEARCHES_KEY = 'evidence-search-history';
 const MAX_RECENT_SEARCHES = 8;
 
 const QUICK_FILTERS = [
-  { label: "Violence", query: "violence physical harm assault", icon: "⚠️" },
-  { label: "Coercion", query: "coercion threats pressure manipulation", icon: "🎯" },
-  { label: "Stalking", query: "stalking harassment following surveillance", icon: "👁️" },
-  { label: "Child Safety", query: "child safety behaviour in front of children", icon: "🛡️" },
-  { label: "Financial Control", query: "financial control money abuse economic", icon: "💰" },
-  { label: "Communication", query: "messages texts emails threats", icon: "💬" },
+  { label: "Stalking Behaviors", query: "shows up at work following me won't leave me alone always there", icon: "👁️" },
+  { label: "Control Patterns", query: "won't let me controls my money checks my phone tells me what to do", icon: "🎯" },
+  { label: "Threats & Violence", query: "said he would hurt threatened to physical violence hitting", icon: "⚠️" },
+  { label: "Emotional Abuse", query: "makes me feel crazy told me I'm worthless gaslighting", icon: "😰" },
+  { label: "Escalating Behavior", query: "getting worse more aggressive never did this before escalating", icon: "📈" },
+  { label: "Financial Abuse", query: "controls money won't give allowance takes my pay financial withholding", icon: "💰" },
+  { label: "Communication Harassment", query: "won't stop calling keeps texting constant messages blowing up phone", icon: "💬" },
+  { label: "Child Safety", query: "in front of kids children witnessed scared the children", icon: "🛡️" },
 ];
 
 export function GlobalEvidenceSearch() {
@@ -57,6 +64,18 @@ export function GlobalEvidenceSearch() {
   });
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // Navigate to evidence file with highlighting
+  const navigateToEvidence = useCallback((result: SearchResult) => {
+    if (result.navigation_url) {
+      navigate(result.navigation_url);
+    } else {
+      // Fallback navigation
+      navigate(`/evidence?fileId=${result.evidence_id}&highlight=${encodeURIComponent(query)}`);
+    }
+    setIsOpen(false);
+  }, [navigate, query]);
 
   // Load recent searches on mount
   useEffect(() => {
@@ -297,7 +316,11 @@ export function GlobalEvidenceSearch() {
               <CommandGroup heading={`${searchMeta.total} Results (${searchMeta.timeMs}ms)`}>
                 <ScrollArea className="h-[400px]">
                   {results.map((result, index) => (
-                    <div key={`${result.evidence_id}-${index}`} className="p-3 border-b border-border last:border-b-0 hover:bg-accent/50 transition-colors">
+                    <div 
+                      key={`${result.evidence_id}-${index}`} 
+                      className="p-3 border-b border-border last:border-b-0 hover:bg-accent/50 transition-colors cursor-pointer group"
+                      onClick={() => navigateToEvidence(result)}
+                    >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2 flex-1">
                           <FileText className="h-4 w-4 text-primary flex-shrink-0" />
@@ -309,9 +332,12 @@ export function GlobalEvidenceSearch() {
                             {Math.round(result.relevance_score * 100)}%
                           </Badge>
                         </div>
-                        {result.legal_significance && (
-                          <Scale className="h-4 w-4 text-primary flex-shrink-0 ml-2" />
-                        )}
+                        <div className="flex items-center gap-1">
+                          {result.legal_significance && (
+                            <Scale className="h-4 w-4 text-primary flex-shrink-0" />
+                          )}
+                          <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
                       </div>
                       
                       <div className="text-sm text-foreground mb-2 leading-relaxed">
@@ -322,17 +348,24 @@ export function GlobalEvidenceSearch() {
                         <div className="flex flex-wrap gap-1 mb-2">
                           {result.concepts_matched.map((concept, idx) => (
                             <Badge key={idx} variant="secondary" className="text-xs">
-                              {concept}
+                              {concept.replace(/_/g, ' ')}
                             </Badge>
                           ))}
                         </div>
                       )}
 
                       {result.legal_significance && (
-                        <div className="text-xs text-primary bg-primary/10 rounded px-2 py-1">
+                        <div className="text-xs text-primary bg-primary/10 rounded px-2 py-1 mb-2">
                           <strong>Legal significance:</strong> {result.legal_significance}
                         </div>
                       )}
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>Click to view in evidence file</span>
+                        <Badge variant="outline" className="text-xs">
+                          {result.category}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </ScrollArea>

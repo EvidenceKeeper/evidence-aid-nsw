@@ -23,6 +23,10 @@ interface SearchResult {
   category: string;
   created_at: string;
   highlighted_text: string;
+  // Navigation data for click-to-evidence functionality
+  chunk_id?: string;
+  chunk_sequence?: number;
+  navigation_url?: string;
 }
 
 interface SearchResponse {
@@ -33,31 +37,251 @@ interface SearchResponse {
   search_time_ms: number;
 }
 
-// Legal concept mappings for better search understanding
+// Comprehensive legal concept mappings for domestic violence and family law
 const LEGAL_CONCEPT_MAPPINGS = {
-  'coercion': ['threats', 'pressure', 'manipulation', 'intimidation', 'force', 'control'],
-  'stalking': ['harassment', 'following', 'surveillance', 'watching', 'tracking', 'monitoring'],
-  'violence': ['assault', 'battery', 'physical harm', 'hitting', 'pushing', 'aggression', 'abuse'],
-  'child safety': ['children present', 'in front of kids', 'child welfare', 'custody', 'parenting'],
-  'financial control': ['money', 'finances', 'economic abuse', 'financial withholding', 'bank accounts'],
-  'emotional abuse': ['manipulation', 'gaslighting', 'humiliation', 'degradation', 'psychological'],
-  'communication': ['messages', 'texts', 'emails', 'calls', 'social media', 'contact']
+  // STALKING & SURVEILLANCE BEHAVIORS
+  'stalking': [
+    'harassment', 'following', 'surveillance', 'watching', 'tracking', 'monitoring',
+    'shows up', 'appears at', 'waiting for', 'lurking', 'observing', 'spying',
+    'unexpected visits', 'unwanted presence', 'following me', 'watching me',
+    'keeps appearing', 'always there', 'shows up everywhere', 'won\'t leave me alone'
+  ],
+  
+  // PHYSICAL VIOLENCE & THREATS
+  'violence': [
+    'assault', 'battery', 'physical harm', 'hitting', 'pushing', 'aggression', 'abuse',
+    'slapping', 'punching', 'kicking', 'choking', 'strangling', 'grabbing',
+    'shaking', 'throwing', 'restraining', 'blocking', 'cornering', 'trapping',
+    'physical force', 'bodily harm', 'injuries', 'bruises', 'marks'
+  ],
+  
+  // THREATS & INTIMIDATION
+  'threats': [
+    'intimidation', 'threatening', 'menacing', 'scaring', 'frightening',
+    'will hurt', 'going to', 'warned me', 'promised to', 'threatened to',
+    'said he would', 'made threats', 'warning', 'promise', 'swore he would'
+  ],
+  
+  // EMOTIONAL & PSYCHOLOGICAL ABUSE
+  'emotional_abuse': [
+    'manipulation', 'gaslighting', 'humiliation', 'degradation', 'psychological',
+    'makes me feel', 'told me I\'m', 'says I\'m', 'calling me names', 'put down',
+    'worthless', 'crazy', 'stupid', 'nothing', 'useless', 'pathetic',
+    'makes me doubt', 'questioning myself', 'feel like I\'m losing my mind'
+  ],
+  
+  // CONTROL & COERCION
+  'control': [
+    'coercion', 'controlling', 'dominating', 'power', 'authority', 'command',
+    'won\'t let me', 'doesn\'t allow', 'forbids', 'prevents me', 'stops me',
+    'makes me', 'forces me', 'has to approve', 'permission', 'decides for me',
+    'tells me what', 'controls what', 'monitors my', 'checks my'
+  ],
+  
+  // FINANCIAL ABUSE
+  'financial_abuse': [
+    'money', 'finances', 'economic abuse', 'financial withholding', 'bank accounts',
+    'controls money', 'won\'t give money', 'takes my pay', 'hides money',
+    'spending', 'budget', 'allowance', 'credit cards', 'bills', 'expenses',
+    'financially dependent', 'can\'t afford', 'no access to money'
+  ],
+  
+  // ISOLATION TACTICS
+  'isolation': [
+    'isolating', 'separating', 'cutting off', 'keeping away', 'preventing contact',
+    'won\'t let me see', 'stops me from', 'doesn\'t want me to', 'jealous of',
+    'friends', 'family', 'support', 'social', 'alone', 'lonely', 'cut off'
+  ],
+  
+  // COMMUNICATION HARASSMENT
+  'communication_harassment': [
+    'messages', 'texts', 'emails', 'calls', 'social media', 'contact',
+    'won\'t stop calling', 'keeps texting', 'constant messages', 'blowing up my phone',
+    'multiple calls', 'non-stop', 'repeatedly', 'continuously', 'all the time',
+    'every day', 'every hour', 'dozens of', 'hundreds of'
+  ],
+  
+  // CHILD-RELATED ABUSE
+  'child_safety': [
+    'children present', 'in front of kids', 'child welfare', 'custody', 'parenting',
+    'kids saw', 'children witnessed', 'scared the kids', 'using children',
+    'threatens kids', 'involving children', 'parental rights', 'visitation',
+    'school pickup', 'daycare', 'babysitter'
+  ],
+  
+  // SEXUAL ABUSE
+  'sexual_abuse': [
+    'sexual assault', 'rape', 'forced sex', 'unwanted touching', 'sexual coercion',
+    'made me', 'forced to', 'wouldn\'t take no', 'sexual demands', 'intimate images',
+    'sharing photos', 'recording', 'sexual threats'
+  ],
+  
+  // SUBSTANCE ABUSE
+  'substance_abuse': [
+    'drinking', 'alcohol', 'drugs', 'drunk', 'high', 'intoxicated',
+    'addiction', 'substance', 'pills', 'medication', 'under the influence'
+  ],
+  
+  // PROPERTY DAMAGE
+  'property_damage': [
+    'broke my', 'destroyed', 'damaged', 'threw', 'smashed', 'ruined',
+    'vandalized', 'keyed', 'slashed tires', 'broken windows', 'holes in wall'
+  ],
+  
+  // PATTERN INDICATORS (behavioral descriptions)
+  'escalation_patterns': [
+    'getting worse', 'more frequent', 'escalating', 'increasing', 'intensifying',
+    'used to be', 'never did before', 'started doing', 'now he', 'recently began',
+    'more aggressive', 'more violent', 'more controlling', 'worse than before'
+  ],
+  
+  // TIME & FREQUENCY PATTERNS
+  'frequency_patterns': [
+    'always', 'constantly', 'continuously', 'repeatedly', 'every day', 'daily',
+    'multiple times', 'non-stop', 'all the time', 'keeps doing', 'won\'t stop',
+    'again and again', 'over and over', 'never stops'
+  ]
 };
+
+// Behavioral pattern recognition for domestic violence contexts
+const BEHAVIORAL_PATTERNS = {
+  stalking_behaviors: [
+    /shows? up (at|to) (my )?work/i,
+    /waiting (for me )?at (my )?car/i,
+    /follows? me (to|from|around)/i,
+    /always seems? to be there/i,
+    /appears? everywhere I go/i,
+    /won'?t leave me alone/i,
+    /keeps? (showing up|appearing)/i
+  ],
+  
+  control_behaviors: [
+    /won'?t let me (go|see|talk|leave)/i,
+    /has to know where I am/i,
+    /checks? my phone/i,
+    /controls? (my|the) money/i,
+    /decides? what I (wear|do|say)/i,
+    /makes? me ask permission/i,
+    /tells? me what to do/i
+  ],
+  
+  threat_behaviors: [
+    /said he would (hurt|kill|harm)/i,
+    /threatened to (leave|take|hurt)/i,
+    /warned me (about|that)/i,
+    /promised he would/i,
+    /if I (leave|tell|call)/i,
+    /swore he would/i
+  ],
+  
+  escalation_indicators: [
+    /getting (worse|more|angrier)/i,
+    /(more|increasingly) (violent|aggressive|controlling)/i,
+    /never did this before/i,
+    /started (doing|saying|threatening)/i,
+    /escalat(ing|ed)/i,
+    /worse than (before|usual)/i
+  ],
+  
+  emotional_abuse_patterns: [
+    /makes? me feel (like|so|really) (crazy|stupid|worthless)/i,
+    /tells? me I'?m (nothing|worthless|crazy|stupid)/i,
+    /says? (nobody|no one) will (believe|want) me/i,
+    /makes? me doubt myself/i,
+    /questioning my (sanity|memory|judgment)/i,
+    /feel like I'?m losing my mind/i
+  ]
+};
+
+// Fuzzy matching helpers
+function calculateLevenshteinDistance(str1: string, str2: string): number {
+  const matrix = [];
+  for (let i = 0; i <= str2.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= str1.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= str2.length; i++) {
+    for (let j = 1; j <= str1.length; j++) {
+      if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+        );
+      }
+    }
+  }
+  return matrix[str2.length][str1.length];
+}
+
+function isFuzzyMatch(term1: string, term2: string, threshold: number = 0.8): boolean {
+  if (term1.length < 3 || term2.length < 3) return false;
+  const distance = calculateLevenshteinDistance(term1.toLowerCase(), term2.toLowerCase());
+  const maxLength = Math.max(term1.length, term2.length);
+  const similarity = 1 - (distance / maxLength);
+  return similarity >= threshold;
+}
 
 async function expandQueryConcepts(query: string): Promise<{ expandedTerms: string[]; concepts: string[] }> {
   const normalizedQuery = query.toLowerCase();
   let expandedTerms = [query];
   let matchedConcepts: string[] = [];
 
-  // Check for direct concept matches
+  // 1. BEHAVIORAL PATTERN RECOGNITION - Check for behavioral descriptions
+  for (const [behaviorType, patterns] of Object.entries(BEHAVIORAL_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (pattern.test(query)) {
+        matchedConcepts.push(behaviorType);
+        // Add related legal terms based on behavior type
+        if (behaviorType.includes('stalking')) {
+          expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.stalking);
+        } else if (behaviorType.includes('control')) {
+          expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.control);
+        } else if (behaviorType.includes('threat')) {
+          expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.threats);
+        } else if (behaviorType.includes('emotional')) {
+          expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.emotional_abuse);
+        } else if (behaviorType.includes('escalation')) {
+          expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.escalation_patterns);
+        }
+      }
+    }
+  }
+
+  // 2. DIRECT CONCEPT MATCHING with fuzzy matching
   for (const [concept, synonyms] of Object.entries(LEGAL_CONCEPT_MAPPINGS)) {
+    // Exact matches
     if (normalizedQuery.includes(concept) || synonyms.some(syn => normalizedQuery.includes(syn))) {
       expandedTerms.push(...synonyms);
       matchedConcepts.push(concept);
     }
+    
+    // Fuzzy matching for typos and variations
+    const queryWords = normalizedQuery.split(/\s+/);
+    for (const word of queryWords) {
+      if (word.length > 3) {
+        // Check fuzzy match against concept name
+        if (isFuzzyMatch(word, concept)) {
+          expandedTerms.push(...synonyms);
+          matchedConcepts.push(concept);
+        }
+        
+        // Check fuzzy match against synonyms
+        for (const synonym of synonyms) {
+          if (isFuzzyMatch(word, synonym)) {
+            expandedTerms.push(...synonyms);
+            matchedConcepts.push(concept);
+            break;
+          }
+        }
+      }
+    }
   }
 
-  // Use AI to understand complex queries if OpenAI is available
+  // 3. ENHANCED AI ANALYSIS with domestic violence context
   if (openAIApiKey && query.length > 10) {
     try {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -71,18 +295,43 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
           messages: [
             {
               role: 'system',
-              content: `You are a legal evidence search expert. Extract key concepts and suggest related legal terms. Return ONLY a valid JSON object with exactly this structure:
-              {"concepts": ["concept1"], "synonyms": ["term1"], "behavioral_indicators": ["pattern1"]}
-              
-              Do not use markdown formatting or explanatory text.`
+              content: `You are a domestic violence and family law expert analyzing evidence search queries. 
+
+Your expertise includes:
+- Power & Control dynamics in abusive relationships
+- Behavioral patterns of stalking, coercion, and intimidation
+- Financial, emotional, and physical abuse indicators
+- Legal terminology for family court proceedings
+- Risk assessment and safety planning
+
+When analyzing a search query, identify:
+1. Legal concepts (stalking, threats, control, emotional_abuse, financial_abuse, etc.)
+2. Behavioral indicators (showing up, following, controlling money, etc.)
+3. Related legal terms and synonyms that would appear in evidence
+
+CRITICAL: Understand that users may describe behaviors without using legal terms:
+- "he keeps showing up at my work" = stalking behavior
+- "won't let me see friends" = isolation/control
+- "makes me feel crazy" = gaslighting/emotional abuse
+- "controls all the money" = financial abuse
+
+Return ONLY valid JSON with this exact structure:
+{
+  "concepts": ["concept1", "concept2"],
+  "synonyms": ["term1", "term2"], 
+  "behavioral_indicators": ["pattern1", "pattern2"],
+  "risk_factors": ["factor1", "factor2"]
+}
+
+No markdown, no explanations, just valid JSON.`
             },
             {
               role: 'user',
-              content: `Extract legal concepts and synonyms for: "${query}"`
+              content: `Analyze this domestic violence/family law evidence search query and identify all relevant legal concepts, behavioral patterns, and related terms: "${query}"`
             }
           ],
-          max_tokens: 300,
-          temperature: 0.3
+          max_tokens: 400,
+          temperature: 0.2
         }),
       });
 
@@ -102,6 +351,7 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
           
           try {
             const analysis = JSON.parse(content);
+            
             if (analysis.synonyms && Array.isArray(analysis.synonyms)) {
               expandedTerms.push(...analysis.synonyms);
             }
@@ -111,6 +361,9 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
             if (analysis.behavioral_indicators && Array.isArray(analysis.behavioral_indicators)) {
               expandedTerms.push(...analysis.behavioral_indicators);
             }
+            if (analysis.risk_factors && Array.isArray(analysis.risk_factors)) {
+              expandedTerms.push(...analysis.risk_factors);
+            }
           } catch (parseError) {
             console.log('Failed to parse AI response JSON:', parseError);
           }
@@ -118,6 +371,20 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
       }
     } catch (error) {
       console.log('AI query expansion failed, using rule-based expansion:', error);
+    }
+  }
+
+  // 4. CONTEXTUAL EXPANSION - Add related terms based on matched concepts
+  const uniqueConcepts = [...new Set(matchedConcepts)];
+  for (const concept of uniqueConcepts) {
+    // Add frequency patterns if we detected controlling behaviors
+    if (['control', 'stalking', 'communication_harassment'].includes(concept)) {
+      expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.frequency_patterns);
+    }
+    
+    // Add escalation patterns if we detected any abuse type
+    if (['violence', 'threats', 'emotional_abuse'].includes(concept)) {
+      expandedTerms.push(...LEGAL_CONCEPT_MAPPINGS.escalation_patterns);
     }
   }
 
@@ -403,25 +670,36 @@ serve(async (req) => {
 
     searchSteps.push(`Found ${totalFound} relevant evidence pieces across multiple search methods`);
 
-    // Step 3: Process and format results
+    // Step 3: Process and format results with navigation data
     const processedResults: SearchResult[] = rawResults.map(result => {
       const contextualExcerpt = extractContextualExcerpt(result.text, expandedTerms);
       const highlightedText = highlightSearchTerms(contextualExcerpt, expandedTerms);
+      
+      // Enhanced concept matching with behavioral pattern recognition
+      const matchedConcepts = concepts.filter(concept => {
+        // Check if any expanded terms for this concept appear in the text
+        const conceptTerms = LEGAL_CONCEPT_MAPPINGS[concept] || [];
+        return conceptTerms.some(term => 
+          result.text.toLowerCase().includes(term.toLowerCase())
+        ) || expandedTerms.some(term => 
+          result.text.toLowerCase().includes(term.toLowerCase())
+        );
+      });
       
       return {
         evidence_id: result.file_id,
         file_name: result.file_name,
         excerpt: contextualExcerpt,
         relevance_score: result.score,
-        concepts_matched: concepts.filter(concept => 
-          expandedTerms.some(term => 
-            result.text.toLowerCase().includes(term.toLowerCase())
-          )
-        ),
+        concepts_matched: matchedConcepts,
         legal_significance: result.legal_significance,
         category: result.meta?.category || 'evidence',
         created_at: result.created_at,
-        highlighted_text: highlightedText
+        highlighted_text: highlightedText,
+        // Add navigation data for click-to-evidence functionality
+        chunk_id: result.id,
+        chunk_sequence: result.seq || 0,
+        navigation_url: `/evidence?fileId=${result.file_id}&chunkId=${result.id}&highlight=${encodeURIComponent(query)}`
       };
     });
 
