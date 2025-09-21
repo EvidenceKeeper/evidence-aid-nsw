@@ -652,36 +652,33 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
   return (
     <div 
       {...getRootProps()}
-      className={`flex h-screen bg-background overflow-hidden ${
+      className={`flex h-[100vh] max-h-[100vh] bg-background overflow-hidden ${
         isDragActive ? 'bg-primary/5 border-2 border-dashed border-primary' : ''
       }`}
     >
       <input {...getInputProps()} />
       
       {/* Main Chat Area */}
-      <div className={`flex flex-col flex-1 transition-all duration-300 ${memorySidebarOpen ? 'mr-80' : ''}`}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-card/60 backdrop-blur shrink-0">
+      <div className={`flex flex-col flex-1 min-h-0 transition-all duration-300 ${memorySidebarOpen ? 'mr-80' : ''}`}>
+        {/* Header - Compact */}
+        <div className="flex items-center justify-between p-2 border-b bg-card/60 backdrop-blur shrink-0">
           <div>
-            <h1 className="text-lg font-semibold flex items-center gap-2">
-              Veronica, Legal Assistant
-              <Brain className={`h-4 w-4 transition-colors ${
+            <h1 className="text-base font-medium flex items-center gap-2">
+              Veronica
+              <Brain className={`h-3 w-3 transition-colors ${
                 memoryLoading || proactiveTriggersActive ? 'text-primary animate-pulse' : 'text-primary'
               }`} />
               {(memoryLoading || proactiveTriggersActive) && (
                 <Loader2 className="h-3 w-3 text-primary animate-spin" />
               )}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              NSW Family Law & Domestic Violence Specialist • Enhanced Memory {isMemoryEnabled ? 'Active' : 'Disabled'}
-            </p>
             {caseMemory?.primary_goal && (
-              <p className="text-xs text-primary mt-1">
-                Working toward: {caseMemory.primary_goal}
+              <p className="text-xs text-primary">
+                Goal: {caseMemory.primary_goal}
               </p>
             )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Speed/Quality Selector */}
             {telepathicMode && (
               <SpeedQualitySelector 
@@ -699,20 +696,19 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                 variant="ghost"
                 size="sm"
                 onClick={() => setMemorySidebarOpen(!memorySidebarOpen)}
-                className="flex items-center gap-2"
+                className="flex items-center gap-1 h-7"
               >
-                {memorySidebarOpen ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-                Memory
+                {memorySidebarOpen ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+                <span className="text-xs">Memory</span>
               </Button>
             )}
             
             {/* Mode Toggle */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Mode:</span>
-              <div className="flex rounded-lg border p-1">
+            <div className="flex items-center gap-1">
+              <div className="flex rounded-md border p-0.5">
                 <button
                   onClick={() => setMode('user')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-2 py-1 text-xs font-medium rounded-sm transition-colors ${
                     mode === 'user' 
                       ? 'bg-primary text-primary-foreground' 
                       : 'text-muted-foreground hover:text-foreground'
@@ -722,7 +718,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                 </button>
                 <button
                   onClick={() => setMode('lawyer')}
-                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-2 py-1 text-xs font-medium rounded-sm transition-colors ${
                     mode === 'lawyer' 
                       ? 'bg-primary text-primary-foreground' 
                       : 'text-muted-foreground hover:text-foreground'
@@ -733,7 +729,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
               </div>
             </div>
             {isModal && onClose && (
-              <Button variant="ghost" size="sm" onClick={onClose}>
+              <Button variant="ghost" size="sm" onClick={onClose} className="h-7">
                 ×
               </Button>
             )}
@@ -743,22 +739,10 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         {/* Telepathic Announcements */}
         <TelepathicAnnouncementBanner />
 
-        {/* Goal Lock Display */}
-        {!isModal && telepathicMode && (
-          <div className="p-4 border-b space-y-4">
-            <GoalLockDisplay />
-            
-            {/* Telepathic Intelligence Components */}
-            <div className="space-y-3">
-              <PredictiveActionEngine />
-              <EvidenceRelationshipMatrix />
-              <PatternRecognitionEngine />
-            </div>
-          </div>
-        )}
+        {/* Compact Status Bar */}
         {!isModal && caseMemory && isMemoryEnabled && (
-          <div className="bg-muted/30 border-b px-4 py-2 shrink-0">
-            <div className="flex items-center gap-4 text-xs">
+          <div className="bg-muted/30 border-b px-3 py-1 shrink-0">
+            <div className="flex items-center gap-3 text-xs">
               {caseMemory.case_strength_score && (
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3 w-3 text-green-600" />
@@ -768,19 +752,19 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
               {caseMemory.evidence_index?.length && (
                 <div className="flex items-center gap-1">
                   <FileText className="h-3 w-3 text-blue-600" />
-                  <span>{caseMemory.evidence_index.length} exhibits indexed</span>
+                  <span>{caseMemory.evidence_index.length} exhibits</span>
                 </div>
               )}
               {caseMemory.timeline_summary?.length && (
                 <div className="flex items-center gap-1">
                   <Calendar className="h-3 w-3 text-purple-600" />
-                  <span>{caseMemory.timeline_summary.length} timeline events</span>
+                  <span>{caseMemory.timeline_summary.length} events</span>
                 </div>
               )}
               {proactiveTriggersActive && (
                 <div className="flex items-center gap-1 text-primary">
                   <Brain className="h-3 w-3 animate-pulse" />
-                  <span>Analyzing context...</span>
+                  <span>Analyzing...</span>
                 </div>
               )}
               <div className="ml-auto">
@@ -811,7 +795,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         <TelepathicResponseTemplates 
           complexity={messages.length > 10 ? 'complex' : messages.length > 3 ? 'moderate' : 'simple'}
         >
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-3 space-y-3 min-h-0">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <p className="mb-4">👋 Hi! I'm Veronica, your NSW legal assistant with enhanced memory.</p>
@@ -894,7 +878,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
         </TelepathicResponseTemplates>
 
         {/* Input */}
-        <div className="p-4 border-t bg-card/60 backdrop-blur shrink-0">
+        <div className="p-3 border-t bg-card/60 backdrop-blur shrink-0">
           <div className="flex items-end space-x-2">
             <Textarea
               value={input}
@@ -907,7 +891,7 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                     ? "Ask about your NSW case, upload evidence, or get legal guidance..."
                     : "Ask about your NSW case or upload evidence..."
               }
-              className="min-h-[60px] max-h-32 resize-none"
+              className="min-h-[80px] max-h-40 resize-none"
               disabled={loading}
             />
             
