@@ -89,7 +89,17 @@ export function GlobalEvidenceSearch() {
     saveSearchToHistory(searchQuery);
 
     try {
+      // Get the current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Authentication required. Please sign in to search evidence.');
+      }
+
       const { data, error } = await supabase.functions.invoke('enterprise-evidence-search', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: { 
           query: searchQuery,
           include_analysis: true,
@@ -98,7 +108,10 @@ export function GlobalEvidenceSearch() {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
 
       const response: SearchResponse = data;
       setResults(response.results || []);
@@ -115,13 +128,29 @@ export function GlobalEvidenceSearch() {
           variant: "default"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Search error:', error);
-      toast({
-        title: "Search failed",
-        description: "Please try again or contact support if the issue persists.",
-        variant: "destructive"
-      });
+      
+      // Better error handling
+      if (error.message?.includes('Authentication')) {
+        toast({
+          title: "Authentication Error",
+          description: "Please sign in to search evidence.",
+          variant: "destructive"
+        });
+      } else if (error.status === 500) {
+        toast({
+          title: "Search Error",
+          description: "Server error occurred. Check console for details.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Search failed",
+          description: error.message || "Please try again or contact support.",
+          variant: "destructive"
+        });
+      }
       setResults([]);
     } finally {
       setIsLoading(false);

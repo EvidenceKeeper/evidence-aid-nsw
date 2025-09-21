@@ -352,16 +352,26 @@ serve(async (req) => {
     // Get user from auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      throw new Error('No authorization header');
+      console.log('No authorization header provided');
+      throw new Error('Authentication failed - no authorization header');
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const token = authHeader.replace('Bearer ', '');
+    console.log('Attempting authentication with token length:', token.length);
 
-    if (authError || !user) {
-      throw new Error('Authentication failed');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError) {
+      console.log('Auth error:', authError);
+      throw new Error(`Authentication failed: ${authError.message}`);
     }
+
+    if (!user) {
+      console.log('No user found from token');
+      throw new Error('Authentication failed - no user found');
+    }
+
+    console.log('User authenticated successfully:', user.id);
 
     const { 
       query, 
