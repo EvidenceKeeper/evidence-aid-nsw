@@ -220,58 +220,79 @@ export type Database = {
           case_readiness_status: string | null
           case_strength_reasons: Json | null
           case_strength_score: number | null
+          current_stage: number | null
           evidence_index: Json | null
           facts: string | null
+          feedback_scores: Json | null
           goal_established_at: string | null
           goal_status: string | null
           id: string
           issues: Json | null
           key_facts: Json | null
+          last_activity_type: string | null
           last_updated_at: string | null
           parties: Json | null
+          personalization_profile: Json | null
           primary_goal: string | null
+          session_count: number | null
+          stage_history: Json | null
           thread_summary: string | null
           timeline_summary: Json | null
           updated_at: string
           user_id: string
+          user_journey_data: Json | null
         }
         Insert: {
           case_readiness_status?: string | null
           case_strength_reasons?: Json | null
           case_strength_score?: number | null
+          current_stage?: number | null
           evidence_index?: Json | null
           facts?: string | null
+          feedback_scores?: Json | null
           goal_established_at?: string | null
           goal_status?: string | null
           id?: string
           issues?: Json | null
           key_facts?: Json | null
+          last_activity_type?: string | null
           last_updated_at?: string | null
           parties?: Json | null
+          personalization_profile?: Json | null
           primary_goal?: string | null
+          session_count?: number | null
+          stage_history?: Json | null
           thread_summary?: string | null
           timeline_summary?: Json | null
           updated_at?: string
           user_id: string
+          user_journey_data?: Json | null
         }
         Update: {
           case_readiness_status?: string | null
           case_strength_reasons?: Json | null
           case_strength_score?: number | null
+          current_stage?: number | null
           evidence_index?: Json | null
           facts?: string | null
+          feedback_scores?: Json | null
           goal_established_at?: string | null
           goal_status?: string | null
           id?: string
           issues?: Json | null
           key_facts?: Json | null
+          last_activity_type?: string | null
           last_updated_at?: string | null
           parties?: Json | null
+          personalization_profile?: Json | null
           primary_goal?: string | null
+          session_count?: number | null
+          stage_history?: Json | null
           thread_summary?: string | null
           timeline_summary?: Json | null
           updated_at?: string
           user_id?: string
+          user_journey_data?: Json | null
         }
         Relationships: []
       }
@@ -2592,6 +2613,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          completion_status: string | null
+          created_at: string
+          feedback_given: Json | null
+          id: string
+          interaction_quality: number | null
+          session_end: string | null
+          session_start: string
+          stage_progression: Json | null
+          user_id: string
+        }
+        Insert: {
+          completion_status?: string | null
+          created_at?: string
+          feedback_given?: Json | null
+          id?: string
+          interaction_quality?: number | null
+          session_end?: string | null
+          session_start?: string
+          stage_progression?: Json | null
+          user_id: string
+        }
+        Update: {
+          completion_status?: string | null
+          created_at?: string
+          feedback_given?: Json | null
+          id?: string
+          interaction_quality?: number | null
+          session_end?: string | null
+          session_start?: string
+          stage_progression?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2676,6 +2733,23 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: string
+      }
+      match_evidence_chunks: {
+        Args: {
+          filter_user_id?: string
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          file_id: string
+          file_name: string
+          id: string
+          meta: Json
+          seq: number
+          similarity: number
+          text: string
+        }[]
       }
       match_legal_chunks: {
         Args: {
