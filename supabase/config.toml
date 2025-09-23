@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.enterprise-evidence-search]
 verify_jwt = true
+
+[functions.nsw-legal-ingestor]
+verify_jwt = true

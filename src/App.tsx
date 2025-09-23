@@ -26,6 +26,7 @@ import LegalAssistant from "@/pages/LegalAssistant";
 import LegalProcess from "@/pages/LegalProcess";
 import LawyerChat from "@/pages/LawyerChat";
 import LegalTraining from "@/pages/LegalTraining";
+import LegalTrainingDashboard from "@/pages/LegalTrainingDashboard";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
                   <Route path="chat" element={<Assistant />} />
                   <Route path="lawyer-chat" element={<LawyerChat />} />
                   <Route path="legal-training" element={<LegalTraining />} />
+                  <Route path="legal-training-dashboard" element={<LegalTrainingDashboard />} />
                   <Route path="legal" element={<LegalAssistant />} />
                   <Route path="legal-process" element={<LegalProcess />} />
                   <Route path="search" element={<SearchPage />} />

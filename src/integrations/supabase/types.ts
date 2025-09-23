@@ -1116,6 +1116,48 @@ export type Database = {
           },
         ]
       }
+      legal_document_processing_queue: {
+        Row: {
+          bucket_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          file_name: string
+          file_path: string
+          id: string
+          priority: number
+          processing_metadata: Json | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          bucket_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          priority?: number
+          processing_metadata?: Json | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          bucket_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          priority?: number
+          processing_metadata?: Json | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       legal_documents: {
         Row: {
           checksum: string | null

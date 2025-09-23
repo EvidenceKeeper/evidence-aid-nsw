@@ -20,11 +20,11 @@ export function LegalTrainingLink() {
           AI Training
         </Badge>
         <Button 
-          onClick={() => navigate('/legal-training')}
+          onClick={() => navigate('/legal-training-dashboard')}
           size="sm"
           className="bg-purple-600 hover:bg-purple-700"
         >
-          Upload Legal Docs
+          Training Dashboard
         </Button>
       </div>
     </div>
