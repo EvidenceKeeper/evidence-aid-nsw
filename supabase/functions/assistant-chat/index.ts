@@ -413,7 +413,8 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
       }
 
       // Add legal chunks (primary legal database) to context
-      if (queryEmbedding) {
+      if (embeddingResult.data?.data?.[0]?.embedding) {
+        const queryEmbedding = embeddingResult.data.data[0].embedding;
         const { data: legalChunks, error: legalChunksErr } = await supabase.rpc(
           "match_legal_chunks",
           {
