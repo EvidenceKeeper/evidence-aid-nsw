@@ -26,7 +26,9 @@ import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
 import { useToast } from "@/hooks/use-toast";
 import { useCaseSnapshot } from "@/hooks/useCaseSnapshot";
 import { generateDeepDiveAnalysis } from "@/utils/deepDiveAnalysis";
-import { useEnhancedMemoryContext } from "@/components/memory/EnhancedMemoryProvider";
+import { TraumaInformedActionSuggestions } from './TraumaInformedActionSuggestions';
+import { CollaborativeChoiceInterface } from './CollaborativeChoiceInterface';
+import { TraumaInformedMemoryProvider } from '@/components/memory/TraumaInformedMemoryProvider';
 
 interface Message {
   id: string;
@@ -67,8 +69,17 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
   const { toast } = useToast();
   const { snapshot, refreshSnapshot } = useCaseSnapshot();
   const { caseMemory, updateThreadSummary, runProactiveMemoryTriggers } = useEnhancedMemory();
-  const { isMemoryEnabled, announceMemoryUpdate } = useEnhancedMemoryContext();
   const { telepathicMode, addAnnouncement } = useTelepathicContext();
+  const isMemoryEnabled = true; // Always enabled for trauma-informed approach
+  
+  // Helper function for memory updates
+  const announceMemoryUpdate = (message: string) => {
+    addAnnouncement({
+      type: 'case_strength_update',
+      title: 'Memory Updated',
+      content: message
+    });
+  };
   const { insights, isAnalyzing } = useTelepathicIntelligence();
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -648,13 +659,14 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
   });
 
   return (
-    <div 
-      {...getRootProps()}
-      className={`flex h-full bg-background overflow-hidden rounded-lg ${
-        isDragActive ? 'bg-primary/5 border-2 border-dashed border-primary' : ''
-      }`}
-    >
-      <input {...getInputProps()} />
+    <TraumaInformedMemoryProvider>
+      <div 
+        {...getRootProps()}
+        className={`flex h-full bg-background overflow-hidden rounded-lg ${
+          isDragActive ? 'bg-primary/5 border-2 border-dashed border-primary' : ''
+        }`}
+      >
+        <input {...getInputProps()} />
       
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1 min-h-0 relative">
@@ -850,6 +862,21 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
                   }, 100);
                 }}
               />
+              
+              {/* Trauma-Informed Action Suggestions for assistant messages */}
+              {message.role === 'assistant' && (
+                <TraumaInformedActionSuggestions
+                  content={message.content}
+                  onActionClick={(actionText) => {
+                    setInput(actionText);
+                    setTimeout(() => {
+                      const textarea = document.querySelector('textarea[placeholder*="message"]') as HTMLTextAreaElement;
+                      if (textarea) textarea.focus();
+                    }, 100);
+                  }}
+                  userGoal={caseMemory?.primary_goal}
+                />
+              )}
               {message.role === 'assistant' && telepathicMode && (
                 <HallucinationGuard 
                   confidence={0.85} // This would come from AI response metadata
@@ -1019,7 +1046,8 @@ ${analysis.gapsAndFixes.map(item => `• ${item}`).join('\n')}
             </div>
           </div>
         </div>
-      )}
-    </div>
+        )}
+      </div>
+    </TraumaInformedMemoryProvider>
   );
 }
