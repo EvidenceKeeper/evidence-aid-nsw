@@ -80,7 +80,7 @@ export function CaseOverviewDashboard() {
         .from("legal_strategy")
         .select("case_strength_overall")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       // Get latest timeline event for activity
       const latestEvent = timelineData?.[0];

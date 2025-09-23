@@ -36,7 +36,7 @@ export function LiveCaseInsights() {
         .from('legal_strategy')
         .select('case_strength_overall')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (analysisHistory) {
         const formattedInsights = analysisHistory.flatMap((analysis) => 

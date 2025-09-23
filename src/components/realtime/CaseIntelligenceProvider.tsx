@@ -64,7 +64,7 @@ export function CaseIntelligenceProvider({ children }: { children: React.ReactNo
         .from('legal_strategy')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       // Get current patterns
       const { data: patterns } = await supabase

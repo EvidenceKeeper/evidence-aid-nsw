@@ -26,7 +26,7 @@ export function useCaseSnapshot() {
         .from("legal_strategy")
         .select("case_strength_overall, strengths, next_steps")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       // Get timeline events count
       const { count: timelineCount } = await supabase

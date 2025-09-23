@@ -93,7 +93,7 @@ export function LiveCaseTimeline() {
         .from('case_memory')
         .select('primary_goal')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (caseMemory?.primary_goal) {
         setUserGoal(caseMemory.primary_goal);

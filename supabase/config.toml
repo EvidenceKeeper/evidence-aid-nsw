@@ -10,7 +10,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.legal-document-processor]
-verify_jwt = true
+verify_jwt = false
 
 [functions.email-corpus-processor]
 verify_jwt = true

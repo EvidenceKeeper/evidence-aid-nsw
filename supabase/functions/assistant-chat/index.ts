@@ -415,6 +415,8 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
       // Add legal chunks (primary legal database) to context
       if (embeddingResult.data?.data?.[0]?.embedding) {
         const queryEmbedding = embeddingResult.data.data[0].embedding;
+        console.log("🔍 Performing enhanced vector search...");
+        
         const { data: legalChunks, error: legalChunksErr } = await supabase.rpc(
           "match_legal_chunks",
           {
@@ -424,6 +426,10 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
             jurisdiction_filter: 'NSW'
           }
         );
+
+        if (legalChunksErr) {
+          console.error("Legal chunks search error:", legalChunksErr);
+        }
 
         if (!legalChunksErr && legalChunks && legalChunks.length) {
           const legalCitations = legalChunks.map((chunk: any, i: number) => ({

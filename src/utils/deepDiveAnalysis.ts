@@ -32,7 +32,7 @@ export async function generateDeepDiveAnalysis(userId: string): Promise<DeepDive
       .from("legal_strategy")
       .select("case_strength_overall, strengths, weaknesses, evidence_gaps, next_steps")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
 
     if (!timeline && !analysis && !strategy) return null;
 
