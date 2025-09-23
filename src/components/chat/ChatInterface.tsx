@@ -221,7 +221,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       const assistantMessage: Message = {
         id: Math.random().toString(36).substring(7),
         role: "assistant",
-        content: data?.generatedText || "",
+        content: data?.response || "",
         citations: Array.isArray(data?.citations) ? data.citations : [],
         timestamp: new Date(),
       };
@@ -239,7 +239,7 @@ export function ChatInterface({ isModal = false, onClose }: ChatInterfaceProps) 
       if (isMemoryEnabled) {
         setMemoryLoading(true);
         try {
-          await updateThreadSummary(`Asked: "${trimmedInput}". Response about ${data?.generatedText?.slice(0, 50)}...`);
+          await updateThreadSummary(`Asked: "${trimmedInput}". Response about ${data?.response?.slice(0, 50)}...`);
           announceMemoryUpdate("Conversation context updated in case memory");
         } catch (error) {
           console.error("Failed to update thread summary:", error);
