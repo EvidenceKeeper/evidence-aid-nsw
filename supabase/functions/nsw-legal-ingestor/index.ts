@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { PDFDocument } from 'https://cdn.skypack.dev/pdf-lib@^1.17.1/dist/pdf-lib.esm.js';
+import { getDocument } from 'https://cdn.skypack.dev/pdfjs-dist@^2.11.338/build/pdf.min.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +13,7 @@ interface IngestionRequest {
   source_type: 'legislation' | 'case_law' | 'practice_direction' | 'regulation' | 'manual';
   source_url?: string;
   content?: string;
+  file_path?: string; // For PDF files uploaded to storage
   metadata: {
     title: string;
     jurisdiction: string;
@@ -55,6 +58,7 @@ serve(async (req) => {
       source_type,
       source_url,
       content: rawContent,
+      file_path,
       metadata,
       chunk_config = {
         chunk_size: 1000,
@@ -63,12 +67,15 @@ serve(async (req) => {
       }
     }: IngestionRequest = await req.json();
 
-    console.log('NSW Legal Ingestor request:', { source_type, metadata, source_url });
+    console.log('NSW Legal Ingestor request:', { source_type, metadata, source_url, file_path });
 
     let content = rawContent;
 
     // Step 1: Content Acquisition
-    if (source_url && !content) {
+    if (file_path) {
+      // Handle file upload from storage
+      content = await processStoredFile(file_path, supabaseClient);
+    } else if (source_url && !content) {
       content = await fetchContent(source_url, source_type);
     }
 
@@ -192,12 +199,74 @@ async function fetchContent(url: string, sourceType: string): Promise<string> {
   const contentType = response.headers.get('content-type') || '';
   
   if (contentType.includes('application/pdf')) {
-    // For PDF content, we'd need additional processing
-    // For now, throw an error to handle manually
-    throw new Error('PDF content requires manual processing');
+    // Handle PDF content directly
+    const arrayBuffer = await response.arrayBuffer();
+    return await extractPdfText(new Uint8Array(arrayBuffer));
   }
 
   return await response.text();
+}
+
+async function processStoredFile(filePath: string, supabaseClient: any): Promise<string> {
+  console.log(`Processing stored file: ${filePath}`);
+  
+  // Get file from Supabase Storage
+  const { data, error } = await supabaseClient.storage
+    .from('evidence')
+    .download(filePath);
+    
+  if (error) throw new Error(`Failed to download file: ${error.message}`);
+  
+  // Convert to ArrayBuffer
+  const arrayBuffer = await data.arrayBuffer();
+  const fileData = new Uint8Array(arrayBuffer);
+  
+  // Check if it's a PDF by examining file extension and magic bytes
+  if (filePath.toLowerCase().endsWith('.pdf') || isPdfFile(fileData)) {
+    return await extractPdfText(fileData);
+  } else {
+    // Assume it's text content
+    return new TextDecoder().decode(fileData);
+  }
+}
+
+function isPdfFile(data: Uint8Array): boolean {
+  // Check PDF magic bytes (%PDF-)
+  const pdfMagic = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D]);
+  if (data.length < 5) return false;
+  
+  for (let i = 0; i < 5; i++) {
+    if (data[i] !== pdfMagic[i]) return false;
+  }
+  return true;
+}
+
+async function extractPdfText(data: Uint8Array): Promise<string> {
+  try {
+    console.log('Extracting text from PDF...');
+    
+    const loadingTask = getDocument({ data });
+    const pdf = await loadingTask.promise;
+    
+    let fullText = '';
+    
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      
+      fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+    }
+    
+    console.log(`Extracted text from ${pdf.numPages} pages`);
+    return fullText.trim();
+  } catch (error) {
+    console.error('PDF extraction failed:', error);
+    throw new Error(`Failed to extract PDF text: ${error.message}`);
+  }
 }
 
 async function validateContentCompliance(url: string | undefined, sourceType: string) {

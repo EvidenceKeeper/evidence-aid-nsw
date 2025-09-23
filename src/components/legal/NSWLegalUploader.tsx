@@ -21,6 +21,7 @@ export function NSWLegalUploader() {
   const [sourceType, setSourceType] = useState<string>('legislation');
   const [sourceUrl, setSourceUrl] = useState('');
   const [content, setContent] = useState('');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState({
     title: '',
     jurisdiction: 'NSW',
@@ -35,15 +36,27 @@ export function NSWLegalUploader() {
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const text = e.target?.result as string;
-        setContent(text);
-        if (!metadata.title) {
-          setMetadata(prev => ({ ...prev, title: file.name.replace(/\.[^/.]+$/, '') }));
-        }
-      };
-      reader.readAsText(file);
+      setUploadedFile(file);
+      if (!metadata.title) {
+        setMetadata(prev => ({ ...prev, title: file.name.replace(/\.[^/.]+$/, '') }));
+      }
+      
+      // For text files, read content directly
+      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target?.result as string;
+          setContent(text);
+        };
+        reader.readAsText(file);
+      } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        // For PDFs, we'll process them server-side
+        setContent(''); // Clear any existing content
+        toast({
+          title: "PDF Selected",
+          description: "PDF will be processed server-side during ingestion",
+        });
+      }
     }
   };
 
@@ -65,10 +78,10 @@ export function NSWLegalUploader() {
   };
 
   const handleSubmit = async () => {
-    if (!content && !sourceUrl) {
+    if (!content && !sourceUrl && !uploadedFile) {
       toast({
         title: "Missing Content",
-        description: "Please provide either content or a source URL",
+        description: "Please provide content, a source URL, or upload a file",
         variant: "destructive"
       });
       return;
@@ -86,11 +99,31 @@ export function NSWLegalUploader() {
     setUploadStatus({ status: 'uploading', message: 'Uploading legal document...' });
 
     try {
+      let filePath: string | undefined;
+      
+      // Upload file to storage if we have one
+      if (uploadedFile) {
+        setUploadStatus({ status: 'uploading', message: 'Uploading file to storage...' });
+        
+        const fileName = `legal-docs/${Date.now()}-${uploadedFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('evidence')
+          .upload(fileName, uploadedFile);
+          
+        if (uploadError) {
+          throw new Error(`File upload failed: ${uploadError.message}`);
+        }
+        
+        filePath = fileName;
+        setUploadStatus({ status: 'processing', message: 'Processing document...' });
+      }
+
       const { data, error } = await supabase.functions.invoke('nsw-legal-ingestor', {
         body: {
           source_type: sourceType,
           source_url: sourceUrl || undefined,
           content: content || undefined,
+          file_path: filePath,
           metadata: {
             ...metadata,
             tags: metadata.tags.length > 0 ? metadata.tags : undefined
@@ -121,6 +154,7 @@ export function NSWLegalUploader() {
       // Reset form
       setContent('');
       setSourceUrl('');
+      setUploadedFile(null);
       setMetadata({
         title: '',
         jurisdiction: 'NSW',
@@ -191,6 +225,11 @@ export function NSWLegalUploader() {
             <p className="text-xs text-muted-foreground">
               Approved domains: legislation.nsw.gov.au, austlii.edu.au, supremecourt.nsw.gov.au
             </p>
+            {uploadedFile && (
+              <p className="text-xs text-green-600">
+                File selected: {uploadedFile.name} ({(uploadedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
+            )}
           </div>
 
           {/* File Upload */}
@@ -200,7 +239,7 @@ export function NSWLegalUploader() {
               <Input
                 id="file-upload"
                 type="file"
-                accept=".txt,.html,.md"
+                accept=".txt,.html,.md,.pdf"
                 onChange={handleFileUpload}
                 disabled={isLoading}
                 className="file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground"
@@ -321,7 +360,7 @@ export function NSWLegalUploader() {
         {/* Submit Button */}
         <Button 
           onClick={handleSubmit} 
-          disabled={isLoading || (!content && !sourceUrl)}
+          disabled={isLoading || (!content && !sourceUrl && !uploadedFile)}
           className="w-full"
         >
           {isLoading ? (
