@@ -23,52 +23,61 @@ export function TraumaInformedActionSuggestions({
   const extractTraumaInformedActions = (content: string): TraumaInformedAction[] => {
     const actions: TraumaInformedAction[] = [];
     
-    // Look for collaborative language patterns
-    const choiceMatches = content.match(/(?:Would you like to|What feels right|You might consider).*?([^\.\n]+)/gi);
-    if (choiceMatches) {
-      choiceMatches.forEach((match, index) => {
-        const cleanText = match.replace(/^(Would you like to|What feels right|You might consider)\s*/i, '').trim();
-        if (cleanText.length > 10) {
-          actions.push({
-            id: `choice-${index}`,
-            text: cleanText,
-            action_type: 'choice',
-            priority: 'gentle'
-          });
-        }
-      });
-    }
-    
-    // Look for next steps with trauma-informed framing
-    const stepMatches = content.match(/(?:Next step|Small step|You could).*?:\s*(.+?)(?=\n|$)/gi);
-    if (stepMatches) {
-      stepMatches.forEach((match, index) => {
-        const cleanText = match.replace(/^(?:Next step|Small step|You could).*?:\s*/i, '').trim();
-        if (cleanText.length > 10) {
-          actions.push({
-            id: `step-${index}`,
-            text: cleanText,
-            action_type: 'micro_step',
-            priority: index === 0 ? 'immediate' : 'gentle'
-          });
-        }
-      });
-    }
-    
-    // Look for empowerment language
-    const empowerMatches = content.match(/(?:Your strength|You've already|You're capable).*?([^\.\n]+)/gi);
-    if (empowerMatches) {
-      empowerMatches.forEach((match, index) => {
-        actions.push({
-          id: `empower-${index}`,
-          text: match.trim(),
-          action_type: 'empowerment',
-          priority: 'empowering'
+    // Look for structured JSON follow-up questions first
+    const jsonMatch = content.match(/FOLLOW_UP_QUESTIONS:\s*(\[.*?\])/);
+    if (jsonMatch) {
+      try {
+        const questions = JSON.parse(jsonMatch[1]);
+        questions.forEach((q: any, index: number) => {
+          if (q.question && q.button_text) {
+            actions.push({
+              id: `structured-${index}`,
+              text: q.button_text,
+              action_type: 'choice',
+              priority: index === 0 ? 'immediate' : 'gentle'
+            });
+          }
         });
-      });
+      } catch (error) {
+        console.warn('Failed to parse structured questions:', error);
+      }
     }
     
-    // Add default supportive actions if none found
+    // Fallback to regex extraction if no structured questions found
+    if (actions.length === 0) {
+      // Look for collaborative language patterns
+      const choiceMatches = content.match(/(?:Would you like to|What feels right|You might consider).*?([^\.\n]+)/gi);
+      if (choiceMatches) {
+        choiceMatches.slice(0, 2).forEach((match, index) => {
+          const cleanText = match.replace(/^(Would you like to|What feels right|You might consider)\s*/i, '').trim();
+          if (cleanText.length > 10) {
+            actions.push({
+              id: `choice-${index}`,
+              text: cleanText,
+              action_type: 'choice',
+              priority: 'gentle'
+            });
+          }
+        });
+      }
+      
+      // Look for empowerment language
+      if (actions.length < 2) {
+        const empowerMatches = content.match(/(?:Your strength|You've already|You're capable).*?([^\.\n]+)/gi);
+        if (empowerMatches) {
+          empowerMatches.slice(0, 1).forEach((match, index) => {
+            actions.push({
+              id: `empower-${index}`,
+              text: match.trim(),
+              action_type: 'empowerment',
+              priority: 'empowering'
+            });
+          });
+        }
+      }
+    }
+    
+    // Add default supportive action if no structured questions and no other actions found
     if (actions.length === 0) {
       actions.push({
         id: 'default-support',
@@ -78,7 +87,7 @@ export function TraumaInformedActionSuggestions({
       });
     }
     
-    return actions.slice(0, 3); // Limit to 3 to reduce cognitive load
+    return actions.slice(0, 2); // Limit to 2 to reduce cognitive load
   };
   
   const getActionIcon = (type: TraumaInformedAction['action_type']) => {
@@ -110,7 +119,9 @@ export function TraumaInformedActionSuggestions({
     <div className="mt-4 p-3 rounded-lg bg-card/50 border border-border/20">
       <div className="flex items-center gap-2 mb-3">
         <Heart className="h-4 w-4 text-primary" />
-        <p className="text-sm font-medium text-foreground">What feels right for you?</p>
+        <p className="text-sm font-medium text-foreground">
+          {userGoal ? "Let's move forward with your goal" : "What feels right for you?"}
+        </p>
       </div>
       <div className="space-y-2">
         {actions.map((action) => (

@@ -321,7 +321,14 @@ COGNITIVE LOAD REDUCTION:
 - Use plain, respectful language
 - Offer step-by-step guidance
 - Present choices as buttons when possible
-- Summarize progress to show resilience`;
+- Summarize progress to show resilience
+
+STRUCTURED FOLLOW-UP QUESTIONS:
+- ALWAYS end responses with exactly one follow-up question that advances their goal
+- Format as JSON at the end: FOLLOW_UP_QUESTIONS: [{"question": "What would help you most right now?", "button_text": "Tell me what I need"}]
+- Keep questions trauma-informed and goal-focused
+- Limit to 1-2 answer options maximum to reduce cognitive load
+- Make button text natural, first-person responses the user would say`;
 
     const enhancedSystemPrompt = `${basePrompt}
 
