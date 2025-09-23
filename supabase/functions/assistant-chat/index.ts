@@ -161,7 +161,7 @@ serve(async (req) => {
                 uniqueSections.set(key, chunk);
                 allCitations.push({
                   id: `legal-${i}`,
-                  type: 'legislation',
+                  type: 'legal',
                   short_citation: chunk.citation_references?.[0] || `Legal Section ${i + 1}`,
                   full_citation: chunk.citation_references?.[0] || `NSW Legal Database`,
                   url: null,
@@ -252,12 +252,18 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
     }
 
     // 3. EVIDENCE CONTEXT (Supporting Evidence)
-    const evidenceChunks = allCitations.filter(c => c.type === 'evidence');
-    if (evidenceChunks.length > 0) {
-      const evidenceContext = evidenceChunks.slice(0, 6).map((cite, i) => 
-        `Evidence ${i + 1} (${cite.short_citation}): ${cite.content.substring(0, 400)}...`
-      ).join('\n\n');
-      contextSections.push(`USER EVIDENCE CONTEXT:\n${evidenceContext}`);
+    let evidenceChunks = [];
+    try {
+      evidenceChunks = allCitations.filter(c => c && c.type === 'evidence') || [];
+      if (evidenceChunks.length > 0) {
+        const evidenceContext = evidenceChunks.slice(0, 6).map((cite, i) => 
+          `Evidence ${i + 1} (${cite.short_citation || 'Unknown'}): ${(cite.content || '').substring(0, 400)}...`
+        ).join('\n\n');
+        contextSections.push(`USER EVIDENCE CONTEXT:\n${evidenceContext}`);
+      }
+    } catch (error) {
+      console.error("Error processing evidence chunks:", error);
+      evidenceChunks = [];
     }
 
     // 4. TIMELINE CONTEXT (Chronological Evidence)
@@ -268,8 +274,31 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
       contextSections.push(`TIMELINE CONTEXT:\n${timelineContext}`);
     }
 
-    // === STEP 6: ENHANCED SYSTEM PROMPT WITH ANSWER GATING ===
-    const enhancedSystemPrompt = `You are Veronica, an expert NSW legal assistant with advanced case intelligence and legal-first retrieval capabilities.
+    // === STEP 6: USER ROLE DETECTION ===
+    let userRole = 'user';
+    try {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .order('role', { ascending: true })
+        .limit(1);
+      
+      if (roleData && roleData.length > 0) {
+        userRole = roleData[0].role;
+      }
+    } catch (error) {
+      console.warn("Failed to fetch user role:", error);
+    }
+
+    console.log(`👤 User role detected: ${userRole}`);
+
+    // === STEP 7: ENHANCED SYSTEM PROMPT WITH ANSWER GATING ===
+    const basePrompt = userRole === 'lawyer' 
+      ? `You are Veronica, an expert NSW legal assistant providing professional legal analysis and technical guidance to qualified legal practitioners.`
+      : `You are Veronica, an expert NSW legal assistant with advanced case intelligence and legal-first retrieval capabilities.`;
+
+    const enhancedSystemPrompt = `${basePrompt}
 
 CRITICAL ANSWER GATING LOGIC:
 - Current Case Readiness Status: ${caseReadinessStatus}
@@ -292,6 +321,27 @@ ${caseReadinessStatus === 'nearly_ready' ? '- Provide strategic advice and recom
 ${caseReadinessStatus === 'ready' ? '- Full legal assistance including document drafting\n- Provide comprehensive legal strategy\n- Draft formal legal documents when requested' : ''}
 
 Context: You're assisting ${userName} with their legal matter.
+
+USER ROLE-SPECIFIC CAPABILITIES:
+${userRole === 'lawyer' ? `
+LAWYER MODE - PROFESSIONAL TECHNICAL ANALYSIS:
+- Provide detailed technical legal analysis with full citation precedents
+- Include procedural requirements and strategic litigation considerations
+- Analyze case strengths/weaknesses with legal element breakdown
+- Suggest alternative legal theories and approaches when appropriate
+- Include court practice directions and procedural requirements
+- Provide drafting guidance and document templates when requested
+- No professional disclaimers needed - assume qualified legal judgment
+- Focus on technical precision and legal complexity
+` : `
+USER MODE - GUIDED LEGAL ASSISTANCE:
+- Provide clear explanations with practical guidance
+- Break down complex legal concepts into understandable terms
+- Include appropriate disclaimers about seeking qualified legal advice
+- Focus on step-by-step guidance for legal processes
+- Explain legal implications in accessible language
+- Recommend when professional legal assistance is essential
+`}
 
 LEGAL-FIRST KNOWLEDGE INTEGRATION:
 - PRIMARY: Use NSW legal authorities from legal chunks (provided above)
@@ -404,12 +454,14 @@ CRITICAL: If case status is not "ready", you MUST refuse document drafting and f
     ]);
 
     // Return the response
+    const legalCitations = allCitations.filter(c => c && c.type === 'legal') || [];
+    
     return new Response(
       JSON.stringify({
         response: assistantMessage,
         citations: allCitations,
         case_readiness_status: caseReadinessStatus,
-        legal_authorities_found: legalContext.length,
+        legal_authorities_found: legalCitations.length,
         evidence_chunks_found: evidenceChunks.length
       }),
       {
