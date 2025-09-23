@@ -412,15 +412,48 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
         }
       }
 
-      // Add NSW legal resources to context
+      // Add legal chunks (primary legal database) to context
+      if (queryEmbedding) {
+        const { data: legalChunks, error: legalChunksErr } = await supabase.rpc(
+          "match_legal_chunks",
+          {
+            query_embedding: queryEmbedding,
+            match_threshold: 0.6,
+            match_count: 8,
+            jurisdiction_filter: 'NSW'
+          }
+        );
+
+        if (!legalChunksErr && legalChunks && legalChunks.length) {
+          const legalCitations = legalChunks.map((chunk: any, i: number) => ({
+            index: citations.length + i + 1,
+            file_id: chunk.document_id,
+            file_name: `Legal Document (${chunk.citation_references?.[0] || 'NSW Law'})`,
+            seq: chunk.id,
+            excerpt: chunk.chunk_text.slice(0, 500),
+            meta: { 
+              similarity: Math.round(chunk.similarity * 100),
+              legal_concepts: chunk.legal_concepts,
+              citations: chunk.citation_references
+            },
+            type: "legal_chunk"
+          }));
+          
+          citations = [...citations, ...legalCitations];
+          nswLegalContext = legalCitations.map((c) => `[CITATION ${c.index}] ${c.file_name}: ${c.excerpt}`);
+          contextBlocks = [...contextBlocks, ...nswLegalContext];
+        }
+      }
+
+      // Fallback to NSW legal resources if no legal chunks available
       const { data: legalRows, error: legalErr } = await supabase
         .from("nsw_legal_resources")
         .select("id, title, content, category, reference, url")
         .textSearch("tsv", queryText + " coercive control domestic violence", { type: "websearch" })
-        .limit(8);
+        .limit(5);
 
       if (!legalErr && legalRows && legalRows.length) {
-        const legalCitations = legalRows.map((legal: any, i: number) => ({
+        const legalResourceCitations = legalRows.map((legal: any, i: number) => ({
           index: citations.length + i + 1,
           file_id: legal.id,
           file_name: `NSW Legal Resource: ${legal.title}`,
@@ -430,9 +463,10 @@ When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A 
           type: "legal_resource"
         }));
         
-        citations = [...citations, ...legalCitations];
-        nswLegalContext = legalCitations.map((c) => `[CITATION ${c.index}] ${c.file_name}: ${c.excerpt}`);
-        contextBlocks = [...contextBlocks, ...nswLegalContext];
+        citations = [...citations, ...legalResourceCitations];
+        const resourceContext = legalResourceCitations.map((c) => `[CITATION ${c.index}] ${c.file_name}: ${c.excerpt}`);
+        nswLegalContext = [...nswLegalContext, ...resourceContext];
+        contextBlocks = [...contextBlocks, ...resourceContext];
       }
     }
 
