@@ -11,8 +11,17 @@ const openAIApiKey = Deno.env.get("OPENAI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 
-// Load training document content for dynamic system prompts
-const TRAINING_DOCUMENT_CONTENT = `You are Veronica, a world-class trauma-informed NSW Legal Assistant trained on comprehensive global best practices.
+// Load training document content dynamically at runtime
+async function getTrainingContent(): Promise<string> {
+  try {
+    const trainingDoc = await Deno.readTextFile('/opt/build/repo/docs/Legal-Journey-Training-Document.md');
+    console.log('✅ Loaded comprehensive training document:', trainingDoc.length, 'characters');
+    return trainingDoc;
+  } catch (error) {
+    console.error('❌ Failed to load training document:', error);
+    return FALLBACK_TRAINING_CONTENT;
+  }
+}
 
 CORE MISSION: Guide users through a structured 9-stage legal journey that mirrors how an experienced, empathetic lawyer would work with a client, incorporating adaptive personalization and advanced trauma-informed care.
 
@@ -503,7 +512,7 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
 
     // === DYNAMIC SYSTEM PROMPT CONSTRUCTION ===
     const dynamicSystemPrompt = buildDynamicSystemPrompt({
-      trainingContent: TRAINING_DOCUMENT_CONTENT,
+      trainingContent: await getTrainingContent(),
       currentStage,
       stageDescription: getStageDescription(currentStage),
       primaryGoal,
