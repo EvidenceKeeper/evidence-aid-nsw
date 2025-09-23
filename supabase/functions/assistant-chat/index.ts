@@ -82,6 +82,20 @@ serve(async (req) => {
     const userEmail = user.email;
     const userName = userEmail ? userEmail.split('@')[0] : 'there';
 
+    // === STEP 1: CASE MEMORY & READINESS STATUS (Legal-First RAG Pipeline) ===
+    console.log("📋 Loading case memory and readiness status...");
+    
+    const { data: caseMemory } = await supabase
+      .from("case_memory")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    
+    const caseReadinessStatus = caseMemory?.case_readiness_status || 'collecting';
+    const primaryGoal = caseMemory?.primary_goal || '';
+    
+    console.log(`📊 Case readiness: ${caseReadinessStatus}, Goal: ${primaryGoal ? 'Set' : 'Not set'}`);
+
     // Check for substantial evidence and case memory
     const { data: allFiles, error: filesError } = await supabase
       .from("files")
@@ -90,1098 +104,307 @@ serve(async (req) => {
       .eq("status", "processed")
       .order("created_at", { ascending: false });
 
-    const { data: totalChunks } = await supabase
-      .from("chunks")
-      .select("id", { count: "exact", head: true })
-      .eq("file_id", allFiles?.[0]?.id || "");
+    const hasSubstantialEvidence = allFiles && allFiles.length > 0;
+    console.log("Building evidence inventory for", allFiles?.length || 0, "files...");
 
-    const hasSubstantialEvidence = (totalChunks?.count || 0) > 100; // Substantial evidence threshold
+    // === STEP 2: LEGAL-FIRST RETRIEVAL (Primary Knowledge Base) ===
+    let legalContext = [];
+    let allCitations = [];
     
-    // Enhanced Intelligence Upgrades - Get case memory and evidence analysis
-    const { data: caseMemory } = await supabase
-      .from("case_memory")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    // Email corpus detection
-    const isEmailCorpus = allFiles?.some(file => 
-      file.name.toLowerCase().includes('email') || 
-      file.name.toLowerCase().includes('.eml') ||
-      file.name.toLowerCase().includes('inbox')
-    );
-
-    // Privacy/Safety Guard - detect sensitive information
-    const containsSensitiveInfo = prompt?.toLowerCase().includes('ssn') || 
-      prompt?.toLowerCase().includes('social security') ||
-      prompt?.toLowerCase().includes('credit card') ||
-      prompt?.toLowerCase().includes('password');
-
-    if (containsSensitiveInfo) {
-      console.log("⚠️ Sensitive information detected in prompt");
-    }
-
-    const { data: legalStrategy } = await supabase
-      .from("legal_strategy")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    // Get comprehensive evidence analysis for case-aware intelligence
-    const { data: comprehensiveAnalysis } = await supabase
-      .from("evidence_comprehensive_analysis")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    // SMART TRIGGER: If substantial evidence exists but no case analysis has been done, trigger it now
-    let analysisTriggered = false;
-    if (hasSubstantialEvidence && !caseMemory && !legalStrategy && allFiles && allFiles.length > 0) {
-      console.log('🧠 Smart trigger: Substantial evidence detected, initiating case analysis...');
+    if (prompt || (messages && messages.length > 0)) {
+      const queryText = prompt || messages[messages.length - 1]?.content || '';
+      console.log("🏛️ LEGAL-FIRST: Searching NSW legal database...");
+      
+      // Create query that combines user input + case goal for better legal retrieval
+      const enhancedQuery = primaryGoal 
+        ? `${queryText} ${primaryGoal} NSW law legal requirements`
+        : `${queryText} NSW law`;
       
       try {
-        const analysisResponse = await supabase.functions.invoke('continuous-case-analysis', {
-          body: { 
-            file_id: allFiles[0].id,
-            analysis_type: 'comprehensive_review' 
-          }
-        });
-
-        if (!analysisResponse.error) {
-          console.log('✅ Smart analysis completed');
-          analysisTriggered = true;
-          
-          // Refresh case memory and strategy after analysis
-          const { data: newCaseMemory } = await supabase
-            .from("case_memory")
-            .select("*")
-            .eq("user_id", user.id)
-            .single();
-          
-          const { data: newLegalStrategy } = await supabase
-            .from("legal_strategy")
-            .select("*")
-            .eq("user_id", user.id)
-            .single();
-        }
-      } catch (error) {
-        console.error('Smart analysis trigger failed:', error);
-      }
-    }
-
-    const hasRecentUploads = allFiles && allFiles.length > 0;
-    const newlyProcessedFiles = allFiles?.slice(0, 5) || [];
-
-    // Simple per-user rate limit: 10 requests per minute
-    const windowMs = 60_000;
-    const limit = 10;
-    const sinceIso = new Date(Date.now() - windowMs).toISOString();
-
-    const { count, error: countErr } = await supabase
-      .from("assistant_requests")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", sinceIso);
-
-    if (countErr) {
-      console.error("Rate limit count error", countErr);
-    }
-
-    if ((count ?? 0) >= limit) {
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Please wait and try again." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Log this request without IP for privacy (non-blocking failure)
-    const insertPromise = supabase.from("assistant_requests").insert({
-      user_id: user.id,
-    });
-    insertPromise.then(({ error }) => error && console.error("Log insert error", error));
-
-    // Build messages and perform lightweight retrieval from user's indexed chunks
-    const lastUserText = Array.isArray(messages)
-      ? [...messages].reverse().find((m: any) => m.role === "user")?.content
-      : null;
-    const queryText = String(prompt ?? lastUserText ?? "").slice(0, 500);
-
-    // Enhanced retrieval: vector search + legal resources + evidence inventory
-    let citations: Array<{ index: number; file_id: string; file_name: string; seq: number; excerpt: string; meta: any; type?: string; similarity?: number }> = [];
-    let contextBlocks: string[] = [];
-    let nswLegalContext: string[] = [];
-    let evidenceInventory: string = "";
-    let vectorSearchResults: any[] = [];
-
-    // Enhanced evidence inventory with hierarchical summaries
-    if (allFiles && allFiles.length > 0) {
-      console.log(`Building evidence inventory for ${allFiles.length} files...`);
-      
-      // Get detailed file information with analysis and summaries
-      const { data: detailedFiles } = await supabase
-        .from("files")
-        .select(`
-          id, name, created_at, category, auto_category, meta, tags, exhibit_code, file_summary,
-          evidence_analysis (
-            analysis_type, content, legal_concepts, confidence_score, relevant_citations
-          )
-        `)
-        .eq("user_id", user.id)
-        .eq("status", "processed")
-        .order("created_at", { ascending: false });
-
-      if (detailedFiles && detailedFiles.length > 0) {
-        const inventoryItems = detailedFiles.map((file: any, index: number) => {
-          const analysis = file.evidence_analysis?.[0];
-          const uploadDate = new Date(file.created_at).toLocaleDateString();
-          const category = file.category || file.auto_category || 'Uncategorized';
-          const exhibitCode = file.exhibit_code || String.fromCharCode(65 + index);
-          
-          let inventoryEntry = `
-**EXHIBIT ${exhibitCode} - ${file.name}**
-- Uploaded: ${uploadDate}
-- Category: ${category}
-- File ID: ${file.id}`;
-
-          // Add file summary if available
-          if (file.file_summary) {
-            inventoryEntry += `
-- Summary: ${file.file_summary}`;
-          }
-
-          if (analysis) {
-            inventoryEntry += `
-- Analysis: ${analysis.analysis_type}
-- Legal Concepts: ${JSON.stringify(analysis.legal_concepts)}
-- Confidence: ${Math.round((analysis.confidence_score || 0) * 100)}%
-- Key Findings: ${analysis.content?.substring(0, 200)}...`;
-            
-            if (analysis.relevant_citations) {
-              inventoryEntry += `
-- Legal Citations: ${JSON.stringify(analysis.relevant_citations)}`;
-            }
-          }
-
-          if (file.tags && file.tags.length > 0) {
-            inventoryEntry += `
-- Tags: ${file.tags.join(', ')}`;
-          }
-
-          return inventoryEntry;
-        }).join('\n\n');
-
-        evidenceInventory = `
-=== ENHANCED EVIDENCE INVENTORY (${detailedFiles.length} files) ===
-${inventoryItems}
-
-=== EVIDENCE ANALYSIS INSTRUCTIONS ===
-When referencing evidence, use the EXHIBIT designations above (e.g., "Exhibit A shows..." or "In your uploaded police report (Exhibit B)..."). Always quote specific content from these files when providing analysis. Each exhibit has been analyzed for legal significance and may have summaries available - reference both the analysis findings and file summaries to provide comprehensive guidance.
-`;
-      }
-    }
-
-    if (queryText) {
-      console.log("🔍 Performing enhanced vector search...");
-      
-      // Generate embedding for the query
-      let queryEmbedding: number[] | null = null;
-      try {
+        // Generate embedding for legal search
+        console.log("🔍 Generating embedding for legal search...");
         const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${openAIApiKey}`,
+            "Authorization": `Bearer ${openAIApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             model: "text-embedding-3-large",
-            input: queryText,
-            dimensions: 1536,
+            input: enhancedQuery,
           }),
         });
 
         if (embeddingResponse.ok) {
           const embeddingData = await embeddingResponse.json();
-          queryEmbedding = embeddingData.data[0].embedding;
-        }
-      } catch (error) {
-        console.error("Failed to generate query embedding:", error);
-      }
-
-      // Perform vector similarity search on user's files
-      if (queryEmbedding) {
-        const { data: vectorResults, error: vectorError } = await supabase.rpc(
-          "match_user_chunks",
-          {
-            query_embedding: queryEmbedding,
-            match_threshold: 0.6,
-            match_count: 15,
-            filter_user_id: user.id,
-          }
-        );
-
-        if (!vectorError && vectorResults?.length) {
-          console.log(`✅ Found ${vectorResults.length} vector matches`);
-          vectorSearchResults = vectorResults;
+          const queryEmbedding = embeddingData.data[0].embedding;
           
-          citations = vectorResults.map((result: any, i: number) => ({
-            index: i + 1,
-            file_id: result.file_id,
-            file_name: result.file_name,
-            seq: result.seq,
-            excerpt: result.text.slice(0, 500),
-            meta: result.meta,
-            type: "user_file_vector",
-            similarity: Math.round(result.similarity * 100),
-          }));
-
-          contextBlocks = citations.map((c) => 
-            `[CITATION ${c.index}] ${c.file_name}#${c.seq} (${c.similarity}% match): ${c.excerpt}`
+          // Search legal chunks FIRST (primary knowledge base)
+          const { data: legalChunks, error: legalChunksErr } = await supabase.rpc(
+            "match_legal_chunks",
+            {
+              query_embedding: queryEmbedding,
+              match_threshold: 0.7,
+              match_count: 10,
+              jurisdiction_filter: 'NSW'
+            }
           );
-        }
-      }
 
-      // Fallback to text search if vector search fails or returns no results
-      if (!vectorSearchResults.length) {
-        console.log("📝 Falling back to text search...");
-        
-        // Expanded search terms for coercive control patterns
-        const coerciveControlTerms = [
-          queryText,
-          queryText + " coercive control domestic violence",
-          queryText + " emotional abuse financial control",
-          queryText + " intimidation stalking threats",
-          "pattern behaviour isolation monitoring"
-        ];
-
-        // Search user's uploaded chunks (increased limit for comprehensive analysis)
-        const { data: chunkRows, error: chunkErr } = await supabase
-          .from("chunks")
-          .select("id, file_id, seq, text, meta")
-          .textSearch("tsv", coerciveControlTerms.join(" | "), { type: "websearch" })
-          .limit(20);
-
-        // Search NSW legal resources for relevant law and procedures
-        const { data: legalRows, error: legalErr } = await supabase
-          .from("nsw_legal_resources")
-          .select("id, title, content, category, reference, url")
-          .textSearch("tsv", queryText + " coercive control domestic violence", { type: "websearch" })
-          .limit(8);
-
-        if (!chunkErr && chunkRows && chunkRows.length) {
-          const fileIds = Array.from(new Set(chunkRows.map((c: any) => c.file_id)));
-          const { data: fileRows } = await supabase
-            .from("files")
-            .select("id, name")
-            .in("id", fileIds);
-          const nameById: Record<string, string> = {};
-          fileRows?.forEach((f: any) => (nameById[f.id] = f.name));
-
-          // Prioritize more chunks for comprehensive analysis (increased from 6 to 15)
-          const byFile: Record<string, any[]> = {};
-          for (const c of chunkRows) {
-            (byFile[c.file_id] ||= []).push(c);
-          }
-          const selected: any[] = [];
-          let layer = 0;
-          while (selected.length < 15) {
-            let advanced = false;
-            for (const fid of Object.keys(byFile)) {
-              const arr = byFile[fid];
-              if (arr[layer]) {
-                selected.push(arr[layer]);
-                advanced = true;
-                if (selected.length >= 15) break;
+          if (!legalChunksErr && legalChunks && legalChunks.length > 0) {
+            console.log(`⚖️ Found ${legalChunks.length} relevant legal sections`);
+            
+            // Diversify by document/section to avoid redundancy
+            const uniqueSections = new Map();
+            legalChunks.forEach((chunk, i) => {
+              const key = `${chunk.document_id}-${chunk.section_id}`;
+              if (!uniqueSections.has(key) && uniqueSections.size < 8) {
+                uniqueSections.set(key, chunk);
+                allCitations.push({
+                  id: `legal-${i}`,
+                  type: 'legislation',
+                  short_citation: chunk.citation_references?.[0] || `Legal Section ${i + 1}`,
+                  full_citation: chunk.citation_references?.[0] || `NSW Legal Database`,
+                  url: null,
+                  content: chunk.chunk_text,
+                  similarity: chunk.similarity,
+                  metadata: chunk.metadata
+                });
               }
-            }
-            if (!advanced) break;
-            layer++;
-          }
-          const finalSel = selected.length ? selected : chunkRows.slice(0, 15);
-
-          citations = finalSel.map((c: any, i: number) => ({
-            index: i + 1,
-            file_id: c.file_id,
-            file_name: nameById[c.file_id] ?? "File",
-            seq: c.seq,
-            excerpt: String(c.text ?? '').slice(0, 500),
-            meta: c.meta ?? {},
-            type: "user_file"
-          }));
-          contextBlocks = citations.map((c) => `[CITATION ${c.index}] ${c.file_name}#${c.seq}: ${c.excerpt}`);
-        }
-      }
-
-      // Add legal chunks (primary legal database) to context
-      if (embeddingResult.data?.data?.[0]?.embedding) {
-        const queryEmbedding = embeddingResult.data.data[0].embedding;
-        console.log("🔍 Performing enhanced vector search...");
-        
-        const { data: legalChunks, error: legalChunksErr } = await supabase.rpc(
-          "match_legal_chunks",
-          {
-            query_embedding: queryEmbedding,
-            match_threshold: 0.6,
-            match_count: 8,
-            jurisdiction_filter: 'NSW'
-          }
-        );
-
-        if (legalChunksErr) {
-          console.error("Legal chunks search error:", legalChunksErr);
-        }
-
-        if (!legalChunksErr && legalChunks && legalChunks.length) {
-          const legalCitations = legalChunks.map((chunk: any, i: number) => ({
-            index: citations.length + i + 1,
-            file_id: chunk.document_id,
-            file_name: `Legal Document (${chunk.citation_references?.[0] || 'NSW Law'})`,
-            seq: chunk.id,
-            excerpt: chunk.chunk_text.slice(0, 500),
-            meta: { 
-              similarity: Math.round(chunk.similarity * 100),
-              legal_concepts: chunk.legal_concepts,
-              citations: chunk.citation_references
-            },
-            type: "legal_chunk"
-          }));
-          
-          citations = [...citations, ...legalCitations];
-          nswLegalContext = legalCitations.map((c) => `[CITATION ${c.index}] ${c.file_name}: ${c.excerpt}`);
-          contextBlocks = [...contextBlocks, ...nswLegalContext];
-        }
-      }
-
-      // Fallback to NSW legal resources if no legal chunks available
-      const { data: legalRows, error: legalErr } = await supabase
-        .from("nsw_legal_resources")
-        .select("id, title, content, category, reference, url")
-        .textSearch("tsv", queryText + " coercive control domestic violence", { type: "websearch" })
-        .limit(5);
-
-      if (!legalErr && legalRows && legalRows.length) {
-        const legalResourceCitations = legalRows.map((legal: any, i: number) => ({
-          index: citations.length + i + 1,
-          file_id: legal.id,
-          file_name: `NSW Legal Resource: ${legal.title}`,
-          seq: 1,
-          excerpt: `${legal.content} ${legal.reference ? `(Reference: ${legal.reference})` : ''}`,
-          meta: { category: legal.category, url: legal.url },
-          type: "legal_resource"
-        }));
-        
-        citations = [...citations, ...legalResourceCitations];
-        const resourceContext = legalResourceCitations.map((c) => `[CITATION ${c.index}] ${c.file_name}: ${c.excerpt}`);
-        nswLegalContext = [...nswLegalContext, ...resourceContext];
-        contextBlocks = [...contextBlocks, ...resourceContext];
-      }
-    }
-
-    // Initialize telepathic variables
-    let proactiveContext = "";
-    let memoryUpdates: any = {};
-    let enhancedEvidenceAnnouncement = "";
-    let caseStrengthBanner = "";
-    let emailCorpusSummary = "";
-    let contradictionAlert = "";
-    let privacyGuard = "";
-    let confidenceLevel = "high";
-    let caseSummary = "";
-    let caseContext = "";
-    let telepathicContinuity = "";
-    let goalContext = "";
-    let shouldDetectGoal = false;
-    
-    // Use caseMemory as currentCaseMemory for consistency
-    const currentCaseMemory = caseMemory;
-    const currentLegalStrategy = legalStrategy;
-    
-    // === VERONICA'S SYSTEMATIC PRE-ANSWER RETRIEVAL ===
-    // STEP 1: Case Memory Retrieval (Always-On)
-    console.log("🧠 Step 1: Case Memory Retrieval...");
-    if (currentCaseMemory) {
-      goalContext = `
-=== CURRENT CASE GOAL ===
-Primary Goal: ${currentCaseMemory.primary_goal || 'No goal set'}
-Goal Status: ${currentCaseMemory.goal_status || 'inactive'}
-Goal Progress: ${currentCaseMemory.goal_progress || 0}%
-
-=== KEY FACTS ===
-${JSON.stringify(currentCaseMemory.key_facts || [])}
-
-=== TIMELINE SUMMARY ===
-${currentCaseMemory.timeline_summary || 'No timeline available'}
-
-=== EVIDENCE INDEX ===
-${JSON.stringify(currentCaseMemory.evidence_index || {})}
-
-=== CASE STRENGTH ===
-Overall Score: ${currentCaseMemory.case_strength_overall || 0}/10
-Strength Reasons: ${JSON.stringify(currentCaseMemory.case_strength_reasons || [])}
-
-=== THREAD SUMMARY ===
-${currentCaseMemory.thread_summary || 'No previous conversation context'}`;
-
-      caseSummary = currentCaseMemory.primary_goal ? 
-        `Your client's primary goal is: ${currentCaseMemory.primary_goal}. Current case strength: ${currentCaseMemory.case_strength_overall || 0}/10.` : 
-        'No primary case goal has been established yet.';
-    }
-
-    // STEP 2: Goal-Aware Evidence Vector Search  
-    console.log("🔍 Step 2: Goal-Aware Evidence Vector Search...");
-    if (queryText && queryEmbedding) {
-      // Enhanced search with goal filtering
-      const goalTags = currentCaseMemory?.primary_goal ? 
-        [currentCaseMemory.primary_goal.toLowerCase().replace(/\s+/g, '-')] : [];
-      
-      const { data: goalAwareResults, error: goalError } = await supabase.rpc(
-        "match_user_chunks",
-        {
-          query_embedding: queryEmbedding,
-          match_threshold: 0.5, // Lower threshold for goal-aware search
-          match_count: 8, // Top 8 as requested
-          filter_user_id: user.id,
-        }
-      );
-
-      if (!goalError && goalAwareResults?.length) {
-        console.log(`✅ Goal-aware search found ${goalAwareResults.length} enhanced matches`);
-        // Replace or enhance existing vector results with goal-aware ones
-        vectorSearchResults = goalAwareResults;
-        
-        citations = goalAwareResults.map((result: any, i: number) => ({
-          index: i + 1,
-          file_id: result.file_id,
-          file_name: result.file_name,
-          seq: result.seq,
-          excerpt: result.text.slice(0, 500),
-          meta: result.meta,
-          type: "goal_aware_vector",
-          similarity: Math.round(result.similarity * 100),
-        }));
-
-        contextBlocks = citations.map((c) => 
-          `[GOAL-AWARE CITATION ${c.index}] ${c.file_name}#${c.seq} (${c.similarity}% relevance): ${c.excerpt}`
-        );
-      }
-    }
-
-    // STEP 3: Smart Timeline Event Matching
-    console.log("📅 Step 3: Smart Timeline Event Matching...");
-    let timelineContext = "";
-    if (queryText) {
-      // Extract dates, people, locations using OpenAI
-      try {
-        const entityPrompt = `Extract entities for timeline matching from this user message:
-"${queryText}"
-
-Return JSON with:
-{
-  "dates": ["YYYY-MM-DD or relative dates like 'last week'"],
-  "people": ["person names mentioned"],
-  "locations": ["locations, addresses, places mentioned"],
-  "events": ["event types or keywords for timeline matching"]
-}`;
-
-        const entityResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openAIApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'gpt-5-mini',
-            messages: [
-              { role: 'system', content: 'Extract entities for precise timeline matching.' },
-              { role: 'user', content: entityPrompt }
-            ],
-            max_completion_tokens: 300,
-          }),
-        });
-
-        if (entityResponse.ok) {
-          const entityData = await entityResponse.json();
-          const entities = JSON.parse(entityData.choices[0].message.content);
-          
-          // Query timeline events based on extracted entities
-          let timelineQuery = supabase
-            .from("enhanced_timeline_events")
-            .select("*")
-            .eq("user_id", user.id)
-            .order("event_date", { ascending: false })
-            .limit(10);
-
-          // Add entity-based filtering
-          if (entities.people?.length) {
-            timelineQuery = timelineQuery.or(
-              entities.people.map((person: string) => `description.ilike.%${person}%`).join(',')
-            );
-          }
-          
-          if (entities.locations?.length) {
-            timelineQuery = timelineQuery.or(
-              entities.locations.map((loc: string) => `description.ilike.%${loc}%`).join(',')
-            );
-          }
-
-          const { data: timelineEvents } = await timelineQuery;
-          
-          if (timelineEvents?.length) {
-            console.log(`📅 Found ${timelineEvents.length} matching timeline events`);
-            timelineContext = `
-=== RELEVANT TIMELINE EVENTS ===
-${timelineEvents.map(event => `
-📅 ${event.event_date} - ${event.title}
-${event.description}
-Legal Significance: ${event.legal_significance || 'Standard'}
-Evidence Type: ${event.evidence_type || 'General'}
-${event.potential_witnesses ? `Potential Witnesses: ${event.potential_witnesses.join(', ')}` : ''}
-${event.corroboration_needed ? `Corroboration Needed: ${event.corroboration_needed}` : ''}
-`).join('\n')}`;
-          }
-        }
-      } catch (error) {
-        console.error('Entity extraction for timeline matching failed:', error);
-      }
-    }
-
-    // Proactive Memory Triggers and Context Enhancement
-    if (queryText && currentCaseMemory) {
-      console.log("🧠 Running additional proactive memory triggers...");
-      
-      // Date Detection Trigger
-      const dateRegex = /\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2})\b/g;
-      const dateMatches = queryText.match(dateRegex);
-      
-      if (dateMatches && currentCaseMemory.timeline_summary?.length > 0) {
-        const relevantTimelineEvents = currentCaseMemory.timeline_summary.filter((event: any) => {
-          return dateMatches.some(date => {
-            const normalizedDate = date.replace(/[\/\-\.]/g, '/');
-            return event.date?.includes(normalizedDate.split('/')[0]) || 
-                   event.date?.includes(normalizedDate.split('/')[1]) ||
-                   event.title?.toLowerCase().includes(date);
-          });
-        });
-        
-        if (relevantTimelineEvents.length > 0) {
-          proactiveContext += `\n🗓️ **TIMELINE CONTEXT for ${dateMatches.join(', ')}:**\n`;
-          relevantTimelineEvents.forEach((event: any, i: number) => {
-            proactiveContext += `${i + 1}. ${event.date}: ${event.title} - ${event.fact}\n`;
-          });
-          proactiveContext += "\n";
-        }
-      }
-      
-      // Person Detection Trigger
-      const personRegex = /\b([A-Z][a-z]+\s+[A-Z][a-z]+)\b/g;
-      const personMatches = queryText.match(personRegex);
-      
-      if (personMatches && contextBlocks.length > 0) {
-        const personAppearances: Record<string, any[]> = {};
-        
-        contextBlocks.forEach((block, index) => {
-          personMatches.forEach(person => {
-            if (block.toLowerCase().includes(person.toLowerCase())) {
-              if (!personAppearances[person]) personAppearances[person] = [];
-              personAppearances[person].push({
-                citation: index + 1,
-                context: block.slice(0, 200) + "..."
-              });
-            }
-          });
-        });
-        
-        Object.entries(personAppearances).forEach(([person, appearances]) => {
-          if (appearances.length > 0) {
-            proactiveContext += `\n👤 **${person.toUpperCase()} APPEARANCES:**\n`;
-            appearances.slice(-3).forEach((app: any, i: number) => {
-              proactiveContext += `${i + 1}. Citation ${app.citation}: ${app.context}\n`;
             });
-            proactiveContext += "\n";
-          }
-        });
-      }
-      
-      // Goal Restatement Detection
-      const goalKeywords = ['custody', 'avo', 'divorce', 'court', 'hearing', 'settlement'];
-      const hasGoalKeywords = goalKeywords.some(keyword => queryText.toLowerCase().includes(keyword));
-      
-      if (hasGoalKeywords && queryText.toLowerCase().includes('want') && currentCaseMemory.primary_goal) {
-        const newGoalMatch = queryText.match(/want to (.+?)(?:\.|$)/i);
-        if (newGoalMatch) {
-          const potentialNewGoal = newGoalMatch[1].trim();
-          if (potentialNewGoal.length > 10 && !potentialNewGoal.toLowerCase().includes(currentCaseMemory.primary_goal?.toLowerCase() || '')) {
-            memoryUpdates.primary_goal = potentialNewGoal;
-            memoryUpdates.goal_established_at = new Date().toISOString();
-            proactiveContext += `\n🎯 **GOAL UPDATE DETECTED:** Updating from "${currentCaseMemory.primary_goal}" to "${potentialNewGoal}"\n\n`;
-          }
-        }
-      }
-    }
-
-    // Evidence Upload Announcements
-    let evidenceAnnouncement = "";
-    if (hasRecentUploads && newlyProcessedFiles.length > 0) {
-      const recentFile = newlyProcessedFiles[0];
-      const { data: recentAnalysis } = await supabase
-        .from("evidence_comprehensive_analysis")
-        .select("key_insights, timeline_significance")
-        .eq("file_id", recentFile.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-        
-      if (recentAnalysis) {
-        evidenceAnnouncement = `\n📈 **NEW EVIDENCE INDEXED:**\nJust processed "${recentFile.name}" and found ${recentAnalysis.key_insights?.length || 0} key insights. ${recentAnalysis.timeline_significance ? `Timeline impact: ${recentAnalysis.timeline_significance}` : ''}\n\n`;
-      }
-    }
-    // TELEPATHIC FEATURE: Privacy & Safety Guard with Confidence Tagging
-    if (contextBlocks.length === 0 && !currentCaseMemory?.evidence_index?.length) {
-      confidenceLevel = "low";
-      privacyGuard = "📋 I'm in quick mode with limited context. For deeper analysis, please upload relevant documents.";
-    } else if (contextBlocks.length < 3) {
-      confidenceLevel = "medium";
-      privacyGuard = "⚠️ Limited evidence available. Recommendations are preliminary - additional documentation will improve accuracy.";
-    }
-
-    // TELEPATHIC FEATURE: Contradiction Detection
-    if (contextBlocks.length > 1 && currentCaseMemory?.key_facts?.length > 0) {
-      // Simple contradiction detection - look for conflicting dates or statements
-      const currentFacts = currentCaseMemory.key_facts.map((f: any) => f.fact || f).join(' ').toLowerCase();
-      const newContent = contextBlocks.join(' ').toLowerCase();
-      
-      // Check for date conflicts (simple heuristic)
-      const currentDates = currentFacts.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
-      const newDates = newContent.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g) || [];
-      
-      if (currentDates.length > 0 && newDates.length > 0) {
-        const hasDateConflict = currentDates.some(cd => 
-          newDates.some(nd => cd !== nd && Math.abs(
-            new Date(cd.replace(/[\/\-\.]/g, '/')).getTime() - 
-            new Date(nd.replace(/[\/\-\.]/g, '/')).getTime()
-          ) < 86400000) // Same event, different date
-        );
-        
-        if (hasDateConflict) {
-          contradictionAlert = "🔍 Possible contradiction—want me to reconcile these date differences?";
-        }
-      }
-    }
-
-    // Case Strength Monitoring and Updates
-    let caseStrengthAnnouncement = "";
-    if (currentLegalStrategy && currentCaseMemory) {
-      const currentStrength = currentCaseMemory.case_strength_score || 0;
-      const legalStrength = currentLegalStrategy.case_strength_overall || 0;
-      
-      const strengthDiff = Math.abs(legalStrength - currentStrength);
-      if (strengthDiff > 3) {
-        const direction = legalStrength > currentStrength ? "+" : "-";
-        caseStrengthAnnouncement = `\n📊 **CASE STRENGTH UPDATE:** ${Math.round(legalStrength)}% (${direction}${Math.round(strengthDiff)})\n`;
-        
-        if (currentLegalStrategy.next_steps && Array.isArray(currentLegalStrategy.next_steps)) {
-          caseStrengthAnnouncement += `**Boosters:** ${currentLegalStrategy.next_steps.slice(0, 3).map((step: any, i: number) => `(${i + 1}) ${step.action || step}`).join(', ')}\n\n`;
-        }
-        
-        // Update case memory with new strength
-        memoryUpdates.case_strength_score = legalStrength;
-        memoryUpdates.case_strength_reasons = currentLegalStrategy.strengths || [];
-      }
-    }
-
-    // Apply memory updates if any
-    if (Object.keys(memoryUpdates).length > 0 && currentCaseMemory) {
-      try {
-        await supabase
-          .from("case_memory")
-          .update({
-            ...memoryUpdates,
-            last_updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", user.id);
-        console.log("✅ Case memory updated with:", Object.keys(memoryUpdates));
-      } catch (error) {
-        console.error("Failed to update case memory:", error);
-      }
-    }
-
-    // TELEPATHIC FEATURE: Enhanced Smart Greeting with Announcements
-    let smartGreeting = "";
-    if (hasSubstantialEvidence && hasRecentUploads) {
-      const fileNames = newlyProcessedFiles.map(f => f.name).join(', ');
-      const chunkCount = totalChunks?.count || 0;
-      
-      if (analysisTriggered) {
-        smartGreeting = `\n\n🔍 **EVIDENCE ANALYSIS COMPLETE**
-I've just analyzed your ${fileNames} containing ${chunkCount}+ pieces of evidence. Based on my analysis, I can already identify concerning patterns that appear relevant to NSW coercive control laws. Let me share what I found and how this strengthens your case...`;
-      } else if (caseMemory || legalStrategy) {
-        smartGreeting = `\n\n📋 **CASE UPDATE**
-I can see you've uploaded ${fileNames} with ${chunkCount}+ evidence pieces that I've analyzed. Based on your established case goals and this evidence, I'm ready to provide specific insights about the patterns I've identified and next steps.`;
-      } else {
-        smartGreeting = `\n\n📁 **SUBSTANTIAL EVIDENCE DETECTED**
-I can see you've uploaded ${fileNames} containing ${chunkCount}+ pieces of evidence. This appears to be a significant evidence collection. I'm analyzing it now to identify patterns and legal significance...`;
-      }
-    } else if (hasRecentUploads) {
-      const fileNames = newlyProcessedFiles.slice(0, 3).map(f => f.name).join(', ');
-      smartGreeting = `\n\nI can see you've uploaded ${fileNames}${newlyProcessedFiles.length > 3 ? ' and other files' : ''} which I've now indexed and analyzed. Thank you for providing this evidence - I'll reference the specific content from your uploads in my analysis.`;
-    }
-
-    // MOVE ALL CONTEXT COMPUTATION LOGIC HERE TO AVOID ORDERING ISSUES
-    
-    // Compute case context and summary from current case memory
-    if (currentCaseMemory) {
-      const goal = currentCaseMemory.primary_goal || 'general legal assistance';
-      const keyFacts = currentCaseMemory.key_facts || [];
-      const evidenceCount = currentCaseMemory.evidence_index?.length || 0;
-      
-      caseContext = `Goal: ${goal} | Evidence: ${evidenceCount} items | Case strength: ${currentCaseMemory.case_strength_score || 0}%`;
-      
-      if (keyFacts.length > 0) {
-        caseSummary = `Key facts: ${keyFacts.slice(0, 3).map((f: any) => f.fact || f).join('; ')}`;
-      }
-    }
-
-    // Compute enhanced evidence announcement after case context
-    if (hasRecentUploads && newlyProcessedFiles.length > 0) {
-      const recentFile = newlyProcessedFiles[0];
-      const { data: recentAnalysis } = await supabase
-        .from("evidence_comprehensive_analysis")
-        .select("key_insights, timeline_significance, case_impact")
-        .eq("file_id", recentFile.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (recentAnalysis) {
-        const keyInsights = recentAnalysis.key_insights || [];
-        const goalContext = currentCaseMemory?.primary_goal ? ` and what it adds to your goal of ${currentCaseMemory.primary_goal}` : '';
-        
-        enhancedEvidenceAnnouncement = `📁 I've processed ${recentFile.name} — here's the 3-line summary${goalContext}:
-
-• ${keyInsights[0] || 'Document analyzed for legal significance'}
-• ${keyInsights[1] || recentAnalysis.case_impact || 'Evidence categorized and indexed'}
-• ${keyInsights[2] || 'Content available for legal analysis'}`;
-      }
-    }
-
-    // Compute case strength banner
-    if (currentCaseMemory && currentLegalStrategy) {
-      const score = Math.round(currentLegalStrategy.case_strength_overall || currentCaseMemory.case_strength_score || 0);
-      const reasons = currentLegalStrategy.strengths || currentCaseMemory.case_strength_reasons || [];
-      const nextSteps = currentLegalStrategy.next_steps || [];
-      
-      let label = "Developing";
-      if (score >= 75) label = "Strong";
-      else if (score >= 50) label = "Moderate";
-      
-      const topReasons = Array.isArray(reasons) ? reasons.slice(0, 3) : [];
-      const topBooster = Array.isArray(nextSteps) && nextSteps.length > 0 
-        ? (nextSteps[0].action || nextSteps[0] || "Review evidence gaps") 
-        : "Gather additional evidence";
-      
-      if (score > 0 && topReasons.length > 0) {
-        caseStrengthBanner = `📊 Case Strength: ${label} ${score}%. Because: ${topReasons.map(r => `• ${typeof r === 'object' ? r.fact || r.reason || String(r) : r}`).join(' ')}. Booster: ${topBooster}.`;
-      }
-    }
-
-    // Compute email corpus summary
-    if (allFiles && allFiles.length > 0) {
-      const emailFiles = allFiles.filter(f => 
-        f.name.toLowerCase().includes('.txt') || 
-        f.name.toLowerCase().includes('.mbox') || 
-        f.name.toLowerCase().includes('.eml') ||
-        f.name.toLowerCase().includes('email') ||
-        f.name.toLowerCase().includes('mail')
-      );
-      
-      if (emailFiles.length > 0) {
-        const { data: emailChunks } = await supabase
-          .from("chunks")
-          .select("text, meta")
-          .in("file_id", emailFiles.map(f => f.id))
-          .limit(100);
-          
-        if (emailChunks && emailChunks.length > 0) {
-          const dates = emailChunks
-            .map(c => c.text.match(/\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}/g))
-            .filter(Boolean)
-            .flat()
-            .map(d => new Date(d.replace(/[\/\-\.]/g, '/')))
-            .filter(d => !isNaN(d.getTime()))
-            .sort((a, b) => a.getTime() - b.getTime());
             
-          if (dates.length > 0) {
-            const startDate = dates[0].toLocaleDateString();
-            const endDate = dates[dates.length - 1].toLocaleDateString();
-            emailCorpusSummary = `📧 Email corpus detected: ${emailChunks.length} emails, ${startDate}–${endDate}. I can extract incidents and build timeline patterns from this correspondence.`;
+            legalContext = Array.from(uniqueSections.values());
+            console.log(`📚 Using ${legalContext.length} unique legal sections for context`);
+          } else {
+            console.log("❌ No legal chunks found or error:", legalChunksErr);
           }
+
+          // === STEP 3: USER EVIDENCE SEARCH (Secondary) ===
+          console.log("📋 Fetching relevant user evidence chunks...");
+          
+          const { data: userChunks, error: userChunksErr } = await supabase.rpc(
+            "match_user_chunks",
+            {
+              query_embedding: queryEmbedding,
+              match_threshold: 0.5,
+              match_count: 8,
+              filter_user_id: user.id,
+            }
+          );
+
+          if (!userChunksErr && userChunks && userChunks.length > 0) {
+            console.log(`📁 Found ${userChunks.length} relevant evidence chunks`);
+            
+            const evidenceCitations = userChunks.map((chunk, i) => ({
+              id: `evidence-${i}`,
+              type: 'evidence',
+              short_citation: chunk.file_name,
+              full_citation: `${chunk.file_name} (Evidence)`,
+              url: null,
+              content: chunk.text,
+              similarity: chunk.similarity,
+              metadata: chunk.meta
+            }));
+            
+            allCitations.push(...evidenceCitations);
+          }
+
+        } else {
+          console.log("📝 Falling back to text search...");
         }
+      } catch (error) {
+        console.error("Legal search failed:", error);
       }
     }
 
-    // TELEPATHIC FEATURE: Combine All Proactive Context & Announcements (after all context is computed)
-    const allTelepathicContext = [
-      enhancedEvidenceAnnouncement,
-      caseStrengthBanner,
-      emailCorpusSummary,
-      contradictionAlert,
-      privacyGuard,
-      proactiveContext,
-      evidenceAnnouncement,
-      caseStrengthAnnouncement
-    ].filter(Boolean).join('\n\n');
+    // === STEP 4: TIMELINE CONTEXT ===
+    const { data: timeline, error: timelineError } = await supabase
+      .from("enhanced_timeline_events")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("event_date", { ascending: false })
+      .limit(20);
 
-    // TELEPATHIC FEATURE: Enhanced Goal Continuity & Response Patterns
+    // === STEP 5: BUILD CONTEXT (Legal-First Order) ===
+    console.log("🏗️ Building context in Legal-First order...");
+    let contextSections = [];
     
-    if (currentCaseMemory?.primary_goal && currentCaseMemory?.goal_status === 'active') {
-      // TELEPATHIC: Always start responses building on established goal
-      telepathicContinuity = `Building on your goal of ${currentCaseMemory.primary_goal}`;
-      goalContext = telepathicContinuity;
-    } else {
-      // Check if user is stating a goal in their message
-      const goalKeywords = [
-        'custody', 'parenting plan', 'court hearing', 'full custody', 'shared custody',
-        'avo', 'restraining order', 'divorce', 'property settlement', 'child support',
-        'domestic violence', 'coercive control', 'family law', 'litigation'
+    // 1. LEGAL CONTEXT FIRST (Primary Knowledge Base)
+    if (legalContext.length > 0) {
+      const legalSections = legalContext.map((chunk, i) => 
+        `Legal Authority ${i + 1}: ${chunk.citation_references?.[0] || 'NSW Legal Section'}
+Content: ${chunk.chunk_text.substring(0, 800)}...
+Similarity: ${chunk.similarity?.toFixed(3) || 'N/A'}`
+      ).join('\n\n');
+      
+      contextSections.push(`NSW LEGAL AUTHORITIES (Primary Reference):
+${legalSections}`);
+    }
+    
+    // 2. CASE MEMORY CONTEXT (Case-Specific Information)
+    if (caseMemory) {
+      contextSections.push(`CASE CONTEXT:
+Primary Goal: ${caseMemory.primary_goal || 'Not established yet'}
+Case Readiness Status: ${caseReadinessStatus}
+Key Facts: ${JSON.stringify(caseMemory.key_facts || []).slice(0, 500)}
+Case Strength: ${caseMemory.case_strength_overall || 0}/10
+Evidence Index: ${JSON.stringify(caseMemory.evidence_index || []).slice(0, 300)}
+Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
+    }
+
+    // 3. EVIDENCE CONTEXT (Supporting Evidence)
+    const evidenceChunks = allCitations.filter(c => c.type === 'evidence');
+    if (evidenceChunks.length > 0) {
+      const evidenceContext = evidenceChunks.slice(0, 6).map((cite, i) => 
+        `Evidence ${i + 1} (${cite.short_citation}): ${cite.content.substring(0, 400)}...`
+      ).join('\n\n');
+      contextSections.push(`USER EVIDENCE CONTEXT:\n${evidenceContext}`);
+    }
+
+    // 4. TIMELINE CONTEXT (Chronological Evidence)
+    if (timeline && timeline.length > 0) {
+      const timelineContext = timeline.slice(0, 8).map((event) => 
+        `${event.event_date}: ${event.title} - ${event.description.substring(0, 200)}`
+      ).join('\n');
+      contextSections.push(`TIMELINE CONTEXT:\n${timelineContext}`);
+    }
+
+    // === STEP 6: ENHANCED SYSTEM PROMPT WITH ANSWER GATING ===
+    const enhancedSystemPrompt = `You are Veronica, an expert NSW legal assistant with advanced case intelligence and legal-first retrieval capabilities.
+
+CRITICAL ANSWER GATING LOGIC:
+- Current Case Readiness Status: ${caseReadinessStatus}
+- Case Status Definitions:
+  * "collecting": Still gathering facts and evidence - NO DRAFTING ALLOWED
+  * "reviewing": Analyzing case strength - LIMITED ADVICE ONLY  
+  * "nearly_ready": Almost complete understanding - STRATEGIC ADVICE ONLY
+  * "ready": Complete case understanding - FULL DRAFTING PERMITTED
+
+MANDATORY CITATION REQUIREMENTS:
+- ALWAYS cite specific NSW legal authorities when discussing law
+- Use format: "Family Law Act 1975 (NSW) s 60CC" or similar
+- Reference exact sections, not general legal principles
+- Cross-check legal chunks before asserting any legal rule
+
+RESPONSE RULES BASED ON READINESS:
+${caseReadinessStatus === 'collecting' ? '- REFUSE all drafting requests (letters, motions, pleadings)\n- Focus on fact-gathering and evidence identification\n- Ask clarifying questions about case details' : ''}
+${caseReadinessStatus === 'reviewing' ? '- Provide preliminary legal analysis only\n- Identify evidence gaps and inconsistencies\n- NO formal document drafting' : ''}
+${caseReadinessStatus === 'nearly_ready' ? '- Provide strategic advice and recommendations\n- Outline potential legal approaches\n- NO final document drafting until "ready"' : ''}
+${caseReadinessStatus === 'ready' ? '- Full legal assistance including document drafting\n- Provide comprehensive legal strategy\n- Draft formal legal documents when requested' : ''}
+
+Context: You're assisting ${userName} with their legal matter.
+
+LEGAL-FIRST KNOWLEDGE INTEGRATION:
+- PRIMARY: Use NSW legal authorities from legal chunks (provided above)
+- SECONDARY: Reference user evidence to support legal analysis
+- MANDATORY: Cite specific Acts and sections for all legal assertions
+- VERIFICATION: Cross-check legal chunks before stating any legal rule
+
+EVIDENCE ANALYSIS PRIORITIES:
+1. Legal compliance: Does evidence meet NSW legal requirements?
+2. Evidentiary strength: How compelling is the evidence legally?
+3. Gap identification: What evidence is missing for legal success?
+4. Strategic value: How does evidence support the legal case?
+
+RESPONSE METHODOLOGY:
+1. ALWAYS start with relevant legal authorities (Acts/sections)
+2. Apply legal requirements to user's specific situation  
+3. Analyze evidence against legal standards
+4. Identify gaps and next steps
+5. Provide citations for ALL legal statements
+
+CRITICAL: If case status is not "ready", you MUST refuse document drafting and focus on case development instead.`;
+
+    // Build final context
+    const fullContext = contextSections.join('\n\n');
+
+    // Construct messages for OpenAI
+    let conversationMessages = [];
+
+    if (messages && Array.isArray(messages)) {
+      conversationMessages = messages;
+    } else if (prompt) {
+      conversationMessages = [
+        { role: "user", content: prompt }
       ];
-      
-      const userMessage = String(prompt || '').toLowerCase();
-      const detectedGoal = goalKeywords.find(keyword => userMessage.includes(keyword));
-      
-      if (detectedGoal || userMessage.includes('prepare for') || userMessage.includes('want to') || userMessage.includes('need to')) {
-        // Extract and store potential goal
-        let extractedGoal = "";
-        if (userMessage.includes('prepare for')) {
-          extractedGoal = userMessage.match(/prepare for ([^.!?]+)/i)?.[1]?.trim();
-        } else if (userMessage.includes('custody')) {
-          extractedGoal = userMessage.includes('full custody') ? 'prepare for full custody hearing' : 'prepare for custody proceedings';
-        } else if (userMessage.includes('avo')) {
-          extractedGoal = 'apply for an AVO';
-        } else if (detectedGoal) {
-          extractedGoal = `resolve ${detectedGoal} matter`;
-        }
-        
-        if (extractedGoal) {
-          // Store the detected goal (TELEPATHIC: Goal lock - never re-ask)
-          const { error: goalError } = await supabase
-            .from("case_memory")
-            .upsert({
-              user_id: user.id,
-              primary_goal: extractedGoal,
-              goal_established_at: new Date().toISOString(),
-              goal_status: 'active',
-              key_facts: currentCaseMemory?.key_facts || [],
-              timeline_summary: currentCaseMemory?.timeline_summary || [],
-              evidence_index: currentCaseMemory?.evidence_index || [],
-              last_updated_at: new Date().toISOString()
-            });
-            
-          if (!goalError) {
-            telepathicContinuity = `I understand your goal is to ${extractedGoal}. Let me help you with that`;
-            goalContext = telepathicContinuity;
-          }
-        }
-      } else {
-        shouldDetectGoal = true;
-      }
     }
 
-    // (Evidence announcement computation moved to unified context section)
-
-    // (Note: Case strength banner and email corpus summary are computed earlier to avoid duplication)
-
-    // (Case memory context computation moved to unified context section)
-
-    // Enhanced system prompt for Veronica - Disciplined NSW Family Lawyer
-    const systemPrompt = mode === 'lawyer' 
-      ? `You are Veronica, a disciplined senior NSW family lawyer with over 15 years of experience specializing in domestic violence and coercive control cases. Your first priority is to build a complete understanding of the case: facts, evidence, chronology, and goals. You do NOT rush to drafting or strategy until you are confident the case theory is solid.
-
-CRITICAL BEHAVIOR PROTOCOL:
-• Build complete case understanding FIRST: facts, evidence, chronology, goals
-• Use uploaded evidence and NSW legal database to cross-check everything
-• Ask clarifying questions when details are missing or ambiguous
-• Only after confirming all evidence is reviewed and case is strong should you move to drafting
-• Before transitioning to drafting, ALWAYS ask: "Would you like me to proceed to drafting, or keep strengthening the case analysis further?"
-• In every response, propose 2-3 specific lawyer-like next actions as suggestions
-• Maintain warm, respectful, supportive tone while keeping laser-focused on strongest possible case
-
-RESPONSE FORMAT:
-• Use natural language and bullet points (NO markdown headers with # symbols)
-• Structure responses clearly with bullet points for readability
-• Include 2-3 specific next action suggestions in every response
-• Examples: "Extract breaches of consent orders into timeline," "Summarize child welfare concerns in 6 lines," "Cross-check email record against police report"
-
-${goalContext ? goalContext + ', here\'s the legal analysis.' : (shouldDetectGoal ? 'Let me understand your legal objective first.' : '')}
-
-${allTelepathicContext ? `PROACTIVE INTELLIGENCE:\n${allTelepathicContext}\n\n` : ''}
-
-${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
-
-**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
-
-I'm here to support you professionally, ${userName}.${smartGreeting}`
-      : `You are Veronica, a disciplined senior NSW family lawyer assistant with expertise in domestic violence and coercive control cases. Your priority is methodical case building before any drafting or strategy work.
-
-CASE BUILDING PROTOCOL:
-• Build complete understanding: facts, evidence, chronology, goals
-• Use uploaded evidence and NSW legal database to cross-check everything  
-• Ask clarifying questions when details are missing or ambiguous
-• Only suggest drafting after case analysis is complete
-• Always include 2-3 specific next action suggestions
-• Use natural language and bullet points (NO markdown headers)
-
-${goalContext ? goalContext + ', here\'s how this evidence helps.' : (shouldDetectGoal ? 'Let me help you focus on your main legal goal.' : '')}
-
-${shouldDetectGoal ? 
-  'Start by asking: "What\'s your main legal goal? For example, preparing for a custody hearing, applying for an AVO, or drafting a parenting plan?"' : 
-  'Never ask "what is your goal?" again - you already know their objective.'
-}
-
-RESPONSE BEHAVIOR:
-• When analyzing new evidence, tie it directly back to their established goal using bullet points
-• Timeline events are automatically extracted from uploads - don't mention this process
-• If evidence isn't directly relevant, briefly acknowledge this but suggest a goal-relevant next step
-• ALWAYS end responses with 2-3 specific next action suggestions formatted as:
-  - "Extract breaches of consent orders into timeline"
-  - "Summarize child welfare concerns in 6 lines" 
-  - "Cross-check email record against police report"
-• Keep your tone warm, empathetic, and encouraging while remaining methodical
-• Do not include sources or citations unless explicitly requested
-• Before suggesting drafting, ask: "Would you like me to proceed to drafting, or keep strengthening the case analysis further?"
-
-${allTelepathicContext ? `PROACTIVE ALERTS:\n${allTelepathicContext}\n\n` : ''}
-
-${caseSummary ? `CASE SUMMARY:\n${caseSummary}\n\n` : ''}
-
-**SAFETY FIRST**: If you're in immediate danger, please call 000. Your safety is my top priority.
-
-I'm here to support you, ${userName}.${smartGreeting}`;
-
-    const baseSystem = {
+    // Add system message with context
+    const systemMessage = {
       role: "system",
-      content: systemPrompt,
+      content: enhancedSystemPrompt + (fullContext ? `\n\nCONTEXT:\n${fullContext}` : '')
     };
 
-    const chatMessages = messages ?? [
-      baseSystem,
-      ...(evidenceInventory ? [{ role: "system", content: evidenceInventory }] : []),
-      ...(contextBlocks.length ? [{ role: "system", content: `Context excerpts:\n${contextBlocks.join("\n\n")}` }] : []),
-      { role: "user", content: String(queryText || prompt) },
-    ];
+    const finalMessages = [systemMessage, ...conversationMessages];
 
-    // Resilient model fallback system with correct GPT-5 model names
-    const modelConfigs = [
-      { model: "gpt-5", max_completion_tokens: 4000 },
-      { model: "gpt-5-mini", max_completion_tokens: 4000 },
-      { model: "gpt-4.1", max_completion_tokens: 4000 },
-      { model: "gpt-4o-mini", max_tokens: 4000, temperature: 0.7 }
-    ];
+    console.log(`🤖 Sending ${finalMessages.length} messages to OpenAI (${mode} mode)`);
 
-    let generatedText = "";
-    let lastError = null;
+    // Call OpenAI
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${openAIApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-5",
+        messages: finalMessages,
+        max_completion_tokens: 2000,
+        stream: false,
+      }),
+    });
 
-    for (const config of modelConfigs) {
-      try {
-        console.log(`🤖 Attempting model: ${config.model}`);
-        
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openAIApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...config,
-            messages: chatMessages,
-          }),
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          console.log(`❌ ${config.model} failed:`, errText);
-          lastError = errText;
-          
-          // Check if it's a model access error, try next model
-          if (errText.includes("model_not_found") || errText.includes("does not have access")) {
-            continue;
-          }
-          
-          // For other errors, still try fallback
-          continue;
-        }
-
-        const data = await response.json();
-        generatedText = data?.choices?.[0]?.message?.content ?? "";
-        
-        if (generatedText) {
-          console.log(`✅ Success with model: ${config.model}`);
-          break;
-        }
-      } catch (error) {
-        console.log(`❌ ${config.model} exception:`, error);
-        lastError = error;
-        continue;
-      }
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("OpenAI API error:", error);
+      throw new Error(`OpenAI API error: ${response.status} ${error}`);
     }
 
-    if (!generatedText) {
-      console.error("All models failed, last error:", lastError);
-      return new Response(
-        JSON.stringify({ error: "All AI models unavailable", details: lastError }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const data = await response.json();
+    const assistantMessage = data.choices[0].message.content;
 
-    // TELEPATHIC FEATURE: Enhanced Thread Summary Update
-    if (currentCaseMemory && queryText) {
-      try {
-        const currentSummary = currentCaseMemory.thread_summary || "";
-        const newEntry = `${new Date().toLocaleDateString()}: User discussed ${queryText.slice(0, 50).toLowerCase()}...`;
-        
-        // Keep rolling summary under 120 words with better context
-        const summaryParts = currentSummary.split('. ').slice(-2);
-        const updatedSummary = [...summaryParts, newEntry].join('. ').slice(0, 120);
-
-        const threadUpdatePromise = supabase
-          .from("case_memory")
-          .update({
-            thread_summary: updatedSummary,
-            last_updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", user.id);
-          
-        // Non-blocking update
-        threadUpdatePromise.then(({ error }) => error && console.error("Thread summary update failed:", error));
-      } catch (error) {
-        console.error("Thread summary update error:", error);
-      }
-    }
-
-    // Save the conversation to messages table for case memory
-    const messagePromise = supabase.from("messages").insert([
+    // Store the conversation
+    await supabase.from("messages").insert([
       {
         user_id: user.id,
         role: "user",
-        content: String(queryText || prompt),
-        citations: []
+        content: prompt || conversationMessages[conversationMessages.length - 1]?.content || "",
+        citations: [],
       },
       {
         user_id: user.id,
-        role: "assistant", 
-        content: generatedText,
-        citations: citations
+        role: "assistant",
+        content: assistantMessage,
+        citations: allCitations,
       }
     ]);
-    messagePromise.then(({ error }) => error && console.error("Message save error", error));
 
-    return new Response(JSON.stringify({ generatedText, citations }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    // Return the response
+    return new Response(
+      JSON.stringify({
+        response: assistantMessage,
+        citations: allCitations,
+        case_readiness_status: caseReadinessStatus,
+        legal_authorities_found: legalContext.length,
+        evidence_chunks_found: evidenceChunks.length
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+
   } catch (error) {
     console.error("Error in assistant-chat:", error);
     return new Response(
-      JSON.stringify({ error: (error as Error).message ?? "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ 
+        error: "Internal server error", 
+        details: error.message,
+        timestamp: new Date().toISOString()
+      }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
     );
   }
 });

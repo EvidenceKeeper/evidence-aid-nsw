@@ -210,9 +210,9 @@ async function fetchContent(url: string, sourceType: string): Promise<string> {
 async function processStoredFile(filePath: string, supabaseClient: any): Promise<string> {
   console.log(`Processing stored file: ${filePath}`);
   
-  // Get file from Supabase Storage
+  // Get file from Supabase Storage - Use legal-training bucket
   const { data, error } = await supabaseClient.storage
-    .from('evidence')
+    .from('legal-training')
     .download(filePath);
     
   if (error) throw new Error(`Failed to download file: ${error.message}`);
@@ -322,32 +322,50 @@ async function extractLegalStructure(
   metadata: any,
   openaiApiKey: string
 ) {
-  const structurePrompt = `Extract the hierarchical structure from this ${metadata.document_type} from ${metadata.jurisdiction}.
+  // Enhanced NSW legal structure detection with regex patterns
+  const nswLegalPatterns = {
+    parts: /Part\s+([IVXLCDM]+|\d+)(?:\s*[–-]\s*(.+?))?(?=\n|$)/gi,
+    divisions: /Division\s+(\d+)(?:\s*[–-]\s*(.+?))?(?=\n|$)/gi,
+    sections: /^(?:s\.|Section)\s*(\d+(?:\([A-Za-z0-9]+\))*)/gim,
+    subsections: /^\s*\(([A-Za-z0-9]+)\)/gim,
+    citations: /([\w\s]+(?:Act|Law|Code|Regulation))\s+(\d{4})\s*\((\w+)\)(?:\s+s\.?\s*(\d+(?:\([A-Za-z0-9]+\))*))?/gi
+  };
 
-Identify and extract:
-1. Main sections with their numbers/identifiers
-2. Subsections and their hierarchy
-3. Paragraph anchors and references
-4. Cross-references to other sections/documents
-5. Legal concepts mentioned
-6. Key definitions and their scope
+  const structurePrompt = `Extract the hierarchical NSW legal structure from this ${metadata.document_type}.
+
+CRITICAL NSW LEGAL PATTERNS:
+- Parts: "Part 1", "Part I", "Part 2 - Criminal Procedure"
+- Divisions: "Division 1", "Division 2 - Family Provisions" 
+- Sections: "s 8(1)", "Section 60CC", "s 79(4)(a)"
+- Acts: "Family Law Act 1975 (Cth)", "Care and Protection Act 1998 (NSW)"
+
+REQUIREMENTS:
+1. Extract sections with NSW format: "s 8(1)", "s 60CC", etc.
+2. Normalize citations: "Family Law Act 1975 (NSW) s 60CC"
+3. Detect page numbers from content
+4. Preserve hierarchical structure (Parts > Divisions > Sections)
+5. Include cross-references to other Acts/sections
 
 Content to analyze:
-${content.substring(0, 8000)} ${content.length > 8000 ? '...[truncated]' : ''}
+${content.substring(0, 12000)} ${content.length > 12000 ? '...[truncated]' : ''}
 
-Return as JSON with structure:
+Return JSON with enhanced NSW structure:
 {
   "sections": [
     {
-      "section_number": "string",
-      "title": "string", 
-      "content": "string",
-      "level": number,
-      "parent_section": "string|null",
-      "paragraph_anchor": "string",
-      "cross_references": ["string"],
-      "legal_concepts": ["string"],
-      "definitions": [{"term": "string", "definition": "string"}]
+      "section_number": "s 60CC" | "Part 1" | "Division 2",
+      "title": "Best interests of child",
+      "content": "full section text",
+      "level": 1,
+      "parent_section": "Part VII",
+      "act_name": "Family Law Act 1975",
+      "jurisdiction": "NSW" | "Cth",
+      "page_start": 15,
+      "page_end": 17,
+      "normalized_citation": "Family Law Act 1975 (NSW) s 60CC",
+      "cross_references": ["s 60CA", "s 60CB"],
+      "legal_concepts": ["best interests", "child welfare"],
+      "definitions": [{"term": "child", "definition": "person under 18"}]
     }
   ]
 }`;
@@ -364,11 +382,11 @@ Return as JSON with structure:
         messages: [
           { 
             role: 'system', 
-            content: 'You are an expert NSW legal document analyzer. Extract hierarchical structure with precision and maintain legal citation accuracy.' 
+            content: 'You are an expert NSW legal document analyzer. Extract hierarchical structure using exact NSW legal citation formats (s 8(1), Part VII, Division 2). Always preserve exact section numbers and normalize citations to format: "Act Name Year (Jurisdiction) s Section".' 
           },
           { role: 'user', content: structurePrompt }
         ],
-        max_completion_tokens: 2000,
+        max_completion_tokens: 3000,
       }),
     });
 
@@ -383,18 +401,53 @@ Return as JSON with structure:
     return structureResult.sections;
   } catch (error) {
     console.error('Structure extraction failed:', error);
-    // Fallback to simple content chunking
-    return [{
-      section_number: '1',
-      title: metadata.title,
-      content: content,
-      level: 1,
-      parent_section: null,
-      paragraph_anchor: 'para-1',
-      cross_references: [],
-      legal_concepts: [],
-      definitions: []
-    }];
+    // Enhanced fallback with basic NSW pattern detection
+    console.log('Using enhanced fallback with basic NSW section detection');
+    const sections = [];
+    const sectionMatches = content.match(/(?:^|\n)\s*(?:s\.|Section)\s*(\d+(?:\([A-Za-z0-9]+\))*)[:\s]/gim);
+    
+    if (sectionMatches && sectionMatches.length > 0) {
+      // Split content by detected sections
+      const sectionParts = content.split(/(?=(?:^|\n)\s*(?:s\.|Section)\s*\d+)/gim);
+      
+      sectionParts.forEach((part, index) => {
+        const sectionMatch = part.match(/(?:s\.|Section)\s*(\d+(?:\([A-Za-z0-9]+\))*)/i);
+        if (sectionMatch) {
+          sections.push({
+            section_number: `s ${sectionMatch[1]}`,
+            title: `Section ${sectionMatch[1]}`,
+            content: part.trim(),
+            level: 1,
+            parent_section: null,
+            act_name: metadata.title,
+            jurisdiction: metadata.jurisdiction || 'NSW',
+            normalized_citation: `${metadata.title} s ${sectionMatch[1]}`,
+            cross_references: [],
+            legal_concepts: [],
+            definitions: []
+          });
+        }
+      });
+    }
+    
+    // If no sections found, create single section
+    if (sections.length === 0) {
+      sections.push({
+        section_number: '1',
+        title: metadata.title,
+        content: content,
+        level: 1,
+        parent_section: null,
+        act_name: metadata.title,
+        jurisdiction: metadata.jurisdiction || 'NSW',
+        normalized_citation: metadata.title,
+        cross_references: [],
+        legal_concepts: [],
+        definitions: []
+      });
+    }
+    
+    return sections;
   }
 }
 
@@ -409,17 +462,23 @@ async function createIntelligentChunks(
   for (const section of sections) {
     // Respect natural legal boundaries
     if (chunkConfig.respect_boundaries && section.content.length <= chunkConfig.chunk_size) {
-      chunks.push({
-        chunk_text: section.content,
-        chunk_order: chunkOrder++,
-        section_info: section,
-        metadata: {
-          section_number: section.section_number,
-          level: section.level,
-          legal_concepts: section.legal_concepts,
-          paragraph_anchor: section.paragraph_anchor
-        }
-      });
+        chunks.push({
+          chunk_text: section.content,
+          chunk_order: chunkOrder++,
+          section_info: section,
+          metadata: {
+            section_number: section.section_number,
+            level: section.level,
+            act_name: section.act_name,
+            jurisdiction: section.jurisdiction,
+            page_start: section.page_start,
+            page_end: section.page_end,
+            legal_concepts: section.legal_concepts,
+            normalized_citation: section.normalized_citation
+          },
+          citation_references: [section.normalized_citation],
+          legal_concepts: section.legal_concepts || []
+        });
     } else {
       // Split large sections intelligently
       const sectionChunks = await intelligentSplit(

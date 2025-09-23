@@ -217,6 +217,7 @@ export type Database = {
       }
       case_memory: {
         Row: {
+          case_readiness_status: string | null
           case_strength_reasons: Json | null
           case_strength_score: number | null
           evidence_index: Json | null
@@ -235,6 +236,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          case_readiness_status?: string | null
           case_strength_reasons?: Json | null
           case_strength_score?: number | null
           evidence_index?: Json | null
@@ -253,6 +255,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          case_readiness_status?: string | null
           case_strength_reasons?: Json | null
           case_strength_score?: number | null
           evidence_index?: Json | null
