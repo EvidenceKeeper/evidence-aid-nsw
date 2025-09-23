@@ -338,25 +338,50 @@ CRITICAL: If case status is not "ready", you MUST refuse document drafting and f
 
     console.log(`🤖 Sending ${finalMessages.length} messages to OpenAI (${mode} mode)`);
 
-    // Call OpenAI
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openAIApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-5",
-        messages: finalMessages,
-        max_completion_tokens: 2000,
-        stream: false,
-      }),
-    });
+    // Model fallback hierarchy
+    const models = ["gpt-5-2025-08-07", "gpt-4.1-2025-04-14", "gpt-4o"];
+    let response;
+    let lastError;
 
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("OpenAI API error:", error);
-      throw new Error(`OpenAI API error: ${response.status} ${error}`);
+    for (let i = 0; i < models.length; i++) {
+      const model = models[i];
+      console.log(`🎯 Attempting with model: ${model}`);
+      
+      try {
+        response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${openAIApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: finalMessages,
+            max_completion_tokens: 3000,
+            stream: false,
+          }),
+        });
+
+        if (response.ok) {
+          console.log(`✅ Success with model: ${model}`);
+          break;
+        } else {
+          const errorText = await response.text();
+          lastError = `${model}: ${response.status} ${errorText}`;
+          console.warn(`❌ Model ${model} failed: ${lastError}`);
+          
+          if (i === models.length - 1) {
+            throw new Error(`All models failed. Last error: ${lastError}`);
+          }
+        }
+      } catch (error) {
+        lastError = `${model}: ${error.message}`;
+        console.warn(`❌ Model ${model} error: ${lastError}`);
+        
+        if (i === models.length - 1) {
+          throw new Error(`All models failed. Last error: ${lastError}`);
+        }
+      }
     }
 
     const data = await response.json();
