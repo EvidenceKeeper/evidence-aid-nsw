@@ -28,6 +28,7 @@ import LawyerChat from "@/pages/LawyerChat";
 import LegalTraining from "@/pages/LegalTraining";
 import LegalTrainingDashboard from "@/pages/LegalTrainingDashboard";
 import TestLegalProcessor from "@/pages/TestLegalProcessor";
+import EvidenceEmbeddings from "@/pages/EvidenceEmbeddings";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
                 <Route path="/" element={<AppLayout />}>
                   <Route index element={<MyCase />} />
                   <Route path="evidence" element={<Evidence />} />
+                  <Route path="evidence-embeddings" element={<EvidenceEmbeddings />} />
                   <Route path="timeline" element={<CaseVisualization />} />
                   <Route path="forms" element={<Forms />} />
                   <Route path="assistant" element={<Assistant />} />
