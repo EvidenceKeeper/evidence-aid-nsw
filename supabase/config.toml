@@ -20,3 +20,39 @@ verify_jwt = true
 
 [functions.nsw-legal-ingestor]
 verify_jwt = true
+
+[functions.enhanced-evidence-processor]
+verify_jwt = true
+
+[functions.enhanced-memory-processor]
+verify_jwt = true
+
+[functions.continuous-case-analysis]
+verify_jwt = true
+
+[functions.categorize-file]
+verify_jwt = true
+
+[functions.evidence-intelligence-orchestrator]
+verify_jwt = true
+
+[functions.evidence-legal-analyzer]
+verify_jwt = true
+
+[functions.extract-timeline]
+verify_jwt = true
+
+[functions.ingest-file]
+verify_jwt = true
+
+[functions.ingest-text]
+verify_jwt = true
+
+[functions.memory-manager]
+verify_jwt = true
+
+[functions.nsw-rag-assistant]
+verify_jwt = true
+
+[functions.test-assistant-chat]
+verify_jwt = true

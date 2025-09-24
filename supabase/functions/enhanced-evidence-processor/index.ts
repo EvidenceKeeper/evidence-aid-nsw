@@ -209,7 +209,7 @@ GOAL-AWARE EXTRACTION INSTRUCTIONS:
     console.log(`Processing timeline batch ${Math.floor(i/BATCH_SIZE) + 1}/${Math.ceil(chunks.length/BATCH_SIZE)}`);
     
     try {
-      const events = await extractEventsFromText(batchText, file.name);
+      const events = await extractEventsFromText(batchText, file.name, goalContext);
       
       // Insert events into database
       if (events.length > 0) {
@@ -259,7 +259,7 @@ GOAL-AWARE EXTRACTION INSTRUCTIONS:
   return { timeline_events: totalEvents };
 }
 
-async function extractEventsFromText(text: string, fileName: string): Promise<any[]> {
+async function extractEventsFromText(text: string, fileName: string, goalContext = ''): Promise<any[]> {
   const isEmailContent = fileName.toLowerCase().includes('email') || 
                         text.includes('@') || 
                         text.includes('From:') || 
@@ -332,7 +332,7 @@ ${text}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5",
+        model: "gpt-5-2025-08-07",
         messages: [
           { role: "user", content: extractionPrompt }
         ],
@@ -401,7 +401,7 @@ ${fullText.substring(0, 8000)} ${fullText.length > 8000 ? '...[content truncated
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5",
+        model: "gpt-5-2025-08-07",
         messages: [
           { role: "user", content: patternPrompt }
         ],
