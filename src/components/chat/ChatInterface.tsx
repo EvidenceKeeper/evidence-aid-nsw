@@ -6,6 +6,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { FileUpload } from "./FileUpload";
 import { IntelligentQuickReplies } from "./IntelligentQuickReplies";
+import { TypingIndicator } from "./TypingIndicator";
+import { VoiceInput } from "./VoiceInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sanitizeFileName } from "@/lib/utils";
@@ -32,6 +34,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [typingMessage, setTypingMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -109,6 +112,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setLoading(true);
+    setTypingMessage("Analyzing your message...");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -122,6 +126,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         citations: []
       });
 
+      setTypingMessage("Consulting legal knowledge base...");
+      
       const { data } = await supabase.functions.invoke('assistant-chat', {
         body: { 
           message: textToSend,
@@ -158,6 +164,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       );
     } finally {
       setLoading(false);
+      setTypingMessage("");
     }
   };
 
@@ -342,6 +349,16 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     }
   };
 
+  const handleVoiceTranscription = (text: string) => {
+    setInput(text);
+    // Auto-send voice messages after short delay
+    setTimeout(() => {
+      if (text.trim()) {
+        sendMessage(text);
+      }
+    }, 500);
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0 min-w-0 bg-gradient-to-br from-background to-muted/20">
       {/* Enhanced Header */}
@@ -384,10 +401,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           ))}
           
           {loading && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span className="text-sm">Thinking...</span>
-            </div>
+            <TypingIndicator message={typingMessage} />
           )}
         </div>
         <div ref={messagesEndRef} />
@@ -440,6 +454,10 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
                   <Send className="w-4 h-4" />
                 )}
               </Button>
+              <VoiceInput 
+                onTranscription={handleVoiceTranscription}
+                disabled={loading}
+              />
               <Button
                 variant="outline"
                 size="sm"
