@@ -9,26 +9,18 @@ import { IntelligentQuickReplies } from "./IntelligentQuickReplies";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sanitizeFileName } from "@/lib/utils";
+import { errorHandler } from "@/utils/errorHandler";
+import type { 
+  ChatMessage as ChatMessageType, 
+  ConversationHistory, 
+  AssistantResponse,
+  QuickReply,
+  MessageCitation
+} from "@/types/chat";
+import type { DatabaseUser } from "@/types/supabase";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  citations?: Array<{
-    index: number;
-    file_id: string;
-    file_name: string;
-    seq: number;
-    excerpt: string;
-    meta: any;
-  }>;
-  timestamp: Date;
-  files?: Array<{
-    id: string;
-    name: string;
-    status: "uploading" | "processing" | "ready" | "error";
-  }>;
-}
+// Using centralized types
+type Message = ChatMessageType;
 
 interface EnhancedChatInterfaceProps {
   isModal?: boolean;
@@ -51,9 +43,21 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     scrollToBottom();
   }, [messages]);
 
-  // Load chat history on component mount
+  // Load chat history on component mount with cleanup
   useEffect(() => {
-    loadChatHistory();
+    let mounted = true;
+    
+    const loadHistory = async () => {
+      if (mounted) {
+        await loadChatHistory();
+      }
+    };
+    
+    loadHistory();
+    
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const loadChatHistory = async () => {
@@ -69,23 +73,25 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         .limit(50);
 
       if (error) {
-        console.error("Error loading chat history:", error);
+        errorHandler.handleDbError(error, 'select', 'messages');
         return;
       }
 
       if (historyMessages && historyMessages.length > 0) {
-        const formattedMessages = historyMessages.map((msg) => ({
+        const formattedMessages: Message[] = historyMessages.map((msg) => ({
           id: msg.id,
           role: msg.role as "user" | "assistant",
           content: msg.content,
-          citations: (msg.citations as any[]) || [],
+          citations: Array.isArray(msg.citations) ? (msg.citations as unknown as MessageCitation[]) : [],
           timestamp: new Date(msg.created_at)
         }));
         
         setMessages(formattedMessages);
       }
     } catch (error) {
-      console.error("Error in loadChatHistory:", error);
+      errorHandler.handleChatError(
+        error instanceof Error ? error : new Error('Failed to load chat history')
+      );
     }
   };
 
@@ -146,18 +152,16 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         });
       }
     } catch (error) {
-      console.error("Enhanced chat error:", error);
-      toast({
-        title: "Chat Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive"
-      });
+      errorHandler.handleChatError(
+        error instanceof Error ? error : new Error('Failed to send message'),
+        { textToSend, conversationLength: messages.length }
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleQuickReply = async (reply: any) => {
+  const handleQuickReply = async (reply: QuickReply) => {
     if (reply.requiresProcessing) {
       await sendMessage(reply.text);
     } else {
@@ -177,11 +181,10 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        toast({
-          title: "Authentication Required",
-          description: "Please log in to upload files securely.",
-          variant: "destructive"
-        });
+        errorHandler.error(
+          'Authentication required for file upload',
+          'FileUpload'
+        );
         return;
       }
 
@@ -285,10 +288,11 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       });
 
       if (successCount > 0) {
-        toast({
-          title: "Upload Successful",
-          description: `Successfully uploaded ${successCount} file${successCount !== 1 ? 's' : ''}. Processing has started.`,
-        });
+        errorHandler.info(
+          `Successfully uploaded ${successCount} file${successCount !== 1 ? 's' : ''}`,
+          'FileUpload',
+          { successCount }
+        );
 
         // Add assistant response about the uploaded files
         const assistantMessage: Message = {
@@ -308,15 +312,19 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       }
 
       if (failureCount > 0) {
-        toast({
-          title: "Some uploads failed",
-          description: `${failureCount} file${failureCount !== 1 ? 's' : ''} failed to upload. Please try again.`,
-          variant: "destructive"
-        });
+        errorHandler.error(
+          `${failureCount} file${failureCount !== 1 ? 's' : ''} failed to upload`,
+          'FileUpload',
+          undefined,
+          { failureCount }
+        );
       }
 
-    } catch (error: any) {
-      console.error("Upload error:", error);
+    } catch (error) {
+      errorHandler.handleUploadError(
+        error instanceof Error ? error : new Error('Upload failed'),
+        files.map(f => f.name).join(', ')
+      );
 
       // Update all file statuses to error for this upload message
       setMessages(prev => prev.map(msg =>
@@ -324,12 +332,6 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           ? { ...msg, files: msg.files?.map(f => ({ ...f, status: "error" as const })) }
           : msg
       ));
-
-      toast({
-        title: "Upload Failed",
-        description: `Upload failed: ${error?.message || 'Unknown error'}`,
-        variant: "destructive"
-      });
     }
   };
 

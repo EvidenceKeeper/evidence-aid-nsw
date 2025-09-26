@@ -140,7 +140,19 @@ export function useConversationMemory() {
   }, [conversationContext, currentThread]);
 
   useEffect(() => {
-    initializeThread();
+    let mounted = true;
+    
+    const initialize = async () => {
+      if (mounted) {
+        await initializeThread();
+      }
+    };
+    
+    initialize();
+    
+    return () => {
+      mounted = false;
+    };
   }, [initializeThread]);
 
   return {

@@ -40,19 +40,28 @@ export function CaseIntelligenceProvider({ children }: { children: React.ReactNo
     isAnalyzing: false,
   });
 
-  // Get user on mount
+  // Get user on mount with proper cleanup
   useEffect(() => {
+    let mounted = true;
+    
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+      if (mounted) {
+        setUser(user);
+      }
     };
     getUser();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
+      if (mounted) {
+        setUser(session?.user || null);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadCaseIntelligence = async () => {
@@ -131,7 +140,7 @@ export function CaseIntelligenceProvider({ children }: { children: React.ReactNo
     loadCaseIntelligence();
   }, [user]);
 
-  // Subscribe to real-time updates
+  // Subscribe to real-time updates with proper cleanup
   useEffect(() => {
     if (!user) return;
 
@@ -164,9 +173,10 @@ export function CaseIntelligenceProvider({ children }: { children: React.ReactNo
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      // Proper cleanup of subscription
+      channel.unsubscribe();
     };
-  }, [user]);
+  }, [user, loadCaseIntelligence]); // Added loadCaseIntelligence to dependencies
 
   return (
     <CaseIntelligenceContext.Provider value={{ intelligence, triggerAnalysis }}>

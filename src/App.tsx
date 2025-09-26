@@ -7,6 +7,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { TelepathicContextProvider } from "@/components/memory/TelepathicContextProvider";
 import { AnticipatorContextProvider } from "@/components/memory/AnticipatorContext";
 import { EnhancedMemoryProvider } from "@/components/memory/EnhancedMemoryProvider";
+import { ErrorBoundary, ChatErrorBoundary, EvidenceErrorBoundary } from "@/components/ErrorBoundary";
 import AppLayout from "@/components/layout/AppLayout";
 import MyCase from "@/pages/MyCase";
 import Evidence from "@/pages/Evidence";
@@ -29,53 +30,57 @@ import LegalTraining from "@/pages/LegalTraining";
 import LegalTrainingDashboard from "@/pages/LegalTrainingDashboard";
 import TestLegalProcessor from "@/pages/TestLegalProcessor";
 import EvidenceEmbeddings from "@/pages/EvidenceEmbeddings";
+import { DebugErrorLogs } from "@/components/DebugErrorLogs";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <HelmetProvider>
-      <TooltipProvider>
-        <EnhancedMemoryProvider>
-          <TelepathicContextProvider>
-            <AnticipatorContextProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-              <Route element={<AuthGate />}>
-                <Route path="/" element={<AppLayout />}>
-                  <Route index element={<MyCase />} />
-                  <Route path="evidence" element={<Evidence />} />
-                  <Route path="evidence-embeddings" element={<EvidenceEmbeddings />} />
-                  <Route path="timeline" element={<CaseVisualization />} />
-                  <Route path="forms" element={<Forms />} />
-                  <Route path="assistant" element={<Assistant />} />
-                  <Route path="chat" element={<Assistant />} />
-                  <Route path="lawyer-chat" element={<LawyerChat />} />
-                  <Route path="legal-training" element={<LegalTraining />} />
-                  <Route path="legal-training-dashboard" element={<LegalTrainingDashboard />} />
-                  <Route path="test-legal-processor" element={<TestLegalProcessor />} />
-                  <Route path="legal" element={<LegalAssistant />} />
-                  <Route path="legal-process" element={<LegalProcess />} />
-                  <Route path="search" element={<SearchPage />} />
-                  <Route path="find-help" element={<FindHelp />} />
-                  <Route path="taskboard" element={<Taskboard />} />
-                  <Route path="consultations" element={<LawyerConsultations />} />
-                  <Route path="consultation/:consultationId" element={<ConsultationDetail />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            </BrowserRouter>
-            </AnticipatorContextProvider>
-          </TelepathicContextProvider>
-        </EnhancedMemoryProvider>
-      </TooltipProvider>
-    </HelmetProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <HelmetProvider>
+        <TooltipProvider>
+          <EnhancedMemoryProvider>
+            <TelepathicContextProvider>
+              <AnticipatorContextProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/auth" element={<AuthPage />} />
+                    <Route element={<AuthGate />}>
+                      <Route path="/" element={<AppLayout />}>
+                        <Route index element={<MyCase />} />
+                        <Route path="evidence" element={<EvidenceErrorBoundary><Evidence /></EvidenceErrorBoundary>} />
+                        <Route path="evidence-embeddings" element={<EvidenceErrorBoundary><EvidenceEmbeddings /></EvidenceErrorBoundary>} />
+                        <Route path="timeline" element={<CaseVisualization />} />
+                        <Route path="forms" element={<Forms />} />
+                        <Route path="assistant" element={<ChatErrorBoundary><Assistant /></ChatErrorBoundary>} />
+                        <Route path="chat" element={<ChatErrorBoundary><Assistant /></ChatErrorBoundary>} />
+                        <Route path="lawyer-chat" element={<ChatErrorBoundary><LawyerChat /></ChatErrorBoundary>} />
+                        <Route path="legal-training" element={<LegalTraining />} />
+                        <Route path="legal-training-dashboard" element={<LegalTrainingDashboard />} />
+                        <Route path="test-legal-processor" element={<TestLegalProcessor />} />
+                        <Route path="legal" element={<LegalAssistant />} />
+                        <Route path="legal-process" element={<LegalProcess />} />
+                        <Route path="search" element={<SearchPage />} />
+                        <Route path="find-help" element={<FindHelp />} />
+                        <Route path="taskboard" element={<Taskboard />} />
+                        <Route path="consultations" element={<LawyerConsultations />} />
+                        <Route path="consultation/:consultationId" element={<ConsultationDetail />} />
+                        <Route path="settings" element={<Settings />} />
+                      </Route>
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+                <DebugErrorLogs />
+              </AnticipatorContextProvider>
+            </TelepathicContextProvider>
+          </EnhancedMemoryProvider>
+        </TooltipProvider>
+      </HelmetProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
