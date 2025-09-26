@@ -194,14 +194,24 @@ export function GlobalEvidenceSearch() {
     performSearch(recentQuery);
   }, [performSearch]);
 
-  // Render highlighted text
+  // Render highlighted text safely
   const renderHighlightedText = (text: string) => {
-    // Simple highlighting - replace **[highlight]** and **[/highlight]** with styled spans
-    const highlighted = text.replace(
-      /\*\*\[highlight\](.*?)\*\*\[\/highlight\]/g,
-      '<mark class="bg-primary/20 text-primary font-semibold px-1 rounded">$1</mark>'
+    const parts = text.split(/(\*\*\[highlight\].*?\*\*\[\/highlight\])/g);
+    return (
+      <div>
+        {parts.map((part, index) => {
+          const highlightMatch = part.match(/\*\*\[highlight\](.*?)\*\*\[\/highlight\]/);
+          if (highlightMatch) {
+            return (
+              <mark key={index} className="bg-primary/20 text-primary font-semibold px-1 rounded">
+                {highlightMatch[1]}
+              </mark>
+            );
+          }
+          return <span key={index}>{part}</span>;
+        })}
+      </div>
     );
-    return <div dangerouslySetInnerHTML={{ __html: highlighted }} />;
   };
 
   // Get relevance color

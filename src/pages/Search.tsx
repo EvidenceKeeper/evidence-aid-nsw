@@ -272,10 +272,9 @@ export default function SearchPage() {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div 
-                        className="text-sm text-muted-foreground"
-                        dangerouslySetInnerHTML={{ __html: result.snippet }}
-                      />
+                      <div className="text-sm text-muted-foreground">
+                        {result.snippet}
+                      </div>
                       {result.file_tags.length > 0 && (
                         <div className="flex gap-1 mt-3">
                           {result.file_tags.slice(0, 3).map((tag, index) => (

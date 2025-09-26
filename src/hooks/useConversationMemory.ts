@@ -95,26 +95,24 @@ export function useConversationMemory() {
         .map(m => `${m.role}: ${m.content}`)
         .join('\n');
 
-      // Call edge function to generate intelligent summary
-      const { data, error } = await supabase.functions.invoke('conversation-summarizer', {
-        body: {
-          threadId: currentThread.id,
-          conversationText,
-          currentGoal: conversationContext?.previousGoal
+      // Generate basic summary locally (removing broken edge function call)
+      const summary = recentMessages.length > 0 
+        ? `Discussion covering ${recentMessages.length} recent messages`
+        : 'New conversation started';
+      
+      const topics = conversationContext?.previousGoal 
+        ? [conversationContext.previousGoal] 
+        : ['general discussion'];
+
+      await updateThread({
+        conversation_summary: summary,
+        topics,
+        progress_indicators: {
+          ...currentThread.progress_indicators,
+          key_achievements: ['Conversation active'],
+          next_actions: ['Continue discussion']
         }
       });
-
-      if (!error && data) {
-        await updateThread({
-          conversation_summary: data.summary,
-          topics: data.detectedTopics,
-          progress_indicators: {
-            ...currentThread.progress_indicators,
-            key_achievements: data.achievements,
-            next_actions: data.nextActions
-          }
-        });
-      }
     } catch (error) {
       console.error('Failed to generate conversation summary:', error);
     }
