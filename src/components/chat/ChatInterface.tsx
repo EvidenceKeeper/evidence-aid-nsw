@@ -8,6 +8,7 @@ import { FileUpload } from "./FileUpload";
 import { IntelligentQuickReplies } from "./IntelligentQuickReplies";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { sanitizeFileName } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -170,6 +171,135 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     }
   };
 
+  const handleFileUpload = async (files: File[]) => {
+    if (!files.length) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to upload files securely.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const uid = session.user.id;
+      
+      // Add user message about uploading files
+      const uploadMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content: `Uploading ${files.length} file${files.length !== 1 ? 's' : ''}: ${files.map(f => f.name).join(', ')}`,
+        timestamp: new Date(),
+        files: files.map((file, index) => ({
+          id: `${Date.now()}-${index}`,
+          name: file.name,
+          status: "uploading" as const
+        }))
+      };
+
+      setMessages(prev => [...prev, uploadMessage]);
+
+      // Upload files to Supabase storage
+      const uploadResults = await Promise.all(
+        files.map(async (file, index) => {
+          const sanitizedName = sanitizeFileName(file.name);
+          const path = `${uid}/${Date.now()}-${sanitizedName}`;
+          
+          const { error } = await supabase.storage
+            .from("evidence")
+            .upload(path, file, {
+              cacheControl: "3600",
+              upsert: false,
+              contentType: file.type || "application/octet-stream",
+            });
+          
+          if (error) throw error;
+
+          // Update file status to processing
+          setMessages(prev => prev.map((msg, msgIndex) => 
+            msgIndex === prev.length - 1 ? {
+              ...msg,
+              files: msg.files?.map((f, fIndex) => 
+                fIndex === index ? { ...f, status: "processing" as const } : f
+              )
+            } : msg
+          ));
+
+          // Auto-process the file
+          const { error: processError } = await supabase.functions.invoke("ingest-file", {
+            body: { path }
+          });
+          
+          if (processError) {
+            console.warn("Auto-processing failed:", processError);
+            throw processError;
+          }
+          
+          return { name: file.name, path };
+        })
+      );
+
+      // Update file status to ready
+      setMessages(prev => prev.map((msg, msgIndex) => 
+        msgIndex === prev.length - 1 ? {
+          ...msg,
+          files: msg.files?.map(f => ({ ...f, status: "ready" as const }))
+        } : msg
+      ));
+
+      // Save upload message to database
+      await supabase.from('messages').insert({
+        user_id: uid,
+        role: 'user',
+        content: uploadMessage.content,
+        citations: []
+      });
+
+      toast({
+        title: "Upload Successful",
+        description: `Successfully uploaded ${uploadResults.length} files! They're being processed automatically.`,
+      });
+
+      // Add assistant response about the uploaded files
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `I've received your ${uploadResults.length} file${uploadResults.length !== 1 ? 's' : ''} and they're being processed for analysis. Once processing is complete, I'll be able to reference and analyze this evidence in our conversation. How can I help you understand or organize this evidence?`,
+        timestamp: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // Save assistant message to database
+      await supabase.from('messages').insert({
+        user_id: uid,
+        role: 'assistant',
+        content: assistantMessage.content,
+        citations: []
+      });
+
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      
+      // Update file status to error
+      setMessages(prev => prev.map((msg, msgIndex) => 
+        msgIndex === prev.length - 1 ? {
+          ...msg,
+          files: msg.files?.map(f => ({ ...f, status: "error" as const }))
+        } : msg
+      ));
+
+      toast({
+        title: "Upload Failed",
+        description: `Upload failed: ${error?.message || 'Unknown error'}`,
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -288,7 +418,10 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           
           {showFileUpload && (
             <div className="mt-4 p-4 border border-border/20 rounded-lg bg-muted/20">
-              <FileUpload onUpload={() => {}} onClose={() => setShowFileUpload(false)} />
+              <FileUpload 
+                onUpload={handleFileUpload} 
+                onClose={() => setShowFileUpload(false)} 
+              />
             </div>
           )}
         </div>
