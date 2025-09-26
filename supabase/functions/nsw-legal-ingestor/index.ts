@@ -2,7 +2,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1';
-import { getDocument } from 'https://esm.sh/pdfjs-dist@2.11.338/build/pdf.min.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -245,8 +244,13 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
   try {
     console.log('Extracting text from PDF...');
     
-    const loadingTask = getDocument({ data });
-    const pdf = await loadingTask.promise;
+    // Use legacy build to avoid worker requirement in Deno
+    const { getDocument } = await import(
+      "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.min.mjs"
+    );
+    
+    const loadingTask: any = getDocument({ data });
+    const pdf: any = await loadingTask.promise;
     
     let fullText = '';
     
