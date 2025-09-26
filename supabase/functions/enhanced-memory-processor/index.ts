@@ -73,7 +73,8 @@ Return JSON format: {"file_summary": "...", "section_summaries": [{"title": "...
           content: `File: ${fileName}\n\nContent: ${text.slice(0, 8000)}...`
         }
       ],
-      max_completion_tokens: 1000,
+      max_tokens: 1000,
+      temperature: 0.7,
     }),
   });
 

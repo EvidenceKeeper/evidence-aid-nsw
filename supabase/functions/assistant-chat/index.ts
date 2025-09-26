@@ -561,12 +561,15 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
         const requestBody = {
           model: model,
           messages: finalMessages,
-          max_completion_tokens: 2000,
         };
 
-        // Only add temperature for legacy models (NOT for gpt-4o/gpt-4o-mini)
-        if (!['gpt-4o', 'gpt-4o-mini'].includes(model)) {
+        // Legacy models use max_tokens and support temperature
+        if (['gpt-4o', 'gpt-4o-mini'].includes(model)) {
+          (requestBody as any).max_tokens = 2000;
           (requestBody as any).temperature = 0.7;
+        } else {
+          // Newer models use max_completion_tokens and no temperature
+          (requestBody as any).max_completion_tokens = 2000;
         }
 
         response = await fetch("https://api.openai.com/v1/chat/completions", {

@@ -311,7 +311,8 @@ Look for:
           content: systemPrompt
         }
       ],
-      max_completion_tokens: 2000
+      max_tokens: 2000,
+      temperature: 0.7
     }),
   });
 
@@ -426,7 +427,8 @@ Only include connections with relevance_score > 0.6. Connection types:
               content: prompt
             }
           ],
-          max_completion_tokens: 2500
+          max_tokens: 2500,
+          temperature: 0.7
         }),
       });
 

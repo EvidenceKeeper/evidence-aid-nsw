@@ -189,7 +189,8 @@ Provide your analysis in this JSON format:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Analyze this evidence collection:\n\n${allText}` }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
+        temperature: 0.7,
       }),
   });
 

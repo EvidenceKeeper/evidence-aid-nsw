@@ -360,7 +360,8 @@ No markdown, no explanations outside JSON structure.`
               content: `Analyze this evidence search query with deep contextual understanding and identify all relevant legal concepts, behavioral patterns, and comprehensive search terms: "${query}"`
             }
           ],
-          max_completion_tokens: 600,
+          max_tokens: 600,
+          temperature: 0.7,
         }),
       });
 

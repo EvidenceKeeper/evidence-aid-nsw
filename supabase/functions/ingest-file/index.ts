@@ -96,7 +96,8 @@ async function ocrImageFromUrl(url: string): Promise<string> {
           ],
         },
       ],
-      max_completion_tokens: 2000,
+      max_tokens: 2000,
+      temperature: 0.7,
     }),
   });
   if (!resp.ok) {

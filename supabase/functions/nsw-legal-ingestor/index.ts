@@ -390,7 +390,8 @@ Return JSON with enhanced NSW structure:
           },
           { role: 'user', content: structurePrompt }
         ],
-        max_completion_tokens: 3000,
+        max_tokens: 3000,
+        temperature: 0.7,
       }),
     });
 
@@ -535,7 +536,8 @@ Return array of chunks with natural breaks, maintaining legal context.`;
           { role: 'system', content: 'Split legal text intelligently while preserving legal context and meaning.' },
           { role: 'user', content: splitPrompt }
         ],
-        max_completion_tokens: 1500,
+        max_tokens: 1500,
+        temperature: 0.7,
       }),
     });
 
@@ -619,7 +621,8 @@ Return as JSON array:
             { role: 'system', content: 'You are an expert at extracting and formatting Australian legal citations with perfect accuracy.' },
             { role: 'user', content: citationPrompt }
           ],
-          max_completion_tokens: 800,
+          max_tokens: 800,
+          temperature: 0.7,
         }),
       });
 
@@ -694,7 +697,8 @@ Return as JSON array of strings.`;
           { role: 'system', content: 'Extract NSW-specific legal concepts with precision.' },
           { role: 'user', content: conceptPrompt }
         ],
-        max_completion_tokens: 500,
+        max_tokens: 500,
+        temperature: 0.7,
       }),
     });
 

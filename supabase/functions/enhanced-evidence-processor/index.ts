@@ -338,7 +338,8 @@ ${text}
         messages: [
           { role: "user", content: extractionPrompt }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }),
     });
@@ -407,7 +408,8 @@ ${fullText.substring(0, 8000)} ${fullText.length > 8000 ? '...[content truncated
         messages: [
           { role: "user", content: patternPrompt }
         ],
-        max_completion_tokens: 3000,
+        max_tokens: 3000,
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }),
     });

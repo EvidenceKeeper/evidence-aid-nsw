@@ -323,7 +323,8 @@ Provide specific recommendations for addressing each identified gap.`
             content: prompt
           }
         ],
-        max_completion_tokens: 4000,
+        max_tokens: 4000,
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }),
     });
@@ -394,7 +395,8 @@ Respond in JSON format with detailed explanations.`;
             content: synthesisPrompt
           }
         ],
-        max_completion_tokens: 3000,
+        max_tokens: 3000,
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }),
     });
@@ -447,7 +449,8 @@ Return JSON with 'events' array.`;
         messages: [
           { role: "user", content: timelinePrompt }
         ],
-        max_completion_tokens: 3000,
+        max_tokens: 3000,
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }),
     });

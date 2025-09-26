@@ -165,7 +165,8 @@ Respond in JSON format with: intent_type, legal_concepts[], citation_types[], ns
           { role: 'system', content: 'You are a NSW legal expert analyzing queries for intent and required legal sources.' },
           { role: 'user', content: intentPrompt }
         ],
-        max_completion_tokens: 500,
+        max_tokens: 500,
+        temperature: 0.7,
       }),
     });
 
@@ -311,7 +312,8 @@ async function generateGroundedResponse(
           { role: 'system', content: systemPrompt },
           { role: 'user', content: contextPrompt }
         ],
-        max_completion_tokens: 1200,
+        max_tokens: 1200,
+        temperature: 0.7,
       }),
     });
 
