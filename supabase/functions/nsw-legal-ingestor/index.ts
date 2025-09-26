@@ -155,7 +155,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Ingestion failed', 
-        details: error.message,
+        details: error instanceof Error ? error.message : String(error),
         status: 'failed'
       }),
       {
@@ -245,11 +245,11 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
     console.log('Extracting text from PDF...');
     
     // Use legacy build to avoid worker requirement in Deno
-    const { getDocument } = await import(
+    const pdfjsLib = await import(
       "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.min.mjs"
     );
     
-    const loadingTask: any = getDocument({ data });
+    const loadingTask: any = pdfjsLib.default.getDocument({ data });
     const pdf: any = await loadingTask.promise;
     
     let fullText = '';
@@ -269,7 +269,7 @@ async function extractPdfText(data: Uint8Array): Promise<string> {
     return fullText.trim();
   } catch (error) {
     console.error('PDF extraction failed:', error);
-    throw new Error(`Failed to extract PDF text: ${error.message}`);
+    throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -492,7 +492,7 @@ async function createIntelligentChunks(
         openaiApiKey
       );
       
-      sectionChunks.forEach(chunk => {
+      sectionChunks.forEach((chunk: any) => {
         chunks.push({
           ...chunk,
           chunk_order: chunkOrder++

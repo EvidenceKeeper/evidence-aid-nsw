@@ -50,11 +50,11 @@ function detectEmailCorpus(fileName: string, text: string): boolean {
 
 async function extractPdfTextPerPage(data: Uint8Array): Promise<Array<{ page: number; text: string }>> {
   try {
-    const { getDocument } = await import(
+    const pdfjsLib = await import(
       // Use legacy build to avoid worker requirement in Deno
       "https://esm.sh/pdfjs-dist@3.11.174/legacy/build/pdf.min.mjs"
     );
-    const loadingTask: any = getDocument({ data });
+    const loadingTask: any = pdfjsLib.default.getDocument({ data });
     const pdf: any = await loadingTask.promise;
     const pages: Array<{ page: number; text: string }> = [];
     const total = pdf.numPages as number;
@@ -148,7 +148,7 @@ serve(async (req) => {
     const limit = 5;
     const sinceIso = new Date(Date.now() - windowMs).toISOString();
 
-    const serviceRoleSupabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"));
+    const serviceRoleSupabase = createClient(SUPABASE_URL!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { count, error: countErr } = await serviceRoleSupabase
       .from("assistant_requests")
       .select("id", { count: "exact", head: true })
@@ -399,19 +399,18 @@ serve(async (req) => {
       }
 
       // Auto-categorize the uploaded file in background
-      EdgeRuntime.waitUntil(
-        (async () => {
-          try {
-            console.log("🏷️ Triggering file categorization...");
-            await supabase.functions.invoke("categorize-file", {
-              body: { file_id: fileId }
-            });
-            console.log("✅ File categorization completed");
-          } catch (error) {
+      // Remove EdgeRuntime.waitUntil - not available in Supabase
+      (async () => {
+        try {
+          console.log("🏷️ Triggering file categorization...");
+          await supabase.functions.invoke("categorize-file", {
+            body: { file_id: fileId }
+          });
+          console.log("✅ File categorization completed");
+        } catch (error) {
             console.error("❌ File categorization failed:", error);
           }
-        })()
-      );
+        })();
 
       const analysisResponse = await supabase.functions.invoke('continuous-case-analysis', {
         body: { 

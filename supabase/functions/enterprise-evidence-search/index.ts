@@ -576,7 +576,7 @@ async function searchEvidence(
 
   // 4. Remove duplicates and sort by relevance
   const uniqueResults = allResults.reduce((acc, current) => {
-    const existingIndex = acc.findIndex(item => 
+    const existingIndex = acc.findIndex((item: any) => 
       item.file_id === current.file_id && 
       item.text.substring(0, 100) === current.text.substring(0, 100)
     );
@@ -590,7 +590,7 @@ async function searchEvidence(
   }, [] as any[]);
 
   const sortedResults = uniqueResults
-    .sort((a, b) => b.score - a.score)
+    .sort((a: any, b: any) => b.score - a.score)
     .slice(0, maxResults);
 
   return {
@@ -707,7 +707,7 @@ serve(async (req) => {
       // Enhanced concept matching with behavioral pattern recognition
       const matchedConcepts = concepts.filter(concept => {
         // Check if any expanded terms for this concept appear in the text
-        const conceptTerms = LEGAL_CONCEPT_MAPPINGS[concept] || [];
+        const conceptTerms = (LEGAL_CONCEPT_MAPPINGS as Record<string, string[]>)[concept] || [];
         return conceptTerms.some(term => 
           result.text.toLowerCase().includes(term.toLowerCase())
         ) || expandedTerms.some(term => 
@@ -753,9 +753,9 @@ serve(async (req) => {
     console.error('Enterprise search error:', error);
     
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       query: '',
-      steps: [`Error: ${error.message}`],
+      steps: [`Error: ${error instanceof Error ? error.message : String(error)}`],
       results: [],
       total_found: 0,
       search_time_ms: 0

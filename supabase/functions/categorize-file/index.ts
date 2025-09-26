@@ -120,7 +120,7 @@ Return JSON with: category, tags, description
         auto_category: analysis.category,
         tags: analysis.tags,
         meta: {
-          ...file.meta,
+          ...(file as any).meta,
           ai_description: analysis.description,
           categorized_at: new Date().toISOString()
         }

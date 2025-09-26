@@ -79,8 +79,8 @@ serve(async (req) => {
     console.error('Test error:', error);
     return new Response(
       JSON.stringify({ 
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         timestamp: new Date().toISOString()
       }),
       {

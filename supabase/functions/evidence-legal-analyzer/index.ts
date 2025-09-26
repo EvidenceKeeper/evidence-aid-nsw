@@ -107,8 +107,8 @@ serve(async (req) => {
 
     // Combine all text chunks
     const fullText = fileData.chunks
-      .sort((a, b) => a.seq - b.seq)
-      .map(chunk => chunk.text)
+      .sort((a: any, b: any) => a.seq - b.seq)
+      .map((chunk: any) => chunk.text)
       .join('\n\n');
 
     console.log(`Analyzing ${fullText.length} characters of text`);
@@ -147,7 +147,7 @@ serve(async (req) => {
         analysisResults.push({
           type: analysisType,
           success: false,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -190,7 +190,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Analysis failed', 
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error) 
       }),
       {
         status: 500,
@@ -291,7 +291,7 @@ Look for:
 4. Behavior matching legal definitions`
   };
 
-  const systemPrompt = prompts[analysisType] || prompts.legal_relevance;
+  const systemPrompt = (prompts as Record<string, string>)[analysisType] || prompts.legal_relevance;
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -384,7 +384,7 @@ Evidence Document: ${fileName}
 Evidence Content (first 2000 chars): ${text.substring(0, 2000)}
 
 Legal Provisions:
-${batch.map((section, idx) => 
+${batch.map((section: any, idx: number) => 
   `${idx + 1}. ${section.title}\nCitation: ${section.citation_format || 'N/A'}\nContent: ${section.content.substring(0, 500)}...\n`
 ).join('\n')}
 

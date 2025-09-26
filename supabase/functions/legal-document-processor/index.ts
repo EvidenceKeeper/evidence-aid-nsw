@@ -130,7 +130,7 @@ serve(async (req) => {
           .from('legal_document_processing_queue')
           .update({ 
             status: 'failed', 
-            error_message: error.message,
+            error_message: error instanceof Error ? error.message : String(error),
             completed_at: new Date().toISOString()
           })
           .eq('id', doc.id);
@@ -138,7 +138,7 @@ serve(async (req) => {
         results.push({ 
           file_name: doc.file_name, 
           status: 'failed', 
-          error: error.message 
+          error: error instanceof Error ? error.message : String(error) 
         });
       }
     }
@@ -162,7 +162,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Processing failed', 
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error) 
       }),
       {
         status: 500,

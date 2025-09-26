@@ -20,15 +20,15 @@ serve(async (req) => {
     );
 
     // Get user from auth for rate limiting
-    const authHeader = req.headers.get('Authorization');
-    let userId = null;
+    const authHeaderForRateLimit = req.headers.get('Authorization');
+    let userIdForRateLimit = null;
     
-    if (authHeader) {
+    if (authHeaderForRateLimit) {
       try {
         const { data: { user } } = await supabaseClient.auth.getUser(
-          authHeader.replace('Bearer ', '')
+          authHeaderForRateLimit.replace('Bearer ', '')
         );
-        userId = user?.id;
+        userIdForRateLimit = user?.id;
       } catch (e) {
         console.warn('Auth failed for rate limiting:', e);
       }
@@ -53,7 +53,7 @@ serve(async (req) => {
     }
 
     // Rate limiting: 20 requests per minute per user (more lenient for search)
-    if (userId) {
+    if (userIdForRateLimit) {
       const windowMs = 60_000;
       const limit = 20;
       const sinceIso = new Date(Date.now() - windowMs).toISOString();
@@ -61,7 +61,7 @@ serve(async (req) => {
       const { count, error: countErr } = await supabaseClient
         .from("assistant_requests")
         .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
+        .eq("user_id", userIdForRateLimit)
         .gte("created_at", sinceIso);
 
       if (countErr) {
@@ -76,7 +76,7 @@ serve(async (req) => {
       }
 
       // Log request without IP
-      supabaseClient.from("assistant_requests").insert({ user_id: userId })
+      supabaseClient.from("assistant_requests").insert({ user_id: userIdForRateLimit })
         .then(({ error }) => error && console.error("Log insert error", error));
     }
 
@@ -154,7 +154,7 @@ serve(async (req) => {
       sectionsQuery = sectionsQuery.eq('legal_documents.document_type', citationType);
     }
 
-    let searchResults = [];
+    let searchResults: any[] = [];
 
     if (searchType === 'semantic' || searchType === 'both') {
       // Get OpenAI API key for embeddings
@@ -243,7 +243,7 @@ serve(async (req) => {
       filteredResults = filteredResults.filter(result => {
         if (!result.legal_citations || result.legal_citations.length === 0) return true;
         
-        return result.legal_citations.some(citation => {
+        return result.legal_citations.some((citation: any) => {
           if (!citation.year) return true;
           const year = citation.year;
           if (yearFrom && year < parseInt(yearFrom)) return false;
@@ -258,7 +258,7 @@ serve(async (req) => {
       filteredResults = filteredResults.filter(result => {
         if (!result.legal_citations || result.legal_citations.length === 0) return true;
         
-        return result.legal_citations.some(citation => 
+        return result.legal_citations.some((citation: any) =>
           citation.court?.toLowerCase().includes(court.toLowerCase())
         );
       });
@@ -343,7 +343,7 @@ serve(async (req) => {
       // Calculate relevance based on query match
       const titleMatch = result.title?.toLowerCase().includes(query.toLowerCase()) ? 0.3 : 0;
       const contentMatch = result.content?.toLowerCase().includes(query.toLowerCase()) ? 0.2 : 0;
-      const conceptMatch = result.legal_concepts?.some(concept => 
+      const conceptMatch = result.legal_concepts?.some((concept: any) =>
         concept.toLowerCase().includes(query.toLowerCase())
       ) ? 0.3 : 0;
       
@@ -417,7 +417,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: 'Search failed', 
-        details: error.message 
+        details: error instanceof Error ? error.message : String(error) 
       }),
       {
         status: 500,

@@ -163,7 +163,7 @@ async function processEvidenceInBackground(supabase: any, fileId: string, userId
       .from('evidence_processing_queue')
       .update({ 
         status: 'failed', 
-        error_message: error.message,
+        error_message: error instanceof Error ? error.message : String(error),
         completed_at: new Date().toISOString() 
       })
       .eq('file_id', fileId)

@@ -48,7 +48,7 @@ serve(async (req) => {
 
     console.log(`Starting evidence intelligence orchestration for user: ${user.id}, trigger: ${trigger_type}`);
 
-    let filesToProcess = [];
+    let filesToProcess: any[] = [];
 
     if (file_id) {
       // Process specific file
@@ -94,8 +94,9 @@ serve(async (req) => {
       });
     }
 
-    // Start comprehensive intelligence processing
-    EdgeRuntime.waitUntil(processEvidenceIntelligence(supabase, user.id, filesToProcess));
+    // Start comprehensive intelligence processing in background
+    // Remove EdgeRuntime.waitUntil - not available in Supabase
+    processEvidenceIntelligence(supabase, user.id, filesToProcess);
 
     return new Response(JSON.stringify({
       success: true,
@@ -134,7 +135,7 @@ async function processEvidenceIntelligence(supabase: any, userId: string, files:
         continue;
       }
 
-      const fullText = chunks.map(c => c.text).join('\n\n');
+      const fullText = chunks.map((c: any) => c.text).join('\n\n');
 
       // Multi-pass analysis with different lenses
       const analyses = await Promise.all([
@@ -301,7 +302,7 @@ Identify evidence gaps:
 Provide specific recommendations for addressing each identified gap.`
   };
 
-  const prompt = prompts[lensType] || prompts.legal_significance;
+  const prompt = (prompts as Record<string, string>)[lensType] || prompts.legal_significance;
 
   try {
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -344,7 +345,7 @@ Provide specific recommendations for addressing each identified gap.`
 
   } catch (error) {
     console.error(`Error in ${lensType} analysis:`, error);
-    return { lens_type: lensType, error: error.message, content: {} };
+    return { lens_type: lensType, error: error instanceof Error ? error.message : String(error), content: {} };
   }
 }
 
@@ -408,7 +409,7 @@ Respond in JSON format with detailed explanations.`;
 
   } catch (error) {
     console.error("Error in evidence synthesis:", error);
-    return { error: error.message };
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 
