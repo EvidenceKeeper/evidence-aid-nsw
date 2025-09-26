@@ -27,12 +27,12 @@ interface CaseIntelligence {
   pattern_coherence: number;
   timeline_clarity: number;
   legal_foundation_strength: number;
-  key_strengths: any;
-  critical_weaknesses: any;
-  evidence_gaps: any;
-  strategic_priorities: any;
-  next_steps: any;
-  risk_factors: any;
+  key_strengths: unknown;
+  critical_weaknesses: unknown;
+  evidence_gaps: unknown;
+  strategic_priorities: unknown;
+  next_steps: unknown;
+  risk_factors: unknown;
 }
 
 interface EvidenceAnalysis {
@@ -40,10 +40,10 @@ interface EvidenceAnalysis {
   confidence_score: number;
   legal_strength: number;
   case_impact: string;
-  key_insights: any;
-  strategic_recommendations: any;
-  evidence_gaps_identified: any;
-  synthesis: any;
+  key_insights: unknown;
+  strategic_recommendations: unknown;
+  evidence_gaps_identified: unknown;
+  synthesis: unknown;
 }
 
 interface TimelineEvent {
@@ -304,16 +304,19 @@ export default function EvidenceIntelligenceDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {Array.isArray(caseIntelligence?.key_strengths) && caseIntelligence.key_strengths.length > 0 ? (
-                  <div className="space-y-2">
-                    {(caseIntelligence.key_strengths as string[]).map((strength, idx) => (
+              {caseIntelligence ? (
+                <div className="space-y-2">
+                  {Array.isArray(caseIntelligence.key_strengths) ? 
+                    (caseIntelligence.key_strengths as string[]).map((strength, idx) => (
                       <div key={idx} className="flex items-start gap-2">
                         <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                         <span className="text-sm">{strength}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
+                    )) : 
+                    <p className="text-muted-foreground text-sm">No strengths data available.</p>
+                  }
+                </div>
+              ) : (
                   <p className="text-muted-foreground text-sm">No strengths identified yet.</p>
                 )}
               </CardContent>
@@ -328,16 +331,19 @@ export default function EvidenceIntelligenceDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {Array.isArray(caseIntelligence?.critical_weaknesses) && caseIntelligence.critical_weaknesses.length > 0 ? (
-                  <div className="space-y-2">
-                    {(caseIntelligence.critical_weaknesses as string[]).map((weakness, idx) => (
+              {caseIntelligence ? (
+                <div className="space-y-2">
+                  {Array.isArray(caseIntelligence.critical_weaknesses) ? 
+                    (caseIntelligence.critical_weaknesses as string[]).map((weakness, idx) => (
                       <div key={idx} className="flex items-start gap-2">
                         <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                         <span className="text-sm">{weakness}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
+                    )) : 
+                    <p className="text-muted-foreground text-sm">No weaknesses data available.</p>
+                  }
+                </div>
+              ) : (
                   <p className="text-muted-foreground text-sm">No critical weaknesses identified.</p>
                 )}
               </CardContent>
@@ -353,15 +359,18 @@ export default function EvidenceIntelligenceDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(caseIntelligence?.evidence_gaps) && caseIntelligence.evidence_gaps.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {(caseIntelligence.evidence_gaps as string[]).map((gap, idx) => (
+            {caseIntelligence ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {Array.isArray(caseIntelligence.evidence_gaps) ? 
+                  (caseIntelligence.evidence_gaps as string[]).map((gap, idx) => (
                     <Badge key={idx} variant="outline" className="text-yellow-700 border-yellow-300">
                       {gap}
                     </Badge>
-                  ))}
-                </div>
-              ) : (
+                  )) : 
+                  <p className="text-muted-foreground text-sm">No evidence gaps data available.</p>
+                }
+              </div>
+            ) : (
                 <p className="text-muted-foreground text-sm">No evidence gaps identified.</p>
               )}
             </CardContent>
@@ -392,7 +401,7 @@ export default function EvidenceIntelligenceDashboard() {
                       <p className="text-sm text-muted-foreground">{analysis.case_impact}</p>
                     </div>
                     
-                    {Array.isArray(analysis.key_insights) && analysis.key_insights.length > 0 && (
+                    {Array.isArray(analysis.key_insights) && (analysis.key_insights as string[]).length > 0 && (
                       <div>
                         <h4 className="text-sm font-medium mb-1">Key Insights:</h4>
                         <div className="space-y-1">
@@ -406,7 +415,7 @@ export default function EvidenceIntelligenceDashboard() {
                       </div>
                     )}
 
-                    {Array.isArray(analysis.strategic_recommendations) && analysis.strategic_recommendations.length > 0 && (
+                    {Array.isArray(analysis.strategic_recommendations) && (analysis.strategic_recommendations as string[]).length > 0 && (
                       <div>
                         <h4 className="text-sm font-medium mb-1">Recommendations:</h4>
                         <div className="space-y-1">

@@ -63,7 +63,18 @@ export default function Evidence() {
   
   const [showWizard, setShowWizard] = useState(false);
   const [filesByCategory, setFilesByCategory] = useState<Record<string, EvidenceItem[]>>({});
-  const [latestAnalysis, setLatestAnalysis] = useState<any>(null);
+  const [latestAnalysis, setLatestAnalysis] = useState<{
+    success: boolean;
+    summary: string;
+    insights?: string[];
+    case_impact?: string;
+    strength_change?: number;
+    new_strength?: number;
+    patterns_found?: number;
+    relationships_found?: number;
+    next_steps?: string[];
+    fileName?: string;
+  } | null>(null);
 
   const formatBytes = (bytes?: number) => {
     if (bytes === undefined || bytes === null) return "";
@@ -91,8 +102,7 @@ export default function Evidence() {
         sortBy: { column: "updated_at", order: "desc" },
       });
       if (error) {
-        console.error("Failed to list files", error);
-        toast.error("Failed to load files");
+        errorHandler.handleDbError(error, "list files", "evidence storage");
         setFiles([]);
         return;
       }
@@ -104,7 +114,7 @@ export default function Evidence() {
           .from("evidence")
           .createSignedUrls(paths, 300);
         if (signErr) {
-          console.error("Failed to sign URLs", signErr);
+          errorHandler.handleDbError(signErr, "create signed URLs", "evidence storage");
         } else if (signed) {
           signedMap = Object.fromEntries(signed.map((s) => [s.path, s.signedUrl]));
         }
@@ -130,9 +140,9 @@ export default function Evidence() {
       }, {} as Record<string, EvidenceItem[]>);
       
       setFilesByCategory(grouped);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? "Unexpected error while loading files");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      errorHandler.error("Failed to load files", "Evidence", error);
     } finally {
       setLoading(false);
     }
@@ -172,33 +182,28 @@ export default function Evidence() {
       const valid = dropped.filter((f) => !invalid.includes(f));
       if (!valid.length) return;
 
-      const uploadWithRetry = async (file: File, attempts = 3) => {
-        // Sanitize filename for storage path
+      const uploadFile = async (file: File) => {
         const sanitizedName = sanitizeFileName(file.name);
         const path = `${uid}/${Date.now()}-${sanitizedName}`;
-        console.log("[Evidence] Uploading file", { originalName: file.name, sanitizedName, path });
         
-        for (let i = 0; i < attempts; i++) {
-          const { error } = await supabase.storage.from("evidence").upload(path, file, {
-            cacheControl: "3600",
-            upsert: false,
-            contentType: file.type || "application/octet-stream",
-            metadata: {
-              originalName: file.name, // Preserve original filename in metadata
-            },
-          });
-          if (!error) return { ok: true as const, name: file.name, path };
-          if (i === attempts - 1) {
-            console.error("Upload failed:", file.name, error);
-            toast.error(`Upload failed for "${file.name}": ${error.message || 'Unknown error'}`);
-            return { ok: false as const, name: file.name };
-          }
-          await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+        const { error } = await supabase.storage.from("evidence").upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: file.type || "application/octet-stream",
+          metadata: {
+            originalName: file.name,
+          },
+        });
+        
+        if (error) {
+          errorHandler.handleUploadError(error, file.name);
+          return { ok: false as const, name: file.name };
         }
-        return { ok: false as const, name: file.name };
+        
+        return { ok: true as const, name: file.name, path };
       };
 
-      const results = await Promise.all(valid.map((file) => uploadWithRetry(file)));
+      const results = await Promise.all(valid.map((file) => uploadFile(file)));
 
       const success = results.filter((r) => r.ok).length;
       const failed = results.length - success;
@@ -216,14 +221,26 @@ export default function Evidence() {
               });
               
               if (response.data?.analysis) {
+                const analysisData = response.data.analysis;
                 setLatestAnalysis({
-                  ...response.data.analysis,
+                  success: true,
+                  summary: analysisData.summary || "Evidence has been analyzed successfully",
+                  insights: analysisData.insights || [],
+                  case_impact: analysisData.case_impact,
+                  strength_change: analysisData.strength_change,
+                  new_strength: analysisData.new_strength,
+                  patterns_found: analysisData.patterns_found,
+                  relationships_found: analysisData.relationships_found,
+                  next_steps: analysisData.next_steps || [],
                   fileName: upload.name
                 });
               }
             } catch (err) {
-              console.error(`Auto-analysis failed for ${upload.name}:`, err);
-              // Don't show error toast for auto-analysis failures
+              errorHandler.handleApiError(
+                err instanceof Error ? err : new Error(String(err)),
+                "ingest-file",
+                { path: upload.path }
+              );
             }
           }
         }
@@ -255,18 +272,12 @@ export default function Evidence() {
 
   const handleDelete = async (path: string) => {
     try {
-      for (let i = 0; i < 2; i++) {
-        const { error } = await supabase.storage.from("evidence").remove([path]);
-        if (!error) {
-          toast.success("File deleted");
-          await loadFiles();
-          return;
-        }
-        if (i === 1) {
-          throw error;
-        }
-        await new Promise((r) => setTimeout(r, 300));
+      const { error } = await supabase.storage.from("evidence").remove([path]);
+      if (error) {
+        throw error;
       }
+      toast.success("File deleted");
+      await loadFiles();
     } catch (err: unknown) {
       const error = err instanceof Error ? err : new Error(String(err));
       errorHandler.error("Delete failed", "Evidence", error);
@@ -349,7 +360,7 @@ export default function Evidence() {
       {latestAnalysis && (
         <EvidenceAnalysisFeedback
           analysis={latestAnalysis}
-          fileName={latestAnalysis.fileName}
+          fileName={latestAnalysis.fileName || 'Unknown file'}
           onClose={() => setLatestAnalysis(null)}
         />
       )}
