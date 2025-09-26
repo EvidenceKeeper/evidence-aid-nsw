@@ -119,14 +119,14 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`flex w-full min-w-0 gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
           <Bot className="h-4 w-4 text-primary" />
         </div>
       )}
       
-      <div className={`max-w-[80%] space-y-2 ${isUser ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[80%] min-w-0 space-y-2 ${isUser ? "items-end" : "items-start"}`}>
         <Card className={`${isUser ? "bg-primary text-primary-foreground border-primary/20" : "bg-card"}`}>
           <CardContent className="p-3">
             {/* Files */}
@@ -157,7 +157,7 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
                 className="border-0 shadow-none p-0"
               />
             ) : (
-              <div className="whitespace-pre-wrap text-sm">
+              <div className="whitespace-pre-wrap break-words text-sm">
                 {message.content}
               </div>
             )}
@@ -173,7 +173,7 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => openCitation(citation)}
-                      className="h-auto p-2 text-left justify-start text-xs"
+                      className="h-auto p-2 text-left justify-start text-xs whitespace-normal break-words"
                     >
                       <div className="space-y-1">
                         <div className="font-medium">

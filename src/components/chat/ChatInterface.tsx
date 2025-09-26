@@ -200,55 +200,81 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         }))
       };
 
+      const uploadMsgId = uploadMessage.id;
+
       setMessages(prev => [...prev, uploadMessage]);
 
-      // Upload files to Supabase storage
-      const uploadResults = await Promise.all(
+      // Upload and process each file independently
+      const results = await Promise.allSettled(
         files.map(async (file, index) => {
+          const fileLocalId = uploadMessage.files![index].id;
           const sanitizedName = sanitizeFileName(file.name);
           const path = `${uid}/${Date.now()}-${sanitizedName}`;
-          
-          const { error } = await supabase.storage
+
+          const { error: uploadError } = await supabase.storage
             .from("evidence")
             .upload(path, file, {
               cacheControl: "3600",
               upsert: false,
               contentType: file.type || "application/octet-stream",
             });
-          
-          if (error) throw error;
 
-          // Update file status to processing
-          setMessages(prev => prev.map((msg, msgIndex) => 
-            msgIndex === prev.length - 1 ? {
-              ...msg,
-              files: msg.files?.map((f, fIndex) => 
-                fIndex === index ? { ...f, status: "processing" as const } : f
-              )
-            } : msg
+          if (uploadError) throw uploadError;
+
+          // Mark this file as processing
+          setMessages(prev => prev.map(msg =>
+            msg.id === uploadMsgId
+              ? {
+                  ...msg,
+                  files: msg.files?.map(f =>
+                    f.id === fileLocalId ? { ...f, status: "processing" as const } : f
+                  )
+                }
+              : msg
           ));
 
           // Auto-process the file
           const { error: processError } = await supabase.functions.invoke("ingest-file", {
             body: { path }
           });
-          
-          if (processError) {
-            console.warn("Auto-processing failed:", processError);
-            throw processError;
-          }
-          
+
+          if (processError) throw processError;
+
+          // Mark this file as ready
+          setMessages(prev => prev.map(msg =>
+            msg.id === uploadMsgId
+              ? {
+                  ...msg,
+                  files: msg.files?.map(f =>
+                    f.id === fileLocalId ? { ...f, status: "ready" as const } : f
+                  )
+                }
+              : msg
+          ));
+
           return { name: file.name, path };
         })
       );
 
-      // Update file status to ready
-      setMessages(prev => prev.map((msg, msgIndex) => 
-        msgIndex === prev.length - 1 ? {
-          ...msg,
-          files: msg.files?.map(f => ({ ...f, status: "ready" as const }))
-        } : msg
-      ));
+      // Mark any failed files as error
+      results.forEach((res, i) => {
+        if (res.status === 'rejected') {
+          const fileLocalId = uploadMessage.files![i].id;
+          setMessages(prev => prev.map(msg =>
+            msg.id === uploadMsgId
+              ? {
+                  ...msg,
+                  files: msg.files?.map(f =>
+                    f.id === fileLocalId ? { ...f, status: "error" as const } : f
+                  )
+                }
+              : msg
+          ));
+        }
+      });
+
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failureCount = results.filter(r => r.status === 'rejected').length;
 
       // Save upload message to database
       await supabase.from('messages').insert({
@@ -258,38 +284,45 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         citations: []
       });
 
-      toast({
-        title: "Upload Successful",
-        description: `Successfully uploaded ${uploadResults.length} files! They're being processed automatically.`,
-      });
+      if (successCount > 0) {
+        toast({
+          title: "Upload Successful",
+          description: `Successfully uploaded ${successCount} file${successCount !== 1 ? 's' : ''}. Processing has started.`,
+        });
 
-      // Add assistant response about the uploaded files
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: `I've received your ${uploadResults.length} file${uploadResults.length !== 1 ? 's' : ''} and they're being processed for analysis. Once processing is complete, I'll be able to reference and analyze this evidence in our conversation. How can I help you understand or organize this evidence?`,
-        timestamp: new Date(),
-      };
+        // Add assistant response about the uploaded files
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `I've received ${successCount} file${successCount !== 1 ? 's' : ''}. I'll reference them once processing completes.`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, assistantMessage]);
 
-      setMessages(prev => [...prev, assistantMessage]);
+        await supabase.from('messages').insert({
+          user_id: uid,
+          role: 'assistant',
+          content: assistantMessage.content,
+          citations: []
+        });
+      }
 
-      // Save assistant message to database
-      await supabase.from('messages').insert({
-        user_id: uid,
-        role: 'assistant',
-        content: assistantMessage.content,
-        citations: []
-      });
+      if (failureCount > 0) {
+        toast({
+          title: "Some uploads failed",
+          description: `${failureCount} file${failureCount !== 1 ? 's' : ''} failed to upload. Please try again.`,
+          variant: "destructive"
+        });
+      }
 
     } catch (error: any) {
       console.error("Upload error:", error);
-      
-      // Update file status to error
-      setMessages(prev => prev.map((msg, msgIndex) => 
-        msgIndex === prev.length - 1 ? {
-          ...msg,
-          files: msg.files?.map(f => ({ ...f, status: "error" as const }))
-        } : msg
+
+      // Update all file statuses to error for this upload message
+      setMessages(prev => prev.map(msg =>
+        msg.id === prev[prev.length - 1]?.id
+          ? { ...msg, files: msg.files?.map(f => ({ ...f, status: "error" as const })) }
+          : msg
       ));
 
       toast({
@@ -308,7 +341,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-background to-muted/20">
+    <div className="flex flex-col h-full min-h-0 min-w-0 bg-gradient-to-br from-background to-muted/20">
       {/* Enhanced Header */}
       <div className="flex items-center justify-between p-4 border-b border-border/10 bg-background/80 backdrop-blur-sm">
         <div className="flex items-center gap-3">
@@ -334,7 +367,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       </div>
 
       {/* Chat Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 min-h-0 p-4">
         <div className="space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
