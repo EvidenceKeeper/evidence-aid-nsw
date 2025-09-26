@@ -300,7 +300,7 @@ Look for:
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-5',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',
@@ -415,7 +415,7 @@ Only include connections with relevance_score > 0.6. Connection types:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5',
+          model: 'gpt-4o',
           messages: [
             {
               role: 'system', 

@@ -550,7 +550,7 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
     console.log(`🤖 Sending ${finalMessages.length} messages to OpenAI (${userRole} mode)`);
 
     // Try multiple models for reliability
-    const models = ['gpt-5-2025-08-07', 'gpt-4.1-2025-04-14', 'gpt-4o'];
+    const models = ['gpt-4o', 'gpt-4o-mini'];
     let response = null;
     let modelUsed = null;
 

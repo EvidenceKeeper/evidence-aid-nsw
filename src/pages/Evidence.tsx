@@ -10,6 +10,7 @@ import { EvidenceAnalysisFeedback } from "@/components/evidence/EvidenceAnalysis
 import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
 import { ProcessingStatus } from "@/components/evidence/ProcessingStatus";
 import { sanitizeFileName } from "@/lib/utils";
+import { errorHandler } from "@/utils/errorHandler";
 import { 
   Plus, 
   FolderOpen, 
@@ -22,6 +23,16 @@ import {
   Shield,
   Trash2
 } from "lucide-react";
+
+// Type for storage file object
+interface FileObject {
+  name: string;
+  metadata?: {
+    size?: number;
+    mimetype?: string;
+  };
+  updated_at?: string;
+}
 
 const categories = [
   { name: "Police report", color: "bg-[hsl(var(--category-police))]/15 text-[hsl(var(--category-police))]" },
@@ -99,13 +110,13 @@ export default function Evidence() {
         }
       }
 
-      const items: EvidenceItem[] = (list ?? []).map((f: any) => ({
-        name: f.name,
-        path: `${uid}/${f.name}`,
-        size: f?.metadata?.size,
-        mimeType: f?.metadata?.mimetype,
-        updated_at: f?.updated_at,
-        signedUrl: signedMap[`${uid}/${f.name}`],
+      const items: EvidenceItem[] = (list ?? []).map((fileInfo: FileObject) => ({
+        name: fileInfo.name,
+        path: `${uid}/${fileInfo.name}`,
+        size: fileInfo?.metadata?.size,
+        mimeType: fileInfo?.metadata?.mimetype,
+        updated_at: fileInfo?.updated_at,
+        signedUrl: signedMap[`${uid}/${fileInfo.name}`],
       }));
 
       setFiles(items);
@@ -221,9 +232,9 @@ export default function Evidence() {
       if (failed) toast.error(`Failed to upload ${failed} file(s).`);
 
       await loadFiles();
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? "Unexpected upload error");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      errorHandler.error("Upload failed", "Evidence", error);
     }
   }, [loadFiles]);
 
@@ -256,9 +267,9 @@ export default function Evidence() {
         }
         await new Promise((r) => setTimeout(r, 300));
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? "Failed to delete file");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      errorHandler.error("Delete failed", "Evidence", error);
     }
   };
 

@@ -184,7 +184,7 @@ Provide your analysis in this JSON format:
       'Content-Type': 'application/json',
     },
       body: JSON.stringify({
-        model: 'gpt-5',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Analyze this evidence collection:\n\n${allText}` }

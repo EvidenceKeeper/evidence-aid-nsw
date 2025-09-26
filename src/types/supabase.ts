@@ -1,10 +1,12 @@
 // Additional types for Supabase operations
+import { MessageCitation } from './chat';
+
 export interface DatabaseMessage {
   id: string;
   user_id: string;
   role: 'user' | 'assistant';
   content: string;
-  citations: any[];
+  citations: MessageCitation[];
   created_at: string;
 }
 
@@ -30,6 +32,6 @@ export interface EdgeFunctionResponse<T = any> {
   data?: T;
   error?: {
     message: string;
-    details?: any;
+    details?: Record<string, unknown>;
   };
 }

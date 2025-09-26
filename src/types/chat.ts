@@ -4,7 +4,7 @@ export interface MessageCitation {
   file_name: string;
   seq: number;
   excerpt: string;
-  meta: Record<string, any>;
+  meta: Record<string, unknown>;
 }
 
 export interface MessageFile {
