@@ -93,12 +93,11 @@ Return JSON with: category, tags, description
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano-2025-08-07",
         messages: [
           { role: "user", content: categorizationPrompt }
         ],
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_completion_tokens: 1000,
         response_format: { type: "json_object" }
       }),
     });

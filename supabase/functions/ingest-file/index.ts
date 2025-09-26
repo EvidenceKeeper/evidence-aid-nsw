@@ -86,7 +86,7 @@ async function ocrImageFromUrl(url: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "gpt-4.1-2025-04-14",
       messages: [
         {
           role: "user",
@@ -96,8 +96,7 @@ async function ocrImageFromUrl(url: string): Promise<string> {
           ],
         },
       ],
-      max_tokens: 2000,
-      temperature: 0.7,
+      max_completion_tokens: 2000,
     }),
   });
   if (!resp.ok) {

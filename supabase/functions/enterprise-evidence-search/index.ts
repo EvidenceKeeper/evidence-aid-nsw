@@ -291,7 +291,7 @@ async function expandQueryConcepts(query: string): Promise<{ expandedTerms: stri
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-4o',
+          model: 'gpt-5-mini-2025-08-07',
           messages: [
             {
               role: 'system',
@@ -360,8 +360,7 @@ No markdown, no explanations outside JSON structure.`
               content: `Analyze this evidence search query with deep contextual understanding and identify all relevant legal concepts, behavioral patterns, and comprehensive search terms: "${query}"`
             }
           ],
-          max_tokens: 600,
-          temperature: 0.7,
+          max_completion_tokens: 600,
         }),
       });
 

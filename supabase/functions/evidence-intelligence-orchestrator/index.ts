@@ -312,7 +312,7 @@ Provide specific recommendations for addressing each identified gap.`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5-2025-08-07",
         messages: [
           {
             role: "system",
@@ -323,8 +323,7 @@ Provide specific recommendations for addressing each identified gap.`
             content: prompt
           }
         ],
-        max_tokens: 4000,
-        temperature: 0.7,
+        max_completion_tokens: 4000,
         response_format: { type: "json_object" }
       }),
     });
@@ -384,7 +383,7 @@ Respond in JSON format with detailed explanations.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5-2025-08-07",
         messages: [
           {
             role: "system",
@@ -395,8 +394,7 @@ Respond in JSON format with detailed explanations.`;
             content: synthesisPrompt
           }
         ],
-        max_tokens: 3000,
-        temperature: 0.7,
+        max_completion_tokens: 3000,
         response_format: { type: "json_object" }
       }),
     });
@@ -445,12 +443,11 @@ Return JSON with 'events' array.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5-mini-2025-08-07",
         messages: [
           { role: "user", content: timelinePrompt }
         ],
-        max_tokens: 3000,
-        temperature: 0.7,
+        max_completion_tokens: 3000,
         response_format: { type: "json_object" }
       }),
     });

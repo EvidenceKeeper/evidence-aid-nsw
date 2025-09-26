@@ -334,12 +334,11 @@ ${text}
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5-mini-2025-08-07",
         messages: [
           { role: "user", content: extractionPrompt }
         ],
-        max_tokens: 2000,
-        temperature: 0.7,
+        max_completion_tokens: 2000,
         response_format: { type: "json_object" }
       }),
     });
@@ -404,12 +403,11 @@ ${fullText.substring(0, 8000)} ${fullText.length > 8000 ? '...[content truncated
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-5-2025-08-07",
         messages: [
           { role: "user", content: patternPrompt }
         ],
-        max_tokens: 3000,
-        temperature: 0.7,
+        max_completion_tokens: 3000,
         response_format: { type: "json_object" }
       }),
     });

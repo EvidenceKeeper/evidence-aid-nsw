@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { tryOpenAIWithFallback, tryEmbeddingWithFallback } from "./fallback-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -337,21 +338,10 @@ serve(async (req) => {
       try {
         // Generate embedding for legal search
         console.log("🔍 Generating embedding for enhanced legal search...");
-        const embeddingResponse = await fetch("https://api.openai.com/v1/embeddings", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${openAIApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "text-embedding-3-large",
-            input: enhancedQuery,
-          }),
-        });
+        const embeddingResponse = await tryEmbeddingWithFallback(enhancedQuery, openAIApiKey);
 
-        if (embeddingResponse.ok) {
-          const embeddingData = await embeddingResponse.json();
-          const queryEmbedding = embeddingData.data[0].embedding;
+        if (embeddingResponse) {
+          const queryEmbedding = embeddingResponse;
           
           // Search legal chunks FIRST (primary knowledge base)
           const { data: legalChunks, error: legalChunksErr } = await supabase.rpc(

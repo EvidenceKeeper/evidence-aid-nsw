@@ -184,13 +184,12 @@ Provide your analysis in this JSON format:
       'Content-Type': 'application/json',
     },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5-2025-08-07',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Analyze this evidence collection:\n\n${allText}` }
         ],
-        max_tokens: 2000,
-        temperature: 0.7,
+        max_completion_tokens: 2000,
       }),
   });
 

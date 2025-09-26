@@ -160,13 +160,12 @@ Respond in JSON format with: intent_type, legal_concepts[], citation_types[], ns
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [
           { role: 'system', content: 'You are a NSW legal expert analyzing queries for intent and required legal sources.' },
           { role: 'user', content: intentPrompt }
         ],
-        max_tokens: 500,
-        temperature: 0.7,
+        max_completion_tokens: 500,
       }),
     });
 
@@ -202,8 +201,9 @@ async function retrieveLegalContext(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'text-embedding-3-small',
+        model: 'text-embedding-3-large',
         input: query,
+        dimensions: 1536,
       }),
     });
 
@@ -307,13 +307,12 @@ async function generateGroundedResponse(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-5-2025-08-07',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: contextPrompt }
         ],
-        max_tokens: 1200,
-        temperature: 0.7,
+        max_completion_tokens: 1200,
       }),
     });
 

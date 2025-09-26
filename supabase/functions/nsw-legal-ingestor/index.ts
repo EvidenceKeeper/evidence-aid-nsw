@@ -382,7 +382,7 @@ Return JSON with enhanced NSW structure:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [
           { 
             role: 'system', 
@@ -390,8 +390,7 @@ Return JSON with enhanced NSW structure:
           },
           { role: 'user', content: structurePrompt }
         ],
-        max_tokens: 3000,
-        temperature: 0.7,
+        max_completion_tokens: 3000,
       }),
     });
 
@@ -531,13 +530,12 @@ Return array of chunks with natural breaks, maintaining legal context.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-mini-2025-08-07',
         messages: [
           { role: 'system', content: 'Split legal text intelligently while preserving legal context and meaning.' },
           { role: 'user', content: splitPrompt }
         ],
-        max_tokens: 1500,
-        temperature: 0.7,
+        max_completion_tokens: 1500,
       }),
     });
 
@@ -616,13 +614,12 @@ Return as JSON array:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-nano-2025-08-07',
           messages: [
             { role: 'system', content: 'You are an expert at extracting and formatting Australian legal citations with perfect accuracy.' },
             { role: 'user', content: citationPrompt }
           ],
-          max_tokens: 800,
-          temperature: 0.7,
+          max_completion_tokens: 800,
         }),
       });
 
@@ -692,13 +689,12 @@ Return as JSON array of strings.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-5-nano-2025-08-07',
         messages: [
           { role: 'system', content: 'Extract NSW-specific legal concepts with precision.' },
           { role: 'user', content: conceptPrompt }
         ],
-        max_tokens: 500,
-        temperature: 0.7,
+        max_completion_tokens: 500,
       }),
     });
 
