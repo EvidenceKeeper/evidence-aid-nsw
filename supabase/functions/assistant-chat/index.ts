@@ -369,7 +369,7 @@ serve(async (req) => {
             
             // Diversify by document/section to avoid redundancy
             const uniqueSections = new Map();
-            legalChunks.forEach((chunk, i) => {
+            legalChunks.forEach((chunk: any, i: number) => {
               const key = `${chunk.document_id}-${chunk.section_id}`;
               if (!uniqueSections.has(key) && uniqueSections.size < 10) {
                 uniqueSections.set(key, chunk);
@@ -406,7 +406,7 @@ serve(async (req) => {
           if (!userChunksErr && userChunks && userChunks.length > 0) {
             console.log(`📁 Found ${userChunks.length} relevant evidence chunks`);
             
-            const evidenceCitations = userChunks.map((chunk, i) => ({
+            const evidenceCitations = userChunks.map((chunk: any, i: number) => ({
               id: `evidence-${i}`,
               type: 'evidence',
               short_citation: chunk.file_name,
@@ -564,9 +564,9 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
           max_completion_tokens: 2000,
         };
 
-        // Only add temperature for legacy models
-        if (['gpt-4o', 'gpt-4o-mini'].includes(model)) {
-          requestBody.temperature = 0.7;
+        // Only add temperature for legacy models (NOT for gpt-4o/gpt-4o-mini)
+        if (!['gpt-4o', 'gpt-4o-mini'].includes(model)) {
+          (requestBody as any).temperature = 0.7;
         }
 
         response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -587,7 +587,8 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
           console.log(`❌ Model ${model} failed: ${response.status} - ${errorText}`);
         }
       } catch (error) {
-        console.log(`❌ Model ${model} error:`, error.message);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.log(`❌ Model ${model} error:`, errorMessage);
       }
     }
 
@@ -653,7 +654,7 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
     return new Response(
       JSON.stringify({ 
         error: "Internal server error", 
-        details: error.message,
+        details: error instanceof Error ? error.message : String(error),
         timestamp: new Date().toISOString()
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -675,7 +676,7 @@ function getStageDescription(stage: number): string {
     8: "Interim Process & What to Expect",
     9: "Outcome & Follow-Up"
   };
-  return stages[stage] || "Unknown Stage";
+  return (stages as Record<number, string>)[stage] || "Unknown Stage";
 }
 
 function buildDynamicSystemPrompt(params: {
@@ -822,10 +823,10 @@ function getStageSpecificGuidance(stage: number, readinessStatus: string): strin
     'ready': '- Full legal assistance including document drafting permitted\n- Guide toward concrete legal actions and filings'
   };
 
-  return `${stageGuidance[stage] || 'Stage guidance not available'}
+  return `${(stageGuidance as Record<number, string>)[stage] || 'Stage guidance not available'}
 
 **Readiness Status Instructions:**
-${readinessGuidance[readinessStatus] || 'Continue with appropriate stage guidance'}`;
+${(readinessGuidance as Record<string, string>)[readinessStatus] || 'Continue with appropriate stage guidance'}`;
 }
 
 async function updateUserJourneyData(supabase: any, userId: string, data: any) {

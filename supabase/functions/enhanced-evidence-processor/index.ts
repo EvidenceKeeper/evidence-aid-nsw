@@ -78,7 +78,9 @@ serve(async (req) => {
     }
 
     // Start background processing without waiting for completion
-    EdgeRuntime.waitUntil(processEvidenceInBackground(supabase, file_id, user.id, processing_type));
+    // Remove EdgeRuntime.waitUntil - not available in Supabase
+    // Background processing will complete naturally
+    processEvidenceInBackground(supabase, file_id, user.id, processing_type);
 
     return new Response(
       JSON.stringify({ 
