@@ -35,49 +35,42 @@ export function useConversationMemory() {
   const [isLoadingThread, setIsLoadingThread] = useState(false);
   const { toast } = useToast();
 
-  // Load or create conversation thread
+  // Create mock thread for now
   const initializeThread = useCallback(async () => {
     setIsLoadingThread(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) return;
-
-      // Try to find active thread
-      const { data: activeThread } = await supabase
-        .from('conversation_threads')
-        .select('*')
-        .eq('user_id', sessionData.session.user.id)
-        .eq('status', 'active')
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (activeThread) {
-        setCurrentThread(activeThread);
-        await generateConversationContext(activeThread);
-      } else {
-        // Create new thread
-        const { data: newThread } = await supabase
-          .from('conversation_threads')
-          .insert({
-            user_id: sessionData.session.user.id,
-            thread_title: 'New Legal Journey',
-            topics: [],
-            primary_goal: '',
-            progress_indicators: {
-              stage: 1,
-              key_achievements: [],
-              next_actions: []
-            },
-            conversation_summary: ''
-          })
-          .select()
-          .single();
-
-        if (newThread) {
-          setCurrentThread(newThread);
-        }
-      }
+      // Create mock thread
+      const mockThread: ConversationThread = {
+        id: 'mock-thread-id',
+        user_id: 'mock-user-id',
+        thread_title: 'Legal Case Discussion',
+        last_message_at: new Date().toISOString(),
+        message_count: 1,
+        status: 'active',
+        topics: ['coercive control', 'evidence'],
+        primary_goal: 'Build evidence for coercive control case',
+        progress_indicators: {
+          stage: 1,
+          key_achievements: ['Initial consultation'],
+          next_actions: ['Gather evidence']
+        },
+        conversation_summary: 'User is building a case for coercive control',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      setCurrentThread(mockThread);
+      
+      // Create mock context
+      const mockContext: ConversationContext = {
+        previousGoal: 'Build evidence for coercive control case',
+        lastTopics: ['coercive control', 'evidence'],
+        progressMade: ['Initial case assessment'],
+        unfinishedBusiness: ['Upload evidence documents'],
+        conversationGaps: 0
+      };
+      
+      setConversationContext(mockContext);
     } catch (error) {
       console.error('Failed to initialize conversation thread:', error);
     } finally {
@@ -85,63 +78,11 @@ export function useConversationMemory() {
     }
   }, []);
 
-  // Generate contextual information about conversation continuity
-  const generateConversationContext = async (thread: ConversationThread) => {
-    try {
-      const lastMessageTime = new Date(thread.last_message_at);
-      const now = new Date();
-      const hoursGap = Math.floor((now.getTime() - lastMessageTime.getTime()) / (1000 * 60 * 60));
-
-      // Get case memory for goal context
-      const { data: caseMemory } = await supabase
-        .from('case_memory')
-        .select('primary_goal, key_facts, timeline_summary, case_strength_score')
-        .eq('user_id', thread.user_id)
-        .maybeSingle();
-
-      // Get recent progress from case analysis history
-      const { data: recentProgress } = await supabase
-        .from('case_analysis_history')
-        .select('key_insights, analysis_type')
-        .eq('user_id', thread.user_id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      const context: ConversationContext = {
-        previousGoal: caseMemory?.primary_goal || thread.primary_goal || null,
-        lastTopics: thread.topics || [],
-        progressMade: recentProgress?.map(p => p.key_insights?.[0]).filter(Boolean) || [],
-        unfinishedBusiness: thread.progress_indicators?.next_actions || [],
-        conversationGaps: hoursGap
-      };
-
-      setConversationContext(context);
-    } catch (error) {
-      console.error('Failed to generate conversation context:', error);
-    }
-  };
-
-  // Update thread with new information
+  // Mock update function
   const updateThread = useCallback(async (updates: Partial<ConversationThread>) => {
     if (!currentThread) return;
-
-    try {
-      const { data: updatedThread } = await supabase
-        .from('conversation_threads')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', currentThread.id)
-        .select()
-        .single();
-
-      if (updatedThread) {
-        setCurrentThread(updatedThread);
-      }
-    } catch (error) {
-      console.error('Failed to update conversation thread:', error);
-    }
+    // Just update local state for now
+    setCurrentThread(prev => prev ? { ...prev, ...updates } : null);
   }, [currentThread]);
 
   // Create conversation summary from messages
