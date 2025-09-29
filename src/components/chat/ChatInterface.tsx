@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Settings, Brain, Loader2 } from 'lucide-react';
+import { Send, Settings, Brain, Loader2, Search } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -8,6 +8,9 @@ import { FileUpload } from "./FileUpload";
 import { IntelligentQuickReplies } from "./IntelligentQuickReplies";
 import { TypingIndicator } from "./TypingIndicator";
 import { VoiceInput } from "./VoiceInput";
+import { ChatSearchBar } from "./ChatSearchBar";
+import { SearchResultHighlighter } from "./SearchResultHighlighter";
+import { useChatOrganization } from "@/hooks/useChatOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sanitizeFileName } from "@/lib/utils";
@@ -35,8 +38,21 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   const [loading, setLoading] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [typingMessage, setTypingMessage] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  
+  const {
+    searchMessages,
+    clearSearch,
+    toggleBookmark,
+    addTag,
+    removeTag,
+    getMessageOrganization,
+    searchResults,
+    searchQuery,
+    isSearching
+  } = useChatOrganization();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -373,17 +389,41 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           </div>
         </div>
         
-        {isModal && onClose && (
+        <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={onClose}
-            className="h-8 w-8 p-0"
+            onClick={() => setShowSearch(!showSearch)}
+            className="h-8"
           >
-            ×
+            <Search className="w-4 h-4 mr-1" />
+            Search
           </Button>
-        )}
+          
+          {isModal && onClose && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="h-8 w-8 p-0"
+            >
+              ×
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Search Bar */}
+      {showSearch && (
+        <ChatSearchBar
+          onSearch={searchMessages}
+          onClear={() => {
+            clearSearch();
+            setShowSearch(false);
+          }}
+          isSearching={isSearching}
+        />
+      )}
 
       {/* Chat Messages */}
       <ScrollArea className="flex-1 min-h-0 p-4">
@@ -396,9 +436,21 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
             </div>
           )}
           
-          {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
-          ))}
+          {messages
+            .filter(message => 
+              !searchResults.length || searchResults.includes(message.id)
+            )
+            .map((message) => (
+              <ChatMessage 
+                key={message.id} 
+                message={message}
+                searchQuery={searchQuery}
+                organization={getMessageOrganization(message.id)}
+                onBookmarkToggle={toggleBookmark}
+                onTagAdd={addTag}
+                onTagRemove={removeTag}
+              />
+            ))}
           
           {loading && (
             <TypingIndicator message={typingMessage} />

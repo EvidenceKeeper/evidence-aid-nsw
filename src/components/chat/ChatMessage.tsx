@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CitationAwareResponse from "@/components/legal/CitationAwareResponse";
 import { ActionSuggestions } from "./ActionSuggestions";
+import { ConversationOrganizer } from "./ConversationOrganizer";
+import { SearchResultHighlighter } from "./SearchResultHighlighter";
 
 interface Message {
   id: string;
@@ -43,12 +45,37 @@ interface Message {
   consultationId?: string;
 }
 
+interface ConversationTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface MessageOrganization {
+  messageId: string;
+  isBookmarked: boolean;
+  tags: ConversationTag[];
+}
+
 interface ChatMessageProps {
   message: Message;
   onActionClick?: (actionText: string) => void;
+  searchQuery?: string;
+  organization?: MessageOrganization;
+  onBookmarkToggle?: (messageId: string, bookmarked: boolean) => void;
+  onTagAdd?: (messageId: string, tag: ConversationTag) => void;
+  onTagRemove?: (messageId: string, tagId: string) => void;
 }
 
-export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
+export function ChatMessage({ 
+  message, 
+  onActionClick, 
+  searchQuery = "",
+  organization,
+  onBookmarkToggle,
+  onTagAdd,
+  onTagRemove 
+}: ChatMessageProps) {
   const { toast } = useToast();
 
   const openCitation = async (citation: {
@@ -157,9 +184,11 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
                 className="border-0 shadow-none p-0"
               />
             ) : (
-              <div className="whitespace-pre-wrap break-words text-sm">
-                {message.content}
-              </div>
+              <SearchResultHighlighter 
+                text={message.content}
+                searchTerm={searchQuery}
+                className="whitespace-pre-wrap break-words text-sm block"
+              />
             )}
 
             {/* Citations */}
@@ -199,8 +228,19 @@ export function ChatMessage({ message, onActionClick }: ChatMessageProps) {
           </CardContent>
         </Card>
         
-        <div className={`text-xs text-muted-foreground ${isUser ? "text-right" : "text-left"}`}>
-          {formatDistanceToNow(message.timestamp, { addSuffix: true })}
+        <div className={`flex items-center justify-between text-xs text-muted-foreground ${isUser ? "flex-row-reverse" : ""}`}>
+          <span>{formatDistanceToNow(message.timestamp, { addSuffix: true })}</span>
+          
+          {organization && onBookmarkToggle && onTagAdd && onTagRemove && (
+            <ConversationOrganizer
+              messageId={message.id}
+              isBookmarked={organization.isBookmarked}
+              tags={organization.tags}
+              onBookmarkToggle={onBookmarkToggle}
+              onTagAdd={onTagAdd}
+              onTagRemove={onTagRemove}
+            />
+          )}
         </div>
       </div>
 
