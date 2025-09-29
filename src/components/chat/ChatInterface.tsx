@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Settings, Brain, Loader2, Search, Download } from 'lucide-react';
+import { Send, Settings, Brain, Loader2, Search, Download, Share2, Upload, Mic } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +13,9 @@ import { SearchResultHighlighter } from "./SearchResultHighlighter";
 import { SmartEvidenceSuggestions } from "./SmartEvidenceSuggestions";
 import { ConversationExporter } from "./ConversationExporter";
 import { EvidencePreview } from "./EvidencePreview";
+import { CaseShareDialog } from "@/components/case/CaseShareDialog";
+import { CollaborationIndicators } from "@/components/case/CollaborationIndicators";
+import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
 import { useChatOrganization } from "@/hooks/useChatOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -391,9 +394,17 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
             <h3 className="font-semibold text-foreground">Veronica Legal Assistant</h3>
             <p className="text-sm text-muted-foreground">NSW Coercive Control Evidence Expert</p>
           </div>
+          <CollaborationIndicators />
         </div>
         
         <div className="flex items-center gap-2">
+          <CaseShareDialog>
+            <Button variant="outline" size="sm" className="gap-2 h-8">
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+          </CaseShareDialog>
+          
           <ConversationExporter 
             messages={messages} 
             caseTitle="Case Discussion"
@@ -434,8 +445,10 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         />
       )}
 
-      {/* Chat Messages */}
-      <ScrollArea className="flex-1 min-h-0 p-4">
+      {/* Main Content Area with Sidebar */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Chat Messages */}
+        <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
@@ -467,6 +480,12 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         </div>
         <div ref={messagesEndRef} />
       </ScrollArea>
+
+        {/* Live Case Insights Sidebar - Desktop Only */}
+        <div className="hidden lg:block w-80 border-l overflow-y-auto p-4">
+          <LiveCaseInsights />
+        </div>
+      </div>
 
       {/* Evidence Preview Modal */}
       {selectedEvidenceId && (

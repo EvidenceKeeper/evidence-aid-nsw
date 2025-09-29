@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Calendar, FileSearch, Zap, Target, BarChart3 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ChevronRight, Calendar, FileSearch, Zap, Target, BarChart3, Sparkles } from "lucide-react";
 
 interface SuggestedAction {
   id: string;
@@ -76,12 +77,34 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   
   const getActionIcon = (type: SuggestedAction['action_type']) => {
     switch (type) {
-      case 'timeline': return <Calendar className="h-3 w-3" />;
-      case 'analysis': return <FileSearch className="h-3 w-3" />;
-      case 'evidence': return <Zap className="h-3 w-3" />;
-      case 'summary': return <BarChart3 className="h-3 w-3" />;
-      case 'strategy': return <Target className="h-3 w-3" />;
-      default: return <ChevronRight className="h-3 w-3" />;
+      case 'timeline': return <Calendar className="h-5 w-5" />;
+      case 'analysis': return <FileSearch className="h-5 w-5" />;
+      case 'evidence': return <Zap className="h-5 w-5" />;
+      case 'summary': return <BarChart3 className="h-5 w-5" />;
+      case 'strategy': return <Target className="h-5 w-5" />;
+      default: return <ChevronRight className="h-5 w-5" />;
+    }
+  };
+
+  const getActionGradient = (type: SuggestedAction['action_type']) => {
+    switch (type) {
+      case 'timeline': return 'from-blue-500/20 to-cyan-500/20 border-blue-500/30 hover:border-blue-500/50';
+      case 'analysis': return 'from-purple-500/20 to-pink-500/20 border-purple-500/30 hover:border-purple-500/50';
+      case 'evidence': return 'from-green-500/20 to-emerald-500/20 border-green-500/30 hover:border-green-500/50';
+      case 'summary': return 'from-orange-500/20 to-yellow-500/20 border-orange-500/30 hover:border-orange-500/50';
+      case 'strategy': return 'from-indigo-500/20 to-violet-500/20 border-indigo-500/30 hover:border-indigo-500/50';
+      default: return 'from-primary/20 to-primary/10 border-primary/30 hover:border-primary/50';
+    }
+  };
+
+  const getActionIconColor = (type: SuggestedAction['action_type']) => {
+    switch (type) {
+      case 'timeline': return 'text-blue-500';
+      case 'analysis': return 'text-purple-500';
+      case 'evidence': return 'text-green-500';
+      case 'summary': return 'text-orange-500';
+      case 'strategy': return 'text-indigo-500';
+      default: return 'text-primary';
     }
   };
   
@@ -92,22 +115,42 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   }
   
   return (
-    <div className="mt-3 pt-3 border-t border-border/20 space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">Quick actions:</p>
-      <div className="flex flex-wrap gap-2">
+    <div className="mt-4 pt-4 border-t border-border/20 space-y-3">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-primary" />
+        <p className="text-sm font-semibold">Suggested Actions</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {actions.map((action) => (
-          <Button
+          <Card
             key={action.id}
-            variant="outline"
-            size="sm"
-            onClick={() => onActionClick(action.text)}
-            className={`h-auto p-2 text-xs font-normal justify-start gap-1 bg-background/50 hover:bg-accent/80 border-border/40 text-foreground ${
-              action.priority === 'high' ? 'border-primary/40 bg-primary/5' : ''
+            className={`group cursor-pointer transition-all duration-300 border-2 bg-gradient-to-br ${getActionGradient(action.action_type)} hover:scale-[1.02] hover:shadow-lg ${
+              action.priority === 'high' ? 'ring-2 ring-primary/20 ring-offset-2' : ''
             }`}
+            onClick={() => onActionClick(action.text)}
           >
-            {getActionIcon(action.action_type)}
-            <span className="line-clamp-2 text-left">{action.text}</span>
-          </Button>
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <div className={`p-2.5 rounded-xl bg-background/80 backdrop-blur-sm ${getActionIconColor(action.action_type)} group-hover:scale-110 transition-transform duration-300`}>
+                  {getActionIcon(action.action_type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-relaxed line-clamp-2 group-hover:text-primary transition-colors">
+                    {action.text}
+                  </p>
+                  {action.priority === 'high' && (
+                    <div className="mt-2">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                        <Sparkles className="h-3 w-3" />
+                        Recommended
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>
