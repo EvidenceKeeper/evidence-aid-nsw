@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Settings, Brain, Loader2, Search } from 'lucide-react';
+import { Send, Settings, Brain, Loader2, Search, Download } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -10,6 +10,9 @@ import { TypingIndicator } from "./TypingIndicator";
 import { VoiceInput } from "./VoiceInput";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { SearchResultHighlighter } from "./SearchResultHighlighter";
+import { SmartEvidenceSuggestions } from "./SmartEvidenceSuggestions";
+import { ConversationExporter } from "./ConversationExporter";
+import { EvidencePreview } from "./EvidencePreview";
 import { useChatOrganization } from "@/hooks/useChatOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +42,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [typingMessage, setTypingMessage] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -390,6 +394,11 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         </div>
         
         <div className="flex items-center gap-2">
+          <ConversationExporter 
+            messages={messages} 
+            caseTitle="Case Discussion"
+          />
+          
           <Button
             variant="outline"
             size="sm"
@@ -458,6 +467,25 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         </div>
         <div ref={messagesEndRef} />
       </ScrollArea>
+
+      {/* Evidence Preview Modal */}
+      {selectedEvidenceId && (
+        <EvidencePreview
+          fileId={selectedEvidenceId}
+          fileName="Evidence"
+          trigger={null}
+        />
+      )}
+
+      {/* Smart Evidence Suggestions */}
+      {messages.length > 0 && !loading && (
+        <div className="px-4 pb-2">
+          <SmartEvidenceSuggestions 
+            recentMessages={messages.slice(-3)}
+            onSelectEvidence={(fileId) => setSelectedEvidenceId(fileId)}
+          />
+        </div>
+      )}
 
       {/* Intelligent Quick Replies */}
       {messages.length > 0 && !loading && (

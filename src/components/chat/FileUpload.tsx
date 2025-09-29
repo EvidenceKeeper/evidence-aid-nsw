@@ -19,12 +19,17 @@ export function FileUpload({ onUpload, onClose }: FileUploadProps) {
     accept: {
       'text/plain': ['.txt'],
       'application/pdf': ['.pdf'],
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
       'text/csv': ['.csv'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'message/rfc822': ['.eml'],
+      'application/vnd.ms-outlook': ['.msg']
     },
     multiple: true,
+    maxSize: 20 * 1024 * 1024, // 20MB
+    noClick: false,
+    noKeyboard: false
   });
 
   const removeFile = (index: number) => {
