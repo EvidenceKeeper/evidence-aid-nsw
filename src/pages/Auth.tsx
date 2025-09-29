@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useWellnessSettings } from "@/hooks/useWellnessSettings";
 import { Heart, Shield } from "lucide-react";
-import { GoalOnboarding } from "@/components/onboarding/GoalOnboarding";
+import { LawyerChatOnboarding } from "@/components/onboarding/LawyerChatOnboarding";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -22,8 +22,8 @@ export default function AuthPage() {
   
   const { settings, isLoading: settingsLoading } = useWellnessSettings();
 
-  // Determine if we should show MindSpace camouflage
-  const isCamouflaged = settings.enableWellnessFront;
+  // Determine if we should show MindSpace camouflage (with safe fallback)
+  const isCamouflaged = settings?.enableWellnessFront ?? false;
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -77,7 +77,7 @@ export default function AuthPage() {
 
   if (showGoalOnboarding) {
     return (
-      <GoalOnboarding 
+      <LawyerChatOnboarding 
         onComplete={() => navigate("/", { replace: true })}
         onSkip={() => navigate("/", { replace: true })}
       />
