@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, memo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,25 +20,33 @@ interface SmartEvidenceSuggestionsProps {
   onSelectEvidence: (fileId: string) => void;
 }
 
-export function SmartEvidenceSuggestions({ recentMessages, onSelectEvidence }: SmartEvidenceSuggestionsProps) {
+export const SmartEvidenceSuggestions = memo(({ recentMessages, onSelectEvidence }: SmartEvidenceSuggestionsProps) => {
   const [suggestions, setSuggestions] = useState<EvidenceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Memoize last message content to prevent unnecessary recalculations
+  const lastMessageContent = useMemo(() => 
+    recentMessages[recentMessages.length - 1]?.content || '',
+    [recentMessages]
+  );
+
+  // Memoize extracted keywords to avoid recalculation
+  const keywords = useMemo(() => 
+    extractKeywords(lastMessageContent),
+    [lastMessageContent]
+  );
+
   useEffect(() => {
-    if (recentMessages.length > 0) {
+    if (keywords.length > 0) {
       generateSuggestions();
     }
-  }, [recentMessages]);
+  }, [keywords]);
 
   const generateSuggestions = async () => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      // Extract keywords from recent messages
-      const lastMessage = recentMessages[recentMessages.length - 1];
-      const keywords = extractKeywords(lastMessage.content);
 
       // Find relevant evidence files
       const { data: files, error } = await supabase
@@ -67,7 +75,7 @@ export function SmartEvidenceSuggestions({ recentMessages, onSelectEvidence }: S
 
         // Check category relevance
         if (file.auto_category) {
-          if (lastMessage.content.toLowerCase().includes(file.auto_category.toLowerCase())) {
+          if (lastMessageContent.toLowerCase().includes(file.auto_category.toLowerCase())) {
             score += 3;
             reason = `${file.auto_category} evidence`;
             type = 'relevant';
@@ -106,18 +114,6 @@ export function SmartEvidenceSuggestions({ recentMessages, onSelectEvidence }: S
     }
   };
 
-  const extractKeywords = (text: string): string[] => {
-    const keywords = [
-      'email', 'message', 'text', 'police', 'report', 'statement',
-      'witness', 'evidence', 'photo', 'document', 'record',
-      'threat', 'control', 'coercion', 'abuse', 'violence',
-      'incident', 'date', 'timeline', 'communication'
-    ];
-
-    return keywords.filter(kw => 
-      text.toLowerCase().includes(kw)
-    );
-  };
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -139,10 +135,10 @@ export function SmartEvidenceSuggestions({ recentMessages, onSelectEvidence }: S
   if (!suggestions.length || loading) return null;
 
   return (
-    <Card className="p-3 bg-accent/5 border-accent/20">
+    <Card className="p-3 bg-accent/5 border-accent/20" role="region" aria-label="Relevant evidence suggestions">
       <div className="space-y-2">
         <h4 className="text-sm font-medium flex items-center gap-2">
-          <FileText className="h-4 w-4 text-primary" />
+          <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
           Relevant Evidence
         </h4>
         
@@ -181,6 +177,7 @@ export function SmartEvidenceSuggestions({ recentMessages, onSelectEvidence }: S
                   variant="ghost"
                   onClick={() => onSelectEvidence(suggestion.id)}
                   className="h-7"
+                  aria-label={`View ${suggestion.fileName}`}
                 >
                   View
                 </Button>
@@ -191,4 +188,20 @@ export function SmartEvidenceSuggestions({ recentMessages, onSelectEvidence }: S
       </div>
     </Card>
   );
-}
+});
+
+SmartEvidenceSuggestions.displayName = 'SmartEvidenceSuggestions';
+
+// Helper function moved outside component for better memoization
+const extractKeywords = (text: string): string[] => {
+  const keywords = [
+    'email', 'message', 'text', 'police', 'report', 'statement',
+    'witness', 'evidence', 'photo', 'document', 'record',
+    'threat', 'control', 'coercion', 'abuse', 'violence',
+    'incident', 'date', 'timeline', 'communication'
+  ];
+
+  return keywords.filter(kw => 
+    text.toLowerCase().includes(kw)
+  );
+};

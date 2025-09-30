@@ -87,18 +87,20 @@ export function ConversationOrganizer({
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1" role="toolbar" aria-label="Message organization tools">
       {/* Bookmark Button */}
       <Button
         variant="ghost"
         size="sm"
         onClick={handleBookmarkToggle}
         className="h-6 w-6 p-0 hover:bg-muted"
+        aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+        aria-pressed={isBookmarked}
       >
         {isBookmarked ? (
-          <BookmarkCheck className="w-3 h-3 text-primary" />
+          <BookmarkCheck className="w-3 h-3 text-primary" aria-hidden="true" />
         ) : (
-          <Bookmark className="w-3 h-3" />
+          <Bookmark className="w-3 h-3" aria-hidden="true" />
         )}
       </Button>
 
@@ -130,8 +132,10 @@ export function ConversationOrganizer({
             variant="ghost"
             size="sm" 
             className="h-6 w-6 p-0 hover:bg-muted"
+            aria-label="Manage tags"
+            aria-expanded={showTagMenu}
           >
-            <MoreVertical className="w-3 h-3" />
+            <MoreVertical className="w-3 h-3" aria-hidden="true" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-64" align="end">
@@ -174,8 +178,10 @@ export function ConversationOrganizer({
                   onChange={(e) => setNewTagName(e.target.value)}
                   placeholder="Custom tag name"
                   className="text-xs h-7"
+                  aria-label="Custom tag name"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
+                      e.preventDefault();
                       handleNewTag();
                     }
                   }}

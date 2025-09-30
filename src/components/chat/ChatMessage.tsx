@@ -146,16 +146,20 @@ export function ChatMessage({
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex w-full min-w-0 gap-3 ${isUser ? "justify-end" : "justify-start"}`}>
+    <div 
+      className={`flex w-full min-w-0 gap-3 ${isUser ? "justify-end" : "justify-start"}`}
+      role="article"
+      aria-label={`Message from ${message.role === 'user' ? 'you' : 'legal assistant'} ${formatDistanceToNow(message.timestamp, { addSuffix: true })}`}
+    >
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center" aria-hidden="true">
           <Bot className="h-4 w-4 text-primary" />
         </div>
       )}
       
       <div className={`max-w-[80%] min-w-0 space-y-2 ${isUser ? "items-end" : "items-start"}`}>
         <Card className={`${isUser ? "bg-primary text-primary-foreground border-primary/20" : "bg-card"}`}>
-          <CardContent className="p-3">
+          <CardContent className="p-3" id={`message-content-${message.id}`}>
             {/* Files */}
             {message.files && message.files.length > 0 && (
               <div className="mb-2 space-y-1">
@@ -193,7 +197,7 @@ export function ChatMessage({
 
             {/* Citations */}
             {message.citations && message.citations.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+              <div className="mt-3 pt-3 border-t border-border/50 space-y-2" role="list" aria-label="Source citations">
                 <p className="text-xs font-medium opacity-80">Sources:</p>
                 <div className="space-y-1">
                   {message.citations.map((citation) => (
@@ -203,6 +207,8 @@ export function ChatMessage({
                       size="sm"
                       onClick={() => openCitation(citation)}
                       className="h-auto p-2 text-left justify-start text-xs whitespace-normal break-words"
+                      aria-label={`Open citation ${citation.index}: ${citation.file_name}`}
+                      role="listitem"
                     >
                       <div className="space-y-1">
                         <div className="font-medium">
@@ -245,7 +251,7 @@ export function ChatMessage({
       </div>
 
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center" aria-hidden="true">
           <User className="h-4 w-4" />
         </div>
       )}

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Filter, Calendar, Tag } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface SearchFilters {
   dateRange?: 'today' | 'week' | 'month' | 'all';
@@ -32,6 +33,22 @@ export function ChatSearchBar({
     tags: []
   });
   const [showFilters, setShowFilters] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Debounce search query to reduce API calls
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Auto-trigger search when debounced query changes
+  useEffect(() => {
+    if (debouncedQuery.trim() && debouncedQuery !== query) {
+      onSearch(debouncedQuery.trim(), filters);
+    }
+  }, [debouncedQuery]);
+
+  // Focus search input when component mounts
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
 
   const handleSearch = () => {
     if (query.trim()) {
@@ -64,24 +81,36 @@ export function ChatSearchBar({
   ].filter(Boolean).length;
 
   return (
-    <div className="flex items-center gap-2 p-3 border-b border-border/10 bg-background/50">
+    <div 
+      className="flex items-center gap-2 p-3 border-b border-border/10 bg-background/50"
+      role="search"
+      aria-label="Search messages and evidence"
+    >
       <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
         <Input
+          ref={searchInputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="pl-10 pr-10"
+          aria-label="Search query"
+          aria-describedby="search-instructions"
+          role="searchbox"
         />
+        <span id="search-instructions" className="sr-only">
+          Press Enter to search, Escape to clear. Search filters available.
+        </span>
         {query && (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleClear}
             className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+            aria-label="Clear search"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3 h-3" aria-hidden="true" />
           </Button>
         )}
       </div>
@@ -92,8 +121,10 @@ export function ChatSearchBar({
             variant="outline"
             size="sm"
             className="relative"
+            aria-label={`Filter options${activeFiltersCount > 0 ? `, ${activeFiltersCount} active` : ''}`}
+            aria-expanded={showFilters}
           >
-            <Filter className="w-4 h-4" />
+            <Filter className="w-4 h-4" aria-hidden="true" />
             {activeFiltersCount > 0 && (
               <Badge 
                 variant="secondary" 
@@ -174,6 +205,7 @@ export function ChatSearchBar({
         onClick={handleSearch}
         disabled={!query.trim() || isSearching}
         size="sm"
+        aria-label={isSearching ? "Searching..." : "Execute search"}
       >
         {isSearching ? "Searching..." : "Search"}
       </Button>

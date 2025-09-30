@@ -88,22 +88,22 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
 
   const getActionGradient = (type: SuggestedAction['action_type']) => {
     switch (type) {
-      case 'timeline': return 'from-blue-500/20 to-cyan-500/20 border-blue-500/30 hover:border-blue-500/50';
-      case 'analysis': return 'from-purple-500/20 to-pink-500/20 border-purple-500/30 hover:border-purple-500/50';
-      case 'evidence': return 'from-green-500/20 to-emerald-500/20 border-green-500/30 hover:border-green-500/50';
-      case 'summary': return 'from-orange-500/20 to-yellow-500/20 border-orange-500/30 hover:border-orange-500/50';
-      case 'strategy': return 'from-indigo-500/20 to-violet-500/20 border-indigo-500/30 hover:border-indigo-500/50';
+      case 'timeline': return 'from-blue-600/20 to-cyan-600/20 border-blue-600/30 hover:border-blue-600/50';
+      case 'analysis': return 'from-purple-600/20 to-pink-600/20 border-purple-600/30 hover:border-purple-600/50';
+      case 'evidence': return 'from-green-600/20 to-emerald-600/20 border-green-600/30 hover:border-green-600/50';
+      case 'summary': return 'from-orange-600/20 to-yellow-600/20 border-orange-600/30 hover:border-orange-600/50';
+      case 'strategy': return 'from-indigo-600/20 to-violet-600/20 border-indigo-600/30 hover:border-indigo-600/50';
       default: return 'from-primary/20 to-primary/10 border-primary/30 hover:border-primary/50';
     }
   };
 
   const getActionIconColor = (type: SuggestedAction['action_type']) => {
     switch (type) {
-      case 'timeline': return 'text-blue-500';
-      case 'analysis': return 'text-purple-500';
-      case 'evidence': return 'text-green-500';
-      case 'summary': return 'text-orange-500';
-      case 'strategy': return 'text-indigo-500';
+      case 'timeline': return 'text-blue-600';
+      case 'analysis': return 'text-purple-600';
+      case 'evidence': return 'text-green-600';
+      case 'summary': return 'text-orange-600';
+      case 'strategy': return 'text-indigo-600';
       default: return 'text-primary';
     }
   };
@@ -115,23 +115,32 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   }
   
   return (
-    <div className="mt-4 pt-4 border-t border-border/20 space-y-3">
+    <div className="mt-4 pt-4 border-t border-border/20 space-y-3" role="region" aria-label="Suggested actions">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" />
+        <Sparkles className="h-4 w-4 text-primary" aria-hidden="true" />
         <p className="text-sm font-semibold">Suggested Actions</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {actions.map((action) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list">
+        {actions.map((action, index) => (
           <Card
             key={action.id}
-            className={`group cursor-pointer transition-all duration-300 border-2 bg-gradient-to-br ${getActionGradient(action.action_type)} hover:scale-[1.02] hover:shadow-lg ${
+            role="listitem"
+            tabIndex={0}
+            className={`group cursor-pointer transition-all duration-300 border-2 bg-gradient-to-br ${getActionGradient(action.action_type)} hover:scale-[1.02] hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
               action.priority === 'high' ? 'ring-2 ring-primary/20 ring-offset-2' : ''
             }`}
             onClick={() => onActionClick(action.text)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onActionClick(action.text);
+              }
+            }}
+            aria-label={`Suggested action ${index + 1}: ${action.text}${action.priority === 'high' ? ' (Recommended)' : ''}`}
           >
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
-                <div className={`p-2.5 rounded-xl bg-background/80 backdrop-blur-sm ${getActionIconColor(action.action_type)} group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`p-2.5 rounded-xl bg-background/80 backdrop-blur-sm ${getActionIconColor(action.action_type)} group-hover:scale-110 transition-transform duration-300`} aria-hidden="true">
                   {getActionIcon(action.action_type)}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -141,13 +150,13 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
                   {action.priority === 'high' && (
                     <div className="mt-2">
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
-                        <Sparkles className="h-3 w-3" />
+                        <Sparkles className="h-3 w-3" aria-hidden="true" />
                         Recommended
                       </span>
                     </div>
                   )}
                 </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" aria-hidden="true" />
               </div>
             </CardContent>
           </Card>
