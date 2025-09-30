@@ -4,9 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
-import { TelepathicContextProvider } from "@/components/memory/TelepathicContextProvider";
-import { AnticipatorContextProvider } from "@/components/memory/AnticipatorContext";
-import { EnhancedMemoryProvider } from "@/components/memory/EnhancedMemoryProvider";
+import { UnifiedMemoryProvider } from "@/components/memory/UnifiedMemoryProvider";
 import { ErrorBoundary, ChatErrorBoundary, EvidenceErrorBoundary } from "@/components/ErrorBoundary";
 import AppLayout from "@/components/layout/AppLayout";
 import MyCase from "@/pages/MyCase";
@@ -38,9 +36,7 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <HelmetProvider>
         <TooltipProvider>
-          <EnhancedMemoryProvider>
-            <TelepathicContextProvider>
-              <AnticipatorContextProvider>
+          <UnifiedMemoryProvider>
                 <Toaster />
                 <Sonner />
                 <BrowserRouter>
@@ -72,9 +68,7 @@ const App = () => (
                   </Routes>
                 </BrowserRouter>
                 <DebugErrorLogs />
-              </AnticipatorContextProvider>
-            </TelepathicContextProvider>
-          </EnhancedMemoryProvider>
+          </UnifiedMemoryProvider>
         </TooltipProvider>
       </HelmetProvider>
     </QueryClientProvider>

@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Brain, Clock, Target, TrendingUp, Calendar, User } from "lucide-react";
-import { useEnhancedMemory } from "@/hooks/useEnhancedMemory";
+import { Brain, Clock, Target, TrendingUp, Calendar, User, Settings } from "lucide-react";
+import { useUnifiedMemory } from "./UnifiedMemoryProvider";
 
-interface MemoryAwareChatProps {
+interface OptimizedMemoryChatProps {
   onSendMessage: (message: string) => void;
   userQuery: string;
 }
@@ -17,16 +17,25 @@ interface ProactiveContext {
   evidence_announcement: string;
 }
 
-export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatProps) {
-  const { caseMemory, runProactiveMemoryTriggers } = useEnhancedMemory();
+export function OptimizedMemoryChat({ onSendMessage, userQuery }: OptimizedMemoryChatProps) {
+  const { 
+    caseMemory, 
+    settings, 
+    runProactiveMemoryTriggers, 
+    getContextualSuggestions,
+    updateSettings,
+    caseStrength 
+  } = useUnifiedMemory();
+  
   const [proactiveContext, setProactiveContext] = useState<ProactiveContext | null>(null);
   const [showProactiveCards, setShowProactiveCards] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
-    if (userQuery && userQuery.length > 5) {
+    if (userQuery && userQuery.length > 5 && settings.proactiveTriggersActive) {
       handleProactiveMemory(userQuery);
     }
-  }, [userQuery]);
+  }, [userQuery, settings.proactiveTriggersActive]);
 
   const handleProactiveMemory = async (query: string) => {
     const context = await runProactiveMemoryTriggers(query, []);
@@ -34,6 +43,79 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
       setProactiveContext(context);
       setShowProactiveCards(true);
     }
+  };
+
+  const renderMemorySettings = () => {
+    if (!showSettings) return null;
+
+    return (
+      <Card className="bg-muted/30 border-muted">
+        <CardContent className="p-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-medium">Memory Settings</div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowSettings(false)}
+              className="h-6 w-6 p-0"
+            >
+              ×
+            </Button>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs">Proactive Triggers</span>
+              <Button
+                variant={settings.proactiveTriggersActive ? "default" : "outline"}
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => updateSettings({ proactiveTriggersActive: !settings.proactiveTriggersActive })}
+              >
+                {settings.proactiveTriggersActive ? "ON" : "OFF"}
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-xs">Vector Search</span>
+              <Button
+                variant={settings.vectorSearchActive ? "default" : "outline"}
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => updateSettings({ vectorSearchActive: !settings.vectorSearchActive })}
+              >
+                {settings.vectorSearchActive ? "ON" : "OFF"}
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-xs">Case Monitoring</span>
+              <Button
+                variant={settings.caseStrengthMonitoring ? "default" : "outline"}
+                size="sm"
+                className="h-6 text-xs"
+                onClick={() => updateSettings({ caseStrengthMonitoring: !settings.caseStrengthMonitoring })}
+              >
+                {settings.caseStrengthMonitoring ? "ON" : "OFF"}
+              </Button>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <span className="text-xs">Communication Style</span>
+              <select 
+                className="text-xs border rounded px-2 py-1"
+                value={settings.communicationStyle}
+                onChange={(e) => updateSettings({ communicationStyle: e.target.value as any })}
+              >
+                <option value="gentle">Gentle</option>
+                <option value="direct">Direct</option>
+                <option value="collaborative">Collaborative</option>
+              </select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
   const renderGoalCard = () => {
@@ -51,9 +133,16 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
               <p className="text-xs text-muted-foreground">
                 {caseMemory.primary_goal}
               </p>
-              <Badge variant="secondary" className="text-xs mt-2">
-                Status: {caseMemory.goal_status || 'Active'}
-              </Badge>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="secondary" className="text-xs">
+                  Status: {caseMemory.goal_status || 'Active'}
+                </Badge>
+                {settings.caseStrengthMonitoring && (
+                  <Badge variant="outline" className="text-xs">
+                    Strength: {caseStrength.score}/10
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </CardContent>
@@ -84,7 +173,7 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
   };
 
   const renderProactiveContextCards = () => {
-    if (!proactiveContext || !showProactiveCards) return null;
+    if (!proactiveContext || !showProactiveCards || !settings.proactiveTriggersActive) return null;
 
     return (
       <div className="space-y-2">
@@ -140,7 +229,7 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
           </Card>
         )}
 
-        {proactiveContext.case_strength_change && (
+        {proactiveContext.case_strength_change && settings.caseStrengthMonitoring && (
           <Card className="bg-green-50/50 border-green-200">
             <CardContent className="p-3">
               <div className="flex items-start gap-2">
@@ -166,32 +255,6 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
           </Card>
         )}
 
-        {proactiveContext.evidence_announcement && (
-          <Card className="bg-orange-50/50 border-orange-200">
-            <CardContent className="p-3">
-              <div className="flex items-start gap-2">
-                <Brain className="h-4 w-4 text-orange-600 mt-0.5" />
-                <div className="flex-1">
-                  <div className="text-xs font-medium text-orange-700 mb-1">
-                    New Evidence Analysis
-                  </div>
-                  <div className="text-xs text-orange-600 whitespace-pre-line">
-                    {proactiveContext.evidence_announcement}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-6 mt-2"
-                    onClick={() => onSendMessage("Show me the key insights from my latest evidence")}
-                  >
-                    View Insights →
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <Button
           variant="ghost"
           size="sm"
@@ -205,30 +268,22 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
   };
 
   const renderMemoryAwareSuggestions = () => {
-    const suggestions = [];
-
-    if (caseMemory?.primary_goal) {
-      suggestions.push(
-        `How does my latest evidence support my goal to ${caseMemory.primary_goal}?`
-      );
-    }
-
-    if (caseMemory?.evidence_index?.length > 0) {
-      suggestions.push(
-        `What patterns do you see across all my evidence?`
-      );
-    }
-
-    if (caseMemory?.case_strength_score && caseMemory.case_strength_score < 70) {
-      suggestions.push(
-        `What specific actions would boost my case strength the most?`
-      );
-    }
+    const suggestions = getContextualSuggestions(userQuery);
 
     return suggestions.length > 0 ? (
       <div className="space-y-2">
-        <div className="text-xs font-medium text-muted-foreground">
-          Memory-Aware Suggestions:
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-medium text-muted-foreground">
+            Smart Suggestions:
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSettings(!showSettings)}
+            className="h-6 w-6 p-0"
+          >
+            <Settings className="h-3 w-3" />
+          </Button>
         </div>
         {suggestions.slice(0, 2).map((suggestion, i) => (
           <Button
@@ -247,6 +302,7 @@ export function MemoryAwareChat({ onSendMessage, userQuery }: MemoryAwareChatPro
 
   return (
     <div className="space-y-3">
+      {renderMemorySettings()}
       {renderGoalCard()}
       {renderThreadSummaryCard()}
       {renderProactiveContextCards()}
