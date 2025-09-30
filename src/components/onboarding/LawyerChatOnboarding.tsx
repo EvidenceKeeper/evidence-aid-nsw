@@ -168,11 +168,12 @@ export function LawyerChatOnboarding({ onComplete, onSkip }: LawyerChatOnboardin
             support_network: safetyInfo.supportNetwork,
             immediate_help_needed: safetyInfo.immediateHelp
           },
+          onboarding_completed: true,
           onboarding_completed_at: new Date().toISOString()
         },
         case_readiness_status: 'collecting',
         current_stage: 1,
-        session_count: 1,
+        session_count: 2,
         updated_at: new Date().toISOString(),
         last_updated_at: new Date().toISOString()
       };

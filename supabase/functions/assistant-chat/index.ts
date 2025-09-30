@@ -319,7 +319,7 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    const isReturningUser = sessionCount > 1 || recentSession;
+    const isReturningUser = sessionCount > 1 || recentSession || caseMemory?.personalization_profile?.onboarding_completed;
 
     // === LEGAL-FIRST RETRIEVAL WITH ENHANCED CONTEXT ===
     let legalContext = [];

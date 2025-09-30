@@ -189,7 +189,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         error: 'Internal server error',
-        message: error.message || 'An error occurred while searching for resources'
+        message: error instanceof Error ? error.message : 'An error occurred while searching for resources'
       }),
       { 
         status: 500, 
