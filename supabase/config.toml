@@ -56,3 +56,6 @@ verify_jwt = true
 
 [functions.test-assistant-chat]
 verify_jwt = true
+
+[functions.find-nsw-resources]
+verify_jwt = false

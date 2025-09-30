@@ -31,27 +31,48 @@ interface HealthResponse {
   timestamp: string;
 }
 
-const API_BASE = 'http://localhost:3001/api';
+import { supabase } from '@/integrations/supabase/client';
 
 async function fetchResources(postcode: string): Promise<ResourcesResponse> {
-  const response = await fetch(`${API_BASE}/resources?postcode=${encodeURIComponent(postcode)}`);
+  const { data, error } = await supabase.functions.invoke('find-nsw-resources', {
+    body: { postcode }
+  });
   
-  if (!response.ok) {
-    const error = await response.json();
+  if (error) {
     throw new Error(error.message || 'Failed to fetch resources');
   }
   
-  return response.json();
+  if (!data.success) {
+    throw new Error(data.message || 'Failed to fetch resources');
+  }
+  
+  return data;
 }
 
 async function fetchHealth(): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE}/health`);
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch health status');
+  // Check if the edge function exists by making a simple call
+  try {
+    await supabase.functions.invoke('find-nsw-resources', {
+      body: { postcode: '2000' }
+    });
+    return {
+      status: 'healthy',
+      configured: {
+        googlePlaces: true,
+        supabase: true,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      status: 'unhealthy',
+      configured: {
+        googlePlaces: false,
+        supabase: false,
+      },
+      timestamp: new Date().toISOString(),
+    };
   }
-  
-  return response.json();
 }
 
 export function useFindHelp(postcode: string) {
