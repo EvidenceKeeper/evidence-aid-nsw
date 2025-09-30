@@ -151,15 +151,23 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
 
       setTypingMessage("Consulting legal knowledge base...");
       
-      const { data } = await supabase.functions.invoke('assistant-chat', {
+      // Build conversation array with current message included
+      const recentMessages = messages.slice(-10);
+      const convo = [
+        ...recentMessages.map(m => ({ role: m.role, content: m.content })),
+        { role: 'user' as const, content: textToSend }
+      ];
+      
+      const { data, error } = await supabase.functions.invoke('assistant-chat', {
         body: { 
-          message: textToSend,
-          conversation_history: messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.content
-          }))
+          prompt: textToSend,
+          messages: convo
         }
       });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to get response from assistant');
+      }
 
       if (data?.response) {
         const assistantMessage: Message = {
@@ -179,8 +187,16 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           content: data.response,
           citations: data.citations || []
         });
+      } else {
+        throw new Error('No response received from assistant');
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
+      toast({
+        title: "Error",
+        description: errorMsg,
+        variant: "destructive"
+      });
       errorHandler.handleChatError(
         error instanceof Error ? error : new Error('Failed to send message'),
         { textToSend, conversationLength: messages.length }

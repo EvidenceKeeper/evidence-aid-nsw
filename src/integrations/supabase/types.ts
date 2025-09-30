@@ -95,6 +95,36 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          event_type: string
+          id: string
+          object_id: string | null
+          object_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          event_type: string
+          id?: string
+          object_id?: string | null
+          object_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          event_type?: string
+          id?: string
+          object_id?: string | null
+          object_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       case_analysis_history: {
         Row: {
           analysis_type: string
@@ -426,6 +456,81 @@ export type Database = {
           },
         ]
       }
+      conversation_analysis: {
+        Row: {
+          analysis_data: Json
+          analysis_timestamp: string
+          conversation_length: number
+          created_at: string
+          id: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          analysis_data?: Json
+          analysis_timestamp?: string
+          conversation_length?: number
+          created_at?: string
+          id?: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          analysis_data?: Json
+          analysis_timestamp?: string
+          conversation_length?: number
+          created_at?: string
+          id?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      conversation_threads: {
+        Row: {
+          conversation_summary: string | null
+          created_at: string
+          id: string
+          last_message_at: string
+          message_count: number
+          primary_goal: string | null
+          progress_indicators: Json
+          status: string
+          thread_title: string
+          topics: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_summary?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          primary_goal?: string | null
+          progress_indicators?: Json
+          status?: string
+          thread_title?: string
+          topics?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_summary?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          message_count?: number
+          primary_goal?: string | null
+          progress_indicators?: Json
+          status?: string
+          thread_title?: string
+          topics?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       enhanced_timeline_events: {
         Row: {
           category: string
@@ -751,11 +856,13 @@ export type Database = {
           category: string | null
           created_at: string
           exhibit_code: string | null
+          file_checksum: string | null
           file_summary: string | null
           id: string
           meta: Json
           mime_type: string | null
           name: string
+          provenance: Json | null
           section_summaries: Json | null
           size: number | null
           status: string
@@ -769,11 +876,13 @@ export type Database = {
           category?: string | null
           created_at?: string
           exhibit_code?: string | null
+          file_checksum?: string | null
           file_summary?: string | null
           id?: string
           meta?: Json
           mime_type?: string | null
           name: string
+          provenance?: Json | null
           section_summaries?: Json | null
           size?: number | null
           status?: string
@@ -787,11 +896,13 @@ export type Database = {
           category?: string | null
           created_at?: string
           exhibit_code?: string | null
+          file_checksum?: string | null
           file_summary?: string | null
           id?: string
           meta?: Json
           mime_type?: string | null
           name?: string
+          provenance?: Json | null
           section_summaries?: Json | null
           size?: number | null
           status?: string
