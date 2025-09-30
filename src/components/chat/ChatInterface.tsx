@@ -74,8 +74,12 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     let mounted = true;
     
     const loadHistory = async () => {
+      setLoading(true);
       if (mounted) {
         await loadChatHistory();
+      }
+      if (mounted) {
+        setLoading(false);
       }
     };
     
@@ -141,22 +145,11 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Save user message to database
-      await supabase.from('messages').insert({
-        user_id: user.id,
-        role: 'user',
-        content: textToSend,
-        citations: []
-      });
-
       setTypingMessage("Consulting legal knowledge base...");
       
-      // Build conversation array with current message included
+      // Build conversation array from history only (don't include current message)
       const recentMessages = messages.slice(-10);
-      const convo = [
-        ...recentMessages.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user' as const, content: textToSend }
-      ];
+      const convo = recentMessages.map(m => ({ role: m.role, content: m.content }));
       
       const { data, error } = await supabase.functions.invoke('assistant-chat', {
         body: { 
@@ -170,23 +163,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       }
 
       if (data?.response) {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: data.response,
-          citations: data.citations || [],
-          timestamp: new Date(),
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
-
-        // Save assistant message to database
-        await supabase.from('messages').insert({
-          user_id: user.id,
-          role: 'assistant',
-          content: data.response,
-          citations: data.citations || []
-        });
+        // Reload messages from database to get properly stored messages with citations
+        await loadChatHistory();
       } else {
         throw new Error('No response received from assistant');
       }

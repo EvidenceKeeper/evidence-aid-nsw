@@ -521,12 +521,22 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
     const fullContext = contextSections.join('\n\n');
 
     // Construct messages for OpenAI
+    // messages = conversation history, prompt = NEW user message
     let conversationMessages = [];
 
-    if (messages && Array.isArray(messages)) {
-      conversationMessages = messages;
-    } else if (prompt) {
-      conversationMessages = [{ role: "user", content: prompt }];
+    // Start with conversation history if provided
+    if (messages && Array.isArray(messages) && messages.length > 0) {
+      conversationMessages = [...messages];
+    }
+
+    // Add current prompt as new user message
+    if (prompt) {
+      conversationMessages.push({ role: "user", content: prompt });
+    }
+
+    // Ensure we have at least one message
+    if (conversationMessages.length === 0) {
+      throw new Error("No messages or prompt provided");
     }
 
     // Add context as system message
