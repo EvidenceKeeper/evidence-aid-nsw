@@ -180,9 +180,12 @@ export function LawyerChatOnboarding({ onComplete, onSkip }: LawyerChatOnboardin
       // Save comprehensive onboarding data to case_memory
       const { error } = await supabase
         .from('case_memory')
-        .upsert(caseMemoryData);
+        .upsert(caseMemoryData, { onConflict: 'user_id' });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error details:', error);
+        throw error;
+      }
 
       toast({ 
         title: `Welcome ${personalInfo.name || 'to Veronica'}!`, 
@@ -304,7 +307,7 @@ export function LawyerChatOnboarding({ onComplete, onSkip }: LawyerChatOnboardin
                       key={suggestion}
                       variant="ghost"
                       size="sm"
-                      className="h-auto p-2 text-left justify-start text-muted-foreground hover:text-foreground"
+                      className="h-auto p-2 text-left justify-start text-muted-foreground hover:text-foreground whitespace-normal"
                       onClick={() => setPrimaryGoal(suggestion)}
                     >
                       <Target className="w-3 h-3 mr-2 flex-shrink-0" />
