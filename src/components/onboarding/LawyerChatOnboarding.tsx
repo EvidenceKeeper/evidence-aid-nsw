@@ -170,7 +170,7 @@ export function LawyerChatOnboarding({ onComplete, onSkip }: LawyerChatOnboardin
           },
           onboarding_completed_at: new Date().toISOString()
         },
-        case_readiness_status: 'intake_completed',
+        case_readiness_status: 'collecting',
         current_stage: 1,
         session_count: 1,
         updated_at: new Date().toISOString(),
