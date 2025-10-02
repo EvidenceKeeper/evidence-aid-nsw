@@ -253,10 +253,10 @@ serve(async (req) => {
 
   try {
     const authHeader = req.headers.get("Authorization");
-    console.log("Auth header received:", authHeader?.substring(0, 20) + "...");
+    console.log("🚀 assistant-chat invoked - Auth header received:", authHeader?.substring(0, 20) + "...");
     
     if (!authHeader) {
-      console.error("No authorization header provided");
+      console.error("❌ No authorization header provided");
       return new Response(JSON.stringify({ error: "No authorization header" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -603,25 +603,38 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
     const assistantMessage = data.choices[0].message.content;
 
     // Store conversation in messages table
-    console.log("💾 Storing conversation...");
+    console.log("💾 Storing conversation in database...");
     
     // Store user message
     if (prompt) {
-      await supabase.from("messages").insert({
+      console.log("📝 Inserting user message...");
+      const { error: userMsgError } = await supabase.from("messages").insert({
         user_id: user.id,
         role: "user",
         content: prompt,
         citations: [],
       });
+      if (userMsgError) {
+        console.error("❌ Failed to store user message:", userMsgError);
+      } else {
+        console.log("✅ User message stored");
+      }
     }
 
     // Store assistant message with citations
-    await supabase.from("messages").insert({
+    console.log(`📝 Inserting assistant message with ${allCitations.length} citations...`);
+    const { error: assistantMsgError } = await supabase.from("messages").insert({
       user_id: user.id,
       role: "assistant", 
       content: assistantMessage,
       citations: allCitations,
     });
+    
+    if (assistantMsgError) {
+      console.error("❌ Failed to store assistant message:", assistantMsgError);
+    } else {
+      console.log("✅ Assistant message stored");
+    }
 
     // Update case memory and session tracking
     await updateUserJourneyData(supabase, user.id, {

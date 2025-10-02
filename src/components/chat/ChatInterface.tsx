@@ -151,6 +151,12 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       const recentMessages = messages.slice(-10);
       const convo = recentMessages.map(m => ({ role: m.role, content: m.content }));
       
+      console.log('🚀 Invoking assistant-chat with:', { 
+        prompt: textToSend.substring(0, 50) + '...', 
+        historyCount: convo.length,
+        userId: user.id 
+      });
+
       const { data, error } = await supabase.functions.invoke('assistant-chat', {
         body: { 
           prompt: textToSend,
@@ -158,13 +164,23 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         }
       });
 
+      console.log('📥 assistant-chat response:', { 
+        hasResponse: !!data?.response, 
+        error: error?.message,
+        citationCount: data?.citations?.length || 0,
+        responsePreview: data?.response?.substring(0, 100)
+      });
+
       if (error) {
+        console.error('❌ Edge function error:', error);
         throw new Error(error.message || 'Failed to get response from assistant');
       }
 
       if (data?.response) {
         // Reload messages from database to get properly stored messages with citations
+        console.log('🔄 Reloading chat history from database...');
         await loadChatHistory();
+        console.log('✅ Chat history reloaded successfully');
       } else {
         throw new Error('No response received from assistant');
       }
