@@ -129,14 +129,6 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     const textToSend = text || input.trim();
     if (!textToSend && !showFileUpload) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: textToSend,
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     setInput("");
     setLoading(true);
     setTypingMessage("Analyzing your message...");
@@ -147,7 +139,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
 
       setTypingMessage("Consulting legal knowledge base...");
       
-      // Build conversation array from history only (don't include current message)
+      // Build conversation array from history only
       const recentMessages = messages.slice(-10);
       const convo = recentMessages.map(m => ({ role: m.role, content: m.content }));
       
@@ -157,12 +149,29 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         userId: user.id 
       });
 
-      const { data, error } = await supabase.functions.invoke('assistant-chat', {
-        body: { 
-          prompt: textToSend,
-          messages: convo
-        }
-      });
+      // Timeout protection wrapper
+      const invokeWithTimeout = async (timeout = 30000) => {
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout after 30s')), timeout)
+        );
+        
+        const invokePromise = supabase.functions.invoke('assistant-chat', {
+          body: { 
+            prompt: textToSend,
+            messages: convo
+          }
+        });
+        
+        return Promise.race([invokePromise, timeoutPromise]);
+      };
+
+      const { data, error } = await invokeWithTimeout() as { data: any; error: any };
+
+      // Check for silent failure
+      if (!data && !error) {
+        console.error('❌ Silent failure: No data or error returned from invoke');
+        throw new Error('Edge function call failed silently - check network/deployment');
+      }
 
       console.log('📥 assistant-chat response:', { 
         hasResponse: !!data?.response, 

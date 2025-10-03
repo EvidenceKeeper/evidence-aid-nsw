@@ -179,13 +179,15 @@ export function LawyerChatOnboarding({ onComplete, onSkip }: LawyerChatOnboardin
       };
 
       // Save comprehensive onboarding data to case_memory
-      const { error } = await supabase
+      const { error: memoryError } = await supabase
         .from('case_memory')
         .upsert(caseMemoryData, { onConflict: 'user_id' });
 
-      if (error) {
-        console.error('Database error details:', error);
-        throw error;
+      if (memoryError) {
+        console.error('❌ Failed to update case_memory with session_count:', memoryError);
+        throw memoryError;
+      } else {
+        console.log('✅ Onboarding complete: session_count set to 2, onboarding_completed: true');
       }
 
       toast({ 
