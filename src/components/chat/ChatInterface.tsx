@@ -69,37 +69,81 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     scrollToBottom();
   }, [messages]);
 
-  // Load chat history on component mount with cleanup
+  // Load chat history on mount and subscribe to realtime updates
   useEffect(() => {
     let mounted = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
     
-    const loadHistory = async () => {
+    const initializeChat = async () => {
       setLoading(true);
+      
+      // Load initial history
       if (mounted) {
         await loadChatHistory();
       }
+      
       if (mounted) {
         setLoading(false);
       }
+      
+      // Set up realtime subscription
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || !mounted) return;
+      
+      console.log('🔔 Subscribing to realtime message updates...');
+      channel = supabase
+        .channel('messages-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `user_id=eq.${user.id}`
+          },
+          (payload) => {
+            console.log('📩 New message received via realtime:', payload.new);
+            const newMsg = payload.new as any;
+            const formattedMessage: Message = {
+              id: newMsg.id,
+              role: newMsg.role as "user" | "assistant",
+              content: newMsg.content,
+              citations: Array.isArray(newMsg.citations) ? (newMsg.citations as unknown as MessageCitation[]) : [],
+              timestamp: new Date(newMsg.created_at)
+            };
+            
+            // Append new message to the end
+            setMessages(prev => [...prev, formattedMessage]);
+          }
+        )
+        .subscribe();
     };
     
-    loadHistory();
+    initializeChat();
     
     return () => {
       mounted = false;
+      if (channel) {
+        console.log('🔕 Unsubscribing from realtime updates');
+        supabase.removeChannel(channel);
+      }
     };
   }, []);
 
   const loadChatHistory = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        console.log('⚠️ No authenticated user, skipping chat history load');
+        return;
+      }
 
+      // Load newest 50 messages, then reverse to show oldest-to-newest
       const { data: historyMessages, error } = await supabase
         .from('messages')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) {
@@ -108,15 +152,21 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       }
 
       if (historyMessages && historyMessages.length > 0) {
-        const formattedMessages: Message[] = historyMessages.map((msg) => ({
-          id: msg.id,
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-          citations: Array.isArray(msg.citations) ? (msg.citations as unknown as MessageCitation[]) : [],
-          timestamp: new Date(msg.created_at)
-        }));
+        const formattedMessages: Message[] = historyMessages
+          .map((msg) => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+            citations: Array.isArray(msg.citations) ? (msg.citations as unknown as MessageCitation[]) : [],
+            timestamp: new Date(msg.created_at)
+          }))
+          .reverse(); // Reverse to show oldest first in UI
         
+        console.log(`📨 Loaded ${formattedMessages.length} messages (showing newest 50)`);
         setMessages(formattedMessages);
+      } else {
+        console.log('💬 No messages found - starting fresh conversation');
+        setMessages([]);
       }
     } catch (error) {
       errorHandler.handleChatError(
