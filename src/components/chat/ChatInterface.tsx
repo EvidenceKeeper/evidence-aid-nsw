@@ -173,11 +173,13 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         throw new Error('Edge function call failed silently - check network/deployment');
       }
 
-      console.log('📥 assistant-chat response:', { 
-        hasResponse: !!data?.response, 
-        error: error?.message,
-        citationCount: data?.citations?.length || 0,
-        responsePreview: data?.response?.substring(0, 100)
+      // Log full response structure for debugging
+      console.log('📦 Full invoke response:', { 
+        hasData: !!data,
+        dataKeys: data ? Object.keys(data) : [],
+        hasError: !!error,
+        errorMessage: error?.message,
+        dataContent: data
       });
 
       if (error) {
@@ -185,14 +187,11 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         throw new Error(error.message || 'Failed to get response from assistant');
       }
 
-      if (data?.response) {
-        // Reload messages from database to get properly stored messages with citations
-        console.log('🔄 Reloading chat history from database...');
-        await loadChatHistory();
-        console.log('✅ Chat history reloaded successfully');
-      } else {
-        throw new Error('No response received from assistant');
-      }
+      // Always reload chat history after successful invoke
+      // Messages are stored in DB regardless of response structure
+      console.log('🔄 Invoke succeeded, reloading chat history from database...');
+      await loadChatHistory();
+      console.log('✅ Chat history reloaded - messages should now be visible');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
       toast({
