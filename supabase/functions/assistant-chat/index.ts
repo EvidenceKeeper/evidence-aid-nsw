@@ -396,18 +396,24 @@ serve(async (req) => {
           if (!userChunksErr && userChunks && userChunks.length > 0) {
             console.log(`📁 Found ${userChunks.length} relevant evidence chunks`);
             
+            // Format evidence citations for frontend (matching ChatMessage interface)
             const evidenceCitations = userChunks.map((chunk: any, i: number) => ({
-              id: `evidence-${i}`,
-              type: 'evidence',
-              short_citation: chunk.file_name,
-              full_citation: `${chunk.file_name} (Evidence)`,
-              url: null,
-              content: chunk.text,
-              similarity: chunk.similarity,
-              metadata: chunk.meta
+              index: i + 1,
+              file_id: chunk.file_id,
+              file_name: chunk.file_name,
+              seq: chunk.seq,
+              excerpt: chunk.text.substring(0, 200) + (chunk.text.length > 200 ? '...' : ''),
+              meta: chunk.meta,
+              similarity: chunk.similarity
             }));
             
-            allCitations.push(...evidenceCitations);
+            allCitations.push(...evidenceCitations.map(ec => ({
+              ...ec,
+              type: 'evidence',
+              short_citation: ec.file_name,
+              full_citation: `${ec.file_name} (Evidence)`,
+              content: evidenceCitations.find(e => e.index === ec.index)?.excerpt || ''
+            })));
           }
 
         }
