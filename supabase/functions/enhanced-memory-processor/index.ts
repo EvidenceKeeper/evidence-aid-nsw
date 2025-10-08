@@ -23,7 +23,7 @@ async function generateEmbedding(text: string): Promise<number[]> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "text-embedding-3-large",
+      model: "text-embedding-3-small",
       input: text,
       dimensions: 1536,
     }),
@@ -139,38 +139,61 @@ serve(async (req) => {
       throw new Error(`No chunks found: ${chunksError?.message}`);
     }
 
-    console.log(`📝 Processing ${chunks.length} chunks for embeddings...`);
+    // Only embed chunks missing embeddings
+    const chunksToEmbed = chunks.filter((c: any) => !c.embedding);
+    console.log(`📝 Processing ${chunksToEmbed.length}/${chunks.length} chunks missing embeddings...`);
 
-    // Generate embeddings for each chunk
-    const embeddingPromises = chunks.map(async (chunk) => {
-      try {
-        const embedding = await generateEmbedding(chunk.text);
-        return { id: chunk.id, embedding };
-      } catch (error) {
-        console.error(`Failed to generate embedding for chunk ${chunk.id}:`, error);
-        return null;
+    const BATCH_SIZE = 64;
+    const MAX_RETRIES = 5;
+    const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
+
+    let embeddedCount = 0;
+
+    for (let i = 0; i < chunksToEmbed.length; i += BATCH_SIZE) {
+      const batch = chunksToEmbed.slice(i, i + BATCH_SIZE);
+      for (const chunk of batch) {
+        let attempt = 0;
+        while (attempt < MAX_RETRIES) {
+          try {
+            const embedding = await generateEmbedding(chunk.text);
+            const { error: updErr } = await supabase
+              .from("chunks")
+              .update({ embedding })
+              .eq("id", chunk.id);
+            if (updErr) {
+              console.error("Chunk update error", updErr);
+            } else {
+              embeddedCount++;
+            }
+            break; // success
+          } catch (err) {
+            attempt++;
+            const waitMs = Math.min(1000 * 2 ** attempt, 15000);
+            console.warn(`Embedding retry ${attempt}/${MAX_RETRIES} for chunk ${chunk.id}. Waiting ${waitMs}ms`, err);
+            await sleep(waitMs);
+            if (attempt >= MAX_RETRIES) {
+              console.error(`Failed to embed chunk ${chunk.id} after ${MAX_RETRIES} attempts`);
+            }
+          }
+        }
       }
-    });
-
-    const embeddingResults = await Promise.all(embeddingPromises);
-    const validEmbeddings = embeddingResults.filter(Boolean);
-
-    // Update chunks with embeddings
-    for (const result of validEmbeddings) {
-      if (result) {
-        await supabase
-          .from("chunks")
-          .update({ embedding: result.embedding })
-          .eq("id", result.id);
-      }
+      console.log(`Progress: ${embeddedCount}/${chunksToEmbed.length} embedded`);
     }
 
-    console.log(`✅ Generated embeddings for ${validEmbeddings.length} chunks`);
+    console.log(`✅ Generated embeddings for ${embeddedCount} chunks`);
 
-    // Generate hierarchical summaries
-    const fullText = chunks.map(c => c.text).join("\n");
-    const summaries = await generateHierarchicalSummaries(fullText, file.name);
-    
+    // Generate hierarchical summaries (do not fail the whole job if summaries fail)
+    const fullText = chunks.map((c) => c.text).join("\n");
+    let summaries: { file_summary: string; section_summaries: any[] } = {
+      file_summary: `Evidence file: ${file.name}`,
+      section_summaries: [],
+    };
+    try {
+      summaries = await generateHierarchicalSummaries(fullText, file.name);
+    } catch (e) {
+      console.warn("Summary generation failed, using defaults", e);
+    }
+
     // Generate exhibit code (A, B, C, etc.)
     const { data: userFiles } = await supabase
       .from("files")
@@ -179,7 +202,7 @@ serve(async (req) => {
       .eq("status", "processed")
       .order("created_at");
 
-    const exhibitIndex = userFiles?.findIndex(f => f.id === file_id) || 0;
+    const exhibitIndex = userFiles?.findIndex((f) => f.id === file_id) || 0;
     const exhibitCode = String.fromCharCode(65 + exhibitIndex); // A, B, C, etc.
 
     // Update file with summaries
@@ -228,7 +251,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      embeddings_generated: validEmbeddings.length,
+      embeddings_generated: embeddedCount,
       exhibit_code: exhibitCode,
       file_summary: summaries.file_summary,
       sections_count: summaries.section_summaries.length,

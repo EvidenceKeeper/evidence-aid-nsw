@@ -275,7 +275,7 @@ serve(async (req) => {
               const { error: chunkErr } = await supabase.from("chunks").insert(rows);
               if (chunkErr) {
                 console.error("Chunk insert error", chunkErr);
-                return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
+                return new Response(JSON.stringify({ error: "Failed to insert chunks", details: chunkErr.message }), {
                   status: 500,
                   headers: { ...corsHeaders, "Content-Type": "application/json" },
                 });
@@ -297,7 +297,7 @@ serve(async (req) => {
           const { error: chunkErr } = await supabase.from("chunks").insert(rows);
           if (chunkErr) {
             console.error("Chunk insert error", chunkErr);
-            return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
+            return new Response(JSON.stringify({ error: "Failed to insert chunks", details: chunkErr.message }), {
               status: 500,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
@@ -320,7 +320,7 @@ serve(async (req) => {
         const { error: chunkErr } = await supabase.from("chunks").insert(rows);
         if (chunkErr) {
           console.error("Chunk insert error", chunkErr);
-          return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
+          return new Response(JSON.stringify({ error: "Failed to insert chunks", details: chunkErr.message }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
@@ -335,7 +335,7 @@ serve(async (req) => {
         const { error: chunkErr } = await supabase.from("chunks").insert(rows);
         if (chunkErr) {
           console.error("Chunk insert error", chunkErr);
-          return new Response(JSON.stringify({ error: "Failed to insert chunks" }), {
+          return new Response(JSON.stringify({ error: "Failed to insert chunks", details: chunkErr.message }), {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });

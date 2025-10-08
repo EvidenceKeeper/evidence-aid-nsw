@@ -324,6 +324,7 @@ serve(async (req) => {
     // === LEGAL-FIRST RETRIEVAL WITH ENHANCED CONTEXT ===
     let legalContext = [];
     let allCitations = [];
+    let evidenceNotReady = false;
     
     if (prompt || (messages && messages.length > 0)) {
       const queryText = prompt || messages[messages.length - 1]?.content || '';
@@ -414,6 +415,40 @@ serve(async (req) => {
               full_citation: `${ec.file_name} (Evidence)`,
               content: evidenceCitations.find(e => e.index === ec.index)?.excerpt || ''
             })));
+          } else {
+            // No evidence chunks returned yet. Check if user's files are processed but embeddings are missing, and trigger processing.
+            try {
+              const { data: processedFiles } = await supabase
+                .from("files")
+                .select("id, name")
+                .eq("user_id", user.id)
+                .eq("status", "processed");
+
+              const toTrigger: Array<{ id: string; name: string }> = [];
+              for (const f of processedFiles || []) {
+                const { count } = await supabase
+                  .from("chunks")
+                  .select("id", { count: "exact", head: true })
+                  .eq("file_id", f.id)
+                  .is("embedding", null);
+                if ((count ?? 0) > 0) {
+                  toTrigger.push({ id: f.id, name: f.name });
+                }
+              }
+
+              if (toTrigger.length > 0) {
+                evidenceNotReady = true;
+                console.log(`⏳ Evidence embeddings not ready. Triggering processing for ${Math.min(3, toTrigger.length)} file(s).`);
+                for (const f of toTrigger.slice(0, 3)) {
+                  const { error: invokeErr } = await supabase.functions.invoke("enhanced-memory-processor", {
+                    body: { file_id: f.id, processing_type: "embeddings_and_summaries" },
+                  });
+                  if (invokeErr) console.error("Failed to invoke enhanced-memory-processor for", f.id, invokeErr);
+                }
+              }
+            } catch (e) {
+              console.warn("Evidence readiness check failed", e);
+            }
           }
 
         }
@@ -606,7 +641,11 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
     }
 
     const data = await response.json();
-    const assistantMessage = data.choices[0].message.content;
+    let assistantMessage = data.choices[0].message.content;
+    if (evidenceNotReady) {
+      const notice = "Note: your uploaded documents are still being analyzed. I've triggered processing so they become searchable shortly.";
+      assistantMessage = `${notice}\n\n${assistantMessage}`;
+    }
 
     // Store conversation in messages table
     console.log("💾 Storing conversation in database...");
