@@ -179,6 +179,17 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     const textToSend = text || input.trim();
     if (!textToSend && !showFileUpload) return;
 
+    // Optimistic UI: show the user's message immediately (local only)
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempId,
+      role: "user",
+      content: textToSend,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, tempMessage]);
+    scrollToBottom();
+
     setInput("");
     setLoading(true);
     setTypingMessage("Analyzing your message...");
@@ -189,8 +200,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
 
       setTypingMessage("Consulting legal knowledge base...");
       
-      // Build conversation array from history only
-      const recentMessages = messages.slice(-10);
+      // Build conversation array from history + the new message
+      const recentMessages = [...messages.slice(-9), tempMessage];
       const convo = recentMessages.map(m => ({ role: m.role, content: m.content }));
       
       console.log('🚀 Invoking assistant-chat with:', { 
@@ -244,6 +255,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       console.log('✅ Chat history reloaded - messages should now be visible');
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
       toast({
         title: "Error",
         description: errorMsg,
