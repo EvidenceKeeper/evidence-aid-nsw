@@ -19,52 +19,52 @@ export default function HealthStatus() {
 
   useEffect(() => {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    const timeout = setTimeout(() => controller.abort(), 6000);
 
     async function run() {
       setError(null);
-      setData(null);
+      const services: Record<string, unknown> = {};
 
-      const tryFetch = async (url: string) => {
-        const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return (await res.json()) as HealthData;
-      };
-
-      const sameOrigin = `${window.location.origin}/api/health`;
-      const devOrigin = `${window.location.protocol}//${window.location.hostname}:3001/api/health`;
-
-      let baseData: HealthData | null = null;
-
+      // Check Supabase Database
       try {
-        const d = await tryFetch(sameOrigin);
-        baseData = d;
-        setData(d);
-      } catch (_) {
-        try {
-          const d = await tryFetch(devOrigin);
-          baseData = d;
-          setData(d);
-        } catch (e: any) {
-          setError(e?.message || "Unavailable");
-        }
+        const { error: dbError } = await supabase.from('messages').select('id').limit(1);
+        services.Database = dbError ? 'error' : 'ok';
+      } catch {
+        services.Database = 'error';
       }
 
-      // Non-blocking: try to enrich with OpenAI status from edge function
+      // Check Supabase Auth
+      try {
+        const { error: authError } = await supabase.auth.getSession();
+        services.Auth = authError ? 'error' : 'ok';
+      } catch {
+        services.Auth = 'error';
+      }
+
+      // Check Supabase Storage
+      try {
+        const { error: storageError } = await supabase.storage.listBuckets();
+        services.Storage = storageError ? 'error' : 'ok';
+      } catch {
+        services.Storage = 'error';
+      }
+
+      // Check OpenAI via edge function
       try {
         const { data: ai, error: aiErr } = await supabase.functions.invoke("ai-health");
         if (!aiErr && ai) {
-          setData((prev) => {
-            const prevVal = prev ?? baseData ?? { services: {} as Record<string, unknown> };
-            const services = { ...(prevVal.services as Record<string, unknown>), OpenAI: (ai as any).ok ? "ok" : (ai as any).status ?? "degraded" };
-            return { ...prevVal, services };
-          });
+          services.OpenAI = (ai as any).ok ? "ok" : (ai as any).status ?? "degraded";
+        } else {
+          services.OpenAI = 'error';
         }
       } catch {
-        // ignore
-      } finally {
-        clearTimeout(timeout);
+        services.OpenAI = 'unavailable';
       }
+
+      // Determine overall health
+      const allOk = Object.values(services).every(v => v === 'ok');
+      setData({ ok: allOk, services });
+      clearTimeout(timeout);
     }
 
     run();
