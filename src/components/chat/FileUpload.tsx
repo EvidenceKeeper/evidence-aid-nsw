@@ -36,11 +36,16 @@ export function FileUpload({ onUpload, onClose }: FileUploadProps) {
     setSelectedFiles(files => files.filter((_, i) => i !== index));
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (selectedFiles.length > 0) {
-      onUpload(selectedFiles);
-      setSelectedFiles([]);
-      onClose();
+      try {
+        await onUpload(selectedFiles);
+        setSelectedFiles([]);
+        onClose();
+      } catch (error: any) {
+        // Error is already handled and displayed by parent, just log here
+        console.error('FileUpload: upload handler threw:', error);
+      }
     }
   };
 

@@ -249,12 +249,26 @@ serve(async (req) => {
 
     console.log(`🎯 Updated case memory with new evidence index`);
 
+    // Safety check: verify all chunks now have embeddings
+    const { data: remainingChunks } = await supabase
+      .from("chunks")
+      .select("id")
+      .eq("file_id", file_id)
+      .is("embedding", null)
+      .limit(10);
+
+    if (remainingChunks && remainingChunks.length > 0) {
+      console.warn(`⚠️ ${remainingChunks.length} chunks still missing embeddings after processing - may need a second pass`);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       embeddings_generated: embeddedCount,
+      chunks_remaining: remainingChunks?.length || 0,
       exhibit_code: exhibitCode,
       file_summary: summaries.file_summary,
       sections_count: summaries.section_summaries.length,
+      file_name: file.name,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

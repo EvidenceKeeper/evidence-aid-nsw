@@ -13,6 +13,7 @@ import { SearchResultHighlighter } from "./SearchResultHighlighter";
 import { SmartEvidenceSuggestions } from "./SmartEvidenceSuggestions";
 import { ConversationExporter } from "./ConversationExporter";
 import { EvidencePreview } from "./EvidencePreview";
+import { EvidenceDiagnostics } from "./EvidenceDiagnostics";
 import { CaseShareDialog } from "@/components/case/CaseShareDialog";
 import { CollaborationIndicators } from "@/components/case/CollaborationIndicators";
 import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
@@ -312,6 +313,28 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
 
       if (error) {
         console.error('❌ Edge function error:', error);
+        
+        // Handle specific error codes
+        if (error.message?.includes('RATE_LIMIT') || error.status === 429) {
+          toast({
+            title: "Rate limit exceeded",
+            description: "Too many requests. Please wait a moment and try again.",
+            variant: "destructive"
+          });
+        } else if (error.message?.includes('PAYMENT_REQUIRED') || error.status === 402) {
+          toast({
+            title: "Payment required",
+            description: "Please add credits to your OpenAI account.",
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: error.message || 'Failed to get response from assistant',
+            variant: "destructive"
+          });
+        }
+        
         throw new Error(error.message || 'Failed to get response from assistant');
       }
 
@@ -400,7 +423,15 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
               contentType: file.type || "application/octet-stream",
             });
 
-          if (uploadError) throw uploadError;
+          if (uploadError) {
+            console.error('Storage upload error:', uploadError);
+            toast({
+              title: "Upload failed",
+              description: `${file.name}: ${uploadError.message}`,
+              variant: "destructive"
+            });
+            throw uploadError;
+          }
 
           // Mark this file as processing
           setMessages(prev => prev.map(msg =>
@@ -415,11 +446,31 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           ));
 
           // Auto-process the file
-          const { error: processError } = await supabase.functions.invoke("ingest-file", {
+          const { data: ingestData, error: processError } = await supabase.functions.invoke("ingest-file", {
             body: { path }
           });
 
-          if (processError) throw processError;
+          if (processError) {
+            console.error('Ingest-file error:', processError);
+            toast({
+              title: "Processing failed",
+              description: `${file.name}: ${processError.message}`,
+              variant: "destructive"
+            });
+            throw processError;
+          }
+
+          // Check for function-level errors in response
+          if (ingestData?.error) {
+            const errMsg = ingestData.details || ingestData.error;
+            console.error('Ingest-file function error:', errMsg);
+            toast({
+              title: "Processing failed",
+              description: `${file.name}: ${errMsg}`,
+              variant: "destructive"
+            });
+            throw new Error(errMsg);
+          }
 
           // Mark this file as ready
           setMessages(prev => prev.map(msg =>
@@ -603,6 +654,11 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           isSearching={isSearching}
         />
       )}
+
+      {/* Evidence Diagnostics */}
+      <div className="px-4 pt-2">
+        <EvidenceDiagnostics onRefresh={checkUnprocessedFiles} />
+      </div>
 
       {/* Main Content Area with Sidebar */}
       <div className="flex flex-1 min-h-0 overflow-hidden">

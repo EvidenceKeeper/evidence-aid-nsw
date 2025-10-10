@@ -629,6 +629,14 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
         } else {
           const errorText = await response.text();
           console.log(`❌ Model ${model} failed: ${response.status} - ${errorText}`);
+          
+          // Check for rate limit or payment errors
+          if (response.status === 429) {
+            throw new Error("RATE_LIMIT: Too many requests. Please try again in a moment.");
+          }
+          if (response.status === 402) {
+            throw new Error("PAYMENT_REQUIRED: Please add credits to your OpenAI account.");
+          }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -712,10 +720,34 @@ Last Updated: ${caseMemory.last_updated_at || 'Never'}`);
 
   } catch (error) {
     console.error("Error in assistant-chat function:", error);
+    
+    // Check for specific error types
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('RATE_LIMIT')) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Rate limit exceeded", 
+          code: "RATE_LIMIT",
+          details: "Too many requests. Please wait a moment and try again."
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    if (errorMessage.includes('PAYMENT_REQUIRED')) {
+      return new Response(
+        JSON.stringify({ 
+          error: "Payment required", 
+          code: "PAYMENT_REQUIRED",
+          details: "Please add credits to your OpenAI account."
+        }),
+        { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: "Internal server error", 
-        details: error instanceof Error ? error.message : String(error),
+        details: errorMessage,
         timestamp: new Date().toISOString()
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

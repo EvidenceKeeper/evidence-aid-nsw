@@ -54,9 +54,15 @@ export async function tryOpenAIWithFallback(requestBody: any, apiKey: string): P
       const errorText = await response.text();
       console.log(`⚠️ ${model.name} failed: ${response.status} - ${errorText}`);
 
-      // Don't retry on auth errors
+      // Don't retry on specific errors
       if (response.status === 401) {
-        throw new Error("Authentication failed");
+        throw new Error("Authentication failed - check API key");
+      }
+      if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please try again in a moment.");
+      }
+      if (response.status === 402) {
+        throw new Error("Payment required. Please add credits to your OpenAI account.");
       }
 
     } catch (error) {
