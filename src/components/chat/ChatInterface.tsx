@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Settings, Brain, Loader2, Search, Download, Share2, Upload, Mic, Zap } from 'lucide-react';
+import { Send, Settings, Brain, Loader2, Search, Download, Share2, Upload, Mic } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,11 +13,9 @@ import { SearchResultHighlighter } from "./SearchResultHighlighter";
 import { SmartEvidenceSuggestions } from "./SmartEvidenceSuggestions";
 import { ConversationExporter } from "./ConversationExporter";
 import { EvidencePreview } from "./EvidencePreview";
-import { EvidenceDiagnostics } from "./EvidenceDiagnostics";
 import { CaseShareDialog } from "@/components/case/CaseShareDialog";
 import { CollaborationIndicators } from "@/components/case/CollaborationIndicators";
 import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
-import { ProcessingStatusBar } from "./ProcessingStatusBar";
 import { useChatOrganization } from "@/hooks/useChatOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -48,8 +46,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   const [typingMessage, setTypingMessage] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
-  const [processingFiles, setProcessingFiles] = useState<Array<{ id: string; name: string }>>([]);
-  const [unprocessedFiles, setUnprocessedFiles] = useState<Array<{ id: string; name: string }>>([]);
+  // Removed: processingFiles, unprocessedFiles state (no longer needed with simplified pipeline)
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -84,7 +81,6 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       // Load initial history
       if (mounted) {
         await loadChatHistory();
-        await checkUnprocessedFiles();
       }
       
       if (mounted) {
@@ -455,8 +451,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
               : msg
           ));
 
-          // Auto-process the file
-          const { data: ingestData, error: processError } = await supabase.functions.invoke("ingest-file", {
+          // Process the file with new simplified function
+          const { data: processData, error: processError } = await supabase.functions.invoke("process-file", {
             body: { path }
           });
 
@@ -471,8 +467,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           }
 
           // Check for function-level errors in response
-          if (ingestData?.error) {
-            const errMsg = ingestData.details || ingestData.error;
+          if (processData?.error) {
+            const errMsg = processData.details || processData.error;
             console.error('Ingest-file function error:', errMsg);
             toast({
               title: "Processing failed",
@@ -604,17 +600,6 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
             <p className="text-sm text-muted-foreground">NSW Coercive Control Evidence Expert</p>
           </div>
           <CollaborationIndicators />
-          {unprocessedFiles.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={processAllEvidence}
-              className="gap-2 ml-4"
-            >
-              <Zap className="h-3 w-3" />
-              Process {unprocessedFiles.length} file(s)
-            </Button>
-          )}
         </div>
         
         <div className="flex items-center gap-2">
@@ -665,32 +650,11 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         />
       )}
 
-      {/* Evidence Diagnostics */}
-      <div className="px-4 pt-2">
-        <EvidenceDiagnostics onRefresh={checkUnprocessedFiles} />
-      </div>
-
       {/* Main Content Area with Sidebar */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Chat Messages */}
         <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
-          {/* Processing Status */}
-          {processingFiles.length > 0 && (
-            <div className="space-y-2 mb-4">
-              {processingFiles.map(file => (
-                <ProcessingStatusBar
-                  key={file.id}
-                  fileId={file.id}
-                  fileName={file.name}
-                  onComplete={() => {
-                    setProcessingFiles(prev => prev.filter(f => f.id !== file.id));
-                    checkUnprocessedFiles();
-                  }}
-                />
-              ))}
-            </div>
-          )}
           
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
