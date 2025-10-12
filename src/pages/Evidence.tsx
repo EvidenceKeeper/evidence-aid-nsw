@@ -215,7 +215,7 @@ export default function Evidence() {
         for (const upload of successfulUploads) {
           if (upload.ok) {
             try {
-              const response = await supabase.functions.invoke("ingest-file", {
+              const response = await supabase.functions.invoke("process-file", {
                 body: { path: upload.path },
               });
               
@@ -237,7 +237,7 @@ export default function Evidence() {
             } catch (err) {
               errorHandler.handleApiError(
                 err instanceof Error ? err : new Error(String(err)),
-                "ingest-file",
+                "process-file",
                 { path: upload.path }
               );
             }

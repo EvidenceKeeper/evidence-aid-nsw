@@ -48,8 +48,6 @@ verify_jwt = true
 [functions.extract-timeline]
 verify_jwt = true
 
-[functions.ingest-file]
-verify_jwt = true
 
 [functions.ingest-text]
 verify_jwt = true

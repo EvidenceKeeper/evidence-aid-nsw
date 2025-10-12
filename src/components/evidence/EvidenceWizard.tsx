@@ -122,7 +122,7 @@ export function EvidenceWizard({ onComplete }: EvidenceWizardProps) {
           if (error) throw error;
 
           // Auto-process the file
-          const { error: processError } = await supabase.functions.invoke("ingest-file", {
+          const { error: processError } = await supabase.functions.invoke("process-file", {
             body: { path }
           });
           
