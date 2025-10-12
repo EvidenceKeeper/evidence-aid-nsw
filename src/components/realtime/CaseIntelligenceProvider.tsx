@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface CaseIntelligence {
   caseStrength: number;
@@ -118,13 +119,8 @@ export function CaseIntelligenceProvider({ children }: { children: React.ReactNo
     setIntelligence(prev => ({ ...prev, isAnalyzing: true }));
 
     try {
-      const response = await supabase.functions.invoke('continuous-case-analysis', {
-        body: { analysis_type: 'full_case_review' }
-      });
-
-      if (response.error) {
-        throw response.error;
-      }
+      // Note: Old continuous analysis removed. Case analysis now happens automatically during chat
+      toast.info("Case analysis now happens automatically as you chat and upload evidence.");
 
       // Reload intelligence after analysis
       await loadCaseIntelligence();

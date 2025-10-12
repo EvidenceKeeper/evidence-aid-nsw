@@ -11,24 +11,15 @@ export interface FileProcessingResult {
 
 export async function processFileEmbeddings(fileId: string): Promise<FileProcessingResult> {
   try {
-    console.log(`🔄 Processing embeddings for file: ${fileId}`);
+    console.log(`🔄 Processing file (old embedding system removed): ${fileId}`);
     
-    const { data, error } = await supabase.functions.invoke('enhanced-memory-processor', {
-      body: { file_id: fileId, processing_type: "embeddings_and_summaries" }
-    });
-
-    if (error) {
-      throw new Error(error.message || 'Function invocation failed');
-    }
-
-    console.log(`✅ Successfully processed file: ${fileId}`, data);
-    
+    // Note: Old embedding-based processing removed. 
+    // Files are now processed automatically via process-file edge function
     return {
       fileId,
-      fileName: data.file_name || fileId,
-      success: true,
-      embeddings_generated: data.embeddings_generated,
-      exhibit_code: data.exhibit_code
+      fileName: fileId,
+      success: false,
+      error: 'Embedding generation has been removed. Files are now processed automatically on upload.'
     };
   } catch (error: any) {
     console.error(`❌ Failed to process file ${fileId}:`, error);

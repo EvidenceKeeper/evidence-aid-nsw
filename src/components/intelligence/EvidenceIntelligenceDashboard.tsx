@@ -130,15 +130,10 @@ export default function EvidenceIntelligenceDashboard() {
   const triggerIntelligenceAnalysis = async () => {
     setTriggering(true);
     try {
-      const { data, error } = await supabase.functions.invoke('evidence-intelligence-orchestrator', {
-        body: { trigger_type: 'manual_comprehensive' }
-      });
-
-      if (error) throw error;
-
+      // Note: Old embedding-based analysis removed. File processing now happens automatically via process-file
       toast({
-        title: "Analysis Started",
-        description: `Processing ${data.files_to_process} files. Estimated completion: ${data.estimated_completion}`,
+        title: "Feature Removed",
+        description: "Evidence analysis now happens automatically when you upload files.",
       });
 
       // Refresh data after a delay
