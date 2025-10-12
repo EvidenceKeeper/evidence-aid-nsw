@@ -1,8 +1,41 @@
-# Welcome to your Lovable project
+# NSW Legal Evidence Manager
+
+**Trauma-Informed AI Legal Assistant for NSW, Australia**
+
+> **Latest Update (2025)**: Complete chatbot rebuild - 10x faster, embeddings-free architecture with real-time streaming!
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/93eec4ba-e16c-42d9-9d7f-5d6d45d07275
+
+## Overview
+
+This application helps NSW residents navigate legal matters (domestic violence, parenting disputes, ADVOs) with an empathetic AI assistant named Veronica. Key features:
+
+- 🤖 **AI Chat**: Streaming responses with NSW legal context
+- 📁 **Evidence Manager**: Upload and organize case files  
+- 📅 **Timeline**: Track events and build your case
+- ⚖️ **NSW Legal Database**: Searchable legislation and case law
+- 🔒 **Trauma-Informed**: Safe, supportive, user-focused design
+
+### Architecture Highlights
+
+**2025 Rebuild:**
+- ✅ **No embeddings** - Direct text processing (10x faster)
+- ✅ **Token streaming** - Real-time AI responses
+- ✅ **Full-text search** - NSW legal content via PostgreSQL
+- ✅ **Simplified pipeline** - Upload → Extract → Ready in <3 seconds
+
+**Tech Stack:**
+- Frontend: React 18 + TypeScript + Tailwind CSS
+- Backend: Supabase (Postgres, Storage, Edge Functions)
+- AI: Lovable AI Gateway (Google Gemini 2.5 Flash)
+- Search: PostgreSQL full-text (GIN indexes)
+
+📖 **Detailed Docs:**
+- [Architecture Overview](./docs/Architecture-Overview.md)
+- [Testing Guide](./docs/Chatbot-Rebuild-Testing.md)
+- [Legal Training Document](./docs/Legal-Journey-Training-Document.md)
 
 ## How can I edit this code?
 

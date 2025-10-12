@@ -1057,7 +1057,6 @@ export type Database = {
           confidence_score: number | null
           created_at: string
           document_id: string
-          embedding: string | null
           id: string
           legal_concepts: string[] | null
           metadata: Json | null
@@ -1073,7 +1072,6 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           document_id: string
-          embedding?: string | null
           id?: string
           legal_concepts?: string[] | null
           metadata?: Json | null
@@ -1089,7 +1087,6 @@ export type Database = {
           confidence_score?: number | null
           created_at?: string
           document_id?: string
-          embedding?: string | null
           id?: string
           legal_concepts?: string[] | null
           metadata?: Json | null

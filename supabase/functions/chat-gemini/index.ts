@@ -92,7 +92,37 @@ serve(async (req) => {
       }
     }
 
-    // 4. Build system prompt with case context
+    // 4. Load NSW legal context (full-text search based on user message)
+    let legalContext = '';
+    
+    // Extract keywords from user message for legal search
+    const messageKeywords = message.toLowerCase();
+    
+    // Search legal sections using full-text search
+    const { data: legalSections } = await supabase
+      .from('legal_sections')
+      .select('title, content, citation_reference, legal_concepts')
+      .textSearch('tsv', messageKeywords, {
+        type: 'websearch',
+        config: 'english'
+      })
+      .limit(5);
+
+    if (legalSections && legalSections.length > 0) {
+      legalContext = '\n\n## RELEVANT NSW LEGAL INFORMATION:\n';
+      legalSections.forEach(section => {
+        legalContext += `\n### ${section.title}\n`;
+        if (section.citation_reference) {
+          legalContext += `**Citation**: ${section.citation_reference}\n`;
+        }
+        if (section.legal_concepts && section.legal_concepts.length > 0) {
+          legalContext += `**Key Concepts**: ${section.legal_concepts.join(', ')}\n`;
+        }
+        legalContext += `\n${section.content}\n`;
+      });
+    }
+
+    // 5. Build system prompt with case context
     const trainingDoc = `You are Veronica, a trauma-informed legal AI assistant for NSW, Australia. You help users navigate legal matters with empathy and professionalism.
 
 KEY PRINCIPLES:
@@ -112,16 +142,19 @@ ${caseMemory ? `
 
 ${evidenceText}
 
+${legalContext}
+
 When responding:
 1. Acknowledge what the user has shared
-2. Provide clear, actionable information
-3. Ask thoughtful follow-up questions
-4. Guide them to the next step in their journey
-5. If you reference their evidence files, cite the specific file name
+2. Provide clear, actionable information based on NSW law
+3. If you cite legal sections, reference them by their citation
+4. Ask thoughtful follow-up questions
+5. Guide them to the next step in their journey
+6. If you reference their evidence files, cite the specific file name
 
 Always be warm, professional, and supportive.`;
 
-    // 5. Call Lovable AI with Gemini
+    // 6. Call Lovable AI with Gemini
     console.log('🤖 Calling Lovable AI (google/gemini-2.5-flash)...');
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -165,14 +198,14 @@ Always be warm, professional, and supportive.`;
       throw new Error(`AI gateway error: ${errorText}`);
     }
 
-    // 6. Save user message to database
+    // 7. Save user message to database
     await supabase.from('messages').insert({
       user_id: user.id,
       role: 'user',
       content: message
     });
 
-    // 7. Stream response back to client
+    // 8. Stream response back to client
     console.log('✅ Streaming response...');
     
     // Create a transform stream to parse SSE and save assistant response
