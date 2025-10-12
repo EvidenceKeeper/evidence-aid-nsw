@@ -176,69 +176,6 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     }
   };
 
-  const checkUnprocessedFiles = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Find files that are processed but don't have embeddings
-      const { data: files } = await supabase
-        .from('files')
-        .select('id, name')
-        .eq('user_id', user.id)
-        .eq('status', 'processed');
-
-      if (!files || files.length === 0) return;
-
-      const unprocessed = [];
-      for (const file of files) {
-        const { data: chunks } = await supabase
-          .from('chunks')
-          .select('embedding')
-          .eq('file_id', file.id)
-          .limit(1);
-
-        if (!chunks || chunks.length === 0 || !chunks[0].embedding) {
-          unprocessed.push(file);
-        }
-      }
-
-      setUnprocessedFiles(unprocessed);
-    } catch (error) {
-      console.error('Error checking unprocessed files:', error);
-    }
-  };
-
-  const processAllEvidence = async () => {
-    if (unprocessedFiles.length === 0) return;
-
-    toast({
-      title: "Processing evidence",
-      description: `Starting processing for ${unprocessedFiles.length} file(s)...`,
-    });
-
-    for (const file of unprocessedFiles) {
-      try {
-        setProcessingFiles(prev => [...prev, file]);
-        
-        const { error } = await supabase.functions.invoke('enhanced-memory-processor', {
-          body: { file_id: file.id }
-        });
-
-        if (error) throw error;
-      } catch (error: any) {
-        console.error(`Failed to process ${file.name}:`, error);
-        toast({
-          title: "Processing error",
-          description: `Failed to process ${file.name}: ${error.message}`,
-          variant: "destructive"
-        });
-      }
-    }
-
-    setUnprocessedFiles([]);
-  };
-
   const sendMessage = async (text?: string) => {
     const textToSend = text || input.trim();
     if (!textToSend && !showFileUpload) return;

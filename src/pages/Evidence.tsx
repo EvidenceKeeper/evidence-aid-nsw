@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EvidenceWizard } from "@/components/evidence/EvidenceWizard";
 import { EvidenceAnalysisFeedback } from "@/components/evidence/EvidenceAnalysisFeedback";
 import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
-import { ProcessingStatus } from "@/components/evidence/ProcessingStatus";
 import { sanitizeFileName } from "@/lib/utils";
 import { errorHandler } from "@/utils/errorHandler";
 import { 
@@ -354,7 +353,6 @@ export default function Evidence() {
     <div className="container mx-auto px-6 py-8">
       <SEO title="Evidence Library | NSW Legal Evidence Manager" description="View and organize your uploaded evidence in a simple, trauma-informed interface." />
 
-      <ProcessingStatus />
       
       {/* Show analysis feedback if available */}
       {latestAnalysis && (

@@ -377,7 +377,6 @@ export type Database = {
       chunks: {
         Row: {
           created_at: string
-          embedding: string | null
           file_id: string
           id: string
           meta: Json
@@ -387,7 +386,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          embedding?: string | null
           file_id: string
           id?: string
           meta?: Json
@@ -397,7 +395,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          embedding?: string | null
           file_id?: string
           id?: string
           meta?: Json
@@ -774,45 +771,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      evidence_processing_queue: {
-        Row: {
-          completed_at: string | null
-          created_at: string
-          error_message: string | null
-          file_id: string
-          id: string
-          priority: number
-          processing_type: string
-          started_at: string | null
-          status: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          file_id: string
-          id?: string
-          priority?: number
-          processing_type?: string
-          started_at?: string | null
-          status?: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          file_id?: string
-          id?: string
-          priority?: number
-          processing_type?: string
-          started_at?: string | null
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
       }
       evidence_relationships: {
         Row: {
