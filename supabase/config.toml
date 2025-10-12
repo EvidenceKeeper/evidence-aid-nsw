@@ -1,5 +1,8 @@
 project_id = "kwsbzfvvmazyhmjgxryo"
 
+[functions.chat-gemini]
+verify_jwt = true
+
 [functions.assistant-chat]
 verify_jwt = true
 

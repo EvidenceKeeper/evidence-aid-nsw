@@ -247,111 +247,121 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     const textToSend = text || input.trim();
     if (!textToSend && !showFileUpload) return;
 
-    // Optimistic UI: show the user's message immediately (local only)
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage: Message = {
-      id: tempId,
+    // Show user message immediately
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
       role: "user",
       content: textToSend,
       timestamp: new Date(),
     };
-    setMessages(prev => [...prev, tempMessage]);
+    setMessages(prev => [...prev, userMessage]);
     scrollToBottom();
 
     setInput("");
     setLoading(true);
-    setTypingMessage("Analyzing your message...");
+    setTypingMessage("Veronica is thinking...");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('You must be logged in to chat');
 
-      setTypingMessage("Consulting legal knowledge base...");
-      
-      // Build conversation array from history + the new message
-      const recentMessages = [...messages.slice(-9), tempMessage];
-      const convo = recentMessages.map(m => ({ role: m.role, content: m.content }));
-      
-      console.log('🚀 Invoking assistant-chat with:', { 
-        prompt: textToSend.substring(0, 50) + '...', 
-        historyCount: convo.length,
-        userId: user.id 
-      });
-
-      // Timeout protection wrapper
-      const invokeWithTimeout = async (timeout = 30000) => {
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout after 30s')), timeout)
-        );
-        
-        const invokePromise = supabase.functions.invoke('assistant-chat', {
-          body: { 
-            prompt: textToSend,
-            messages: convo
-          }
-        });
-        
-        return Promise.race([invokePromise, timeoutPromise]);
+      // Create placeholder for streaming assistant message
+      const assistantId = `assistant-${Date.now()}`;
+      const assistantMessage: Message = {
+        id: assistantId,
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
       };
+      setMessages(prev => [...prev, assistantMessage]);
+      setTypingMessage("");
 
-      const { data, error } = await invokeWithTimeout() as { data: any; error: any };
+      console.log('🤖 Calling chat-gemini with streaming...');
 
-      // Check for silent failure
-      if (!data && !error) {
-        console.error('❌ Silent failure: No data or error returned from invoke');
-        throw new Error('Edge function call failed silently - check network/deployment');
-      }
-
-      // Log full response structure for debugging
-      console.log('📦 Full invoke response:', { 
-        hasData: !!data,
-        dataKeys: data ? Object.keys(data) : [],
-        hasError: !!error,
-        errorMessage: error?.message,
-        dataContent: data
-      });
-
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        
-        // Handle specific error codes
-        if (error.message?.includes('RATE_LIMIT') || error.status === 429) {
-          toast({
-            title: "Rate limit exceeded",
-            description: "Too many requests. Please wait a moment and try again.",
-            variant: "destructive"
-          });
-        } else if (error.message?.includes('PAYMENT_REQUIRED') || error.status === 402) {
-          toast({
-            title: "Payment required",
-            description: "Please add credits to your OpenAI account.",
-            variant: "destructive"
-          });
-        } else {
-          toast({
-            title: "Error",
-            description: error.message || 'Failed to get response from assistant',
-            variant: "destructive"
-          });
+      // Call new streaming edge function
+      const response = await fetch(
+        `https://kwsbzfvvmazyhmjgxryo.supabase.co/functions/v1/chat-gemini`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message: textToSend })
         }
+      );
+
+      // Handle error responses with specific messages
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         
-        throw new Error(error.message || 'Failed to get response from assistant');
+        if (response.status === 429) {
+          throw new Error('⏱️ Rate limit exceeded. Please wait 30 seconds and try again.');
+        }
+        if (response.status === 402) {
+          throw new Error('💳 AI credits depleted. Add credits in Settings → Workspace → Usage.');
+        }
+        throw new Error(errorData.error || `Request failed with status ${response.status}`);
       }
 
-      // Always reload chat history after successful invoke
-      // Messages are stored in DB regardless of response structure
-      console.log('🔄 Invoke succeeded, reloading chat history from database...');
-      await loadChatHistory();
-      console.log('✅ Chat history reloaded - messages should now be visible');
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to send message';
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(m => !m.id.startsWith('temp-')));
+      // Stream response token by token
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response stream available');
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let assistantContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.trim() || line.startsWith(':')) continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              assistantContent += parsed.content;
+              
+              // Update assistant message with streaming content
+              setMessages((prev) => 
+                prev.map(m => 
+                  m.id === assistantId 
+                    ? { ...m, content: assistantContent }
+                    : m
+                )
+              );
+              scrollToBottom();
+            }
+          } catch (e) {
+            console.warn('⚠️ Failed to parse SSE chunk:', data);
+          }
+        }
+      }
+
+      console.log('✅ Streaming complete');
+      
+    } catch (error: any) {
+      console.error('❌ Chat error:', error);
+      
+      // Remove placeholder assistant message on error
+      setMessages((prev) => prev.filter(m => m.role !== 'assistant' || m.content));
+      
       toast({
-        title: "Error",
-        description: errorMsg,
-        variant: "destructive"
+        title: "Chat Error",
+        description: error.message || "Failed to send message. Please try again.",
+        variant: "destructive",
       });
+      
       errorHandler.handleChatError(
         error instanceof Error ? error : new Error('Failed to send message'),
         { textToSend, conversationLength: messages.length }
