@@ -70,8 +70,10 @@ serve(async (req) => {
         user_id: user.id,
         name: fileName,
         storage_path: path,
-        content_type: contentType,
+        mime_type: contentType,
+        size: blob.size,
         status: 'processed',
+        meta: { extracted_at: new Date().toISOString() },
         provenance: {
           uploaded_at: new Date().toISOString(),
           processed_by: 'process-file',
@@ -118,7 +120,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error('❌ File processing error:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'Failed to process file',
+      error: 'File processing failed: ' + (error.message || 'Unknown error'),
       code: 'PROCESSING_ERROR'
     }), {
       status: 500,
