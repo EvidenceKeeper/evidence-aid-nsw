@@ -77,18 +77,6 @@ export function OptimizedMemoryChat({ onSendMessage, userQuery }: OptimizedMemor
             </div>
             
             <div className="flex items-center justify-between">
-              <span className="text-xs">Vector Search</span>
-              <Button
-                variant={settings.vectorSearchActive ? "default" : "outline"}
-                size="sm"
-                className="h-6 text-xs"
-                onClick={() => updateSettings({ vectorSearchActive: !settings.vectorSearchActive })}
-              >
-                {settings.vectorSearchActive ? "ON" : "OFF"}
-              </Button>
-            </div>
-            
-            <div className="flex items-center justify-between">
               <span className="text-xs">Case Monitoring</span>
               <Button
                 variant={settings.caseStrengthMonitoring ? "default" : "outline"}

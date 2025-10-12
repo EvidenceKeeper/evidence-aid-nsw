@@ -17,7 +17,6 @@ interface CaseMemory {
 }
 
 interface MemorySettings {
-  vectorSearchActive: boolean;
   proactiveTriggersActive: boolean;
   caseStrengthMonitoring: boolean;
   communicationStyle: 'gentle' | 'direct' | 'collaborative';
@@ -43,7 +42,6 @@ export function useOptimizedMemory() {
   const [caseMemory, setCaseMemory] = useState<CaseMemory | null>(null);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MemorySettings>({
-    vectorSearchActive: true,
     proactiveTriggersActive: true,
     caseStrengthMonitoring: true,
     communicationStyle: 'collaborative',
@@ -275,14 +273,12 @@ export function useOptimizedMemory() {
 
   // Memory-aware features toggle
   const announceMemoryUpdate = useCallback((message: string) => {
-    if (settings.vectorSearchActive) {
-      toast({
-        title: "🧠 Memory Update",
-        description: message,
-        duration: 4000,
-      });
-    }
-  }, [settings.vectorSearchActive, toast]);
+    toast({
+      title: "🧠 Memory Update",
+      description: message,
+      duration: 4000,
+    });
+  }, [toast]);
 
   // Check if topic was already discussed
   const avoidRepeatingQuestions = useCallback((topic: string): boolean => {

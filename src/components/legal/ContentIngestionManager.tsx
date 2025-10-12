@@ -271,7 +271,7 @@ export default function ContentIngestionManager() {
             <span>NSW Legal Content Ingestion</span>
           </CardTitle>
           <CardDescription>
-            Automated pipeline for processing NSW legal documents with citation extraction and embedding generation
+            Automated pipeline for processing NSW legal documents with citation extraction
           </CardDescription>
         </CardHeader>
       </Card>

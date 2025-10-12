@@ -45,11 +45,6 @@ export function MemorySystemStatus() {
                   Proactive Triggers
                 </Badge>
               )}
-              {settings.vectorSearchActive && (
-                <Badge variant="secondary" className="text-xs">
-                  Vector Search
-                </Badge>
-              )}
               {settings.caseStrengthMonitoring && (
                 <Badge variant="secondary" className="text-xs">
                   Case Monitoring
