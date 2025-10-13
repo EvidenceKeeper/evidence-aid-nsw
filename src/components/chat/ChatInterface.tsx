@@ -5,12 +5,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChatMessage } from "./ChatMessage";
 import { FileUpload } from "./FileUpload";
-import { IntelligentQuickReplies } from "./IntelligentQuickReplies";
+import { ActionSuggestions } from "./ActionSuggestions";
 import { TypingIndicator } from "./TypingIndicator";
 import { VoiceInput } from "./VoiceInput";
 import { ChatSearchBar } from "./ChatSearchBar";
 import { SearchResultHighlighter } from "./SearchResultHighlighter";
-import { SmartEvidenceSuggestions } from "./SmartEvidenceSuggestions";
 import { ConversationExporter } from "./ConversationExporter";
 import { EvidencePreview } from "./EvidencePreview";
 import { CaseShareDialog } from "@/components/case/CaseShareDialog";
@@ -639,32 +638,12 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         />
       )}
 
-      {/* Smart Evidence Suggestions */}
-      {messages.length > 0 && !loading && (
+      {/* Dynamic Action Suggestions */}
+      {messages.length > 0 && !loading && messages[messages.length - 1]?.role === 'assistant' && (
         <div className="px-4 pb-2">
-          <SmartEvidenceSuggestions 
-            recentMessages={messages.slice(-3)}
-            onSelectEvidence={(fileId) => setSelectedEvidenceId(fileId)}
-          />
-        </div>
-      )}
-
-      {/* Intelligent Quick Replies */}
-      {messages.length > 0 && !loading && (
-        <div className="px-4 pb-2">
-          <IntelligentQuickReplies 
-            conversationContext={{
-              lastMessages: messages.slice(-3),
-              currentStage: "evidence_gathering",
-              hasEvidence: false,
-              needsLegalAdvice: true
-            }}
-            caseMemory={{
-              case_strength_score: 0.5,
-              evidence_index: [],
-              key_facts: []
-            }}
-            onReplySelect={handleQuickReply}
+          <ActionSuggestions 
+            content={messages[messages.length - 1].content}
+            onActionClick={(actionText) => sendMessage(actionText)}
           />
         </div>
       )}

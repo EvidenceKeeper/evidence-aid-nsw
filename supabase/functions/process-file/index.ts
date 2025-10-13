@@ -107,6 +107,23 @@ serve(async (req) => {
 
     console.log(`✅ File processed successfully: ${fileName}`);
 
+    // Auto-extract timeline events from the uploaded file
+    console.log('📅 Triggering timeline extraction...');
+    try {
+      const { data: timelineData, error: timelineError } = await supabase.functions.invoke('extract-timeline', {
+        body: { file_id: fileData.id }
+      });
+      
+      if (timelineError) {
+        console.warn('⚠️ Timeline extraction failed:', timelineError);
+        // Don't fail the whole upload - timeline is optional
+      } else {
+        console.log(`✅ Extracted ${timelineData?.events_extracted || 0} timeline events`);
+      }
+    } catch (e) {
+      console.warn('⚠️ Timeline extraction error:', e);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       file_id: fileData.id,

@@ -48,10 +48,10 @@ serve(async (req) => {
       content: m.content
     }));
 
-    // 2. Load case memory
+    // 2. Load case memory (including personalization profile)
     const { data: caseMemory } = await supabase
       .from('case_memory')
-      .select('primary_goal, current_stage, case_readiness_status, key_facts, evidence_index')
+      .select('primary_goal, current_stage, case_readiness_status, key_facts, evidence_index, personalization_profile')
       .eq('user_id', user.id)
       .single();
 
@@ -122,37 +122,59 @@ serve(async (req) => {
       });
     }
 
-    // 5. Build system prompt with case context
-    const trainingDoc = `You are Veronica, a trauma-informed legal AI assistant for NSW, Australia. You help users navigate legal matters with empathy and professionalism.
+    // 5. Build stage-specific guidance and extract personalization
+    const STAGE_GUIDANCE = {
+      1: "Focus: Safety assessment and trust-building. Ask about immediate safety, validate their decision to seek help.",
+      2: "Focus: Information gathering. Break questions into manageable chunks, normalize trauma responses.",
+      3: "Focus: Goal clarification. Help articulate clear goals, explain NSW legal pathways simply.",
+      4: "Focus: Evidence collection. Guide systematic gathering, validate emotional responses.",
+      5: "Focus: Legal strategy. Present 2-3 options with clear pros/cons, set realistic expectations.",
+      6: "Focus: Case readiness check. Review preparedness, identify ONE key gap to address.",
+      7: "Focus: Form completion. Guide through one court form at a time, prepare supporting docs.",
+      8: "Focus: Court preparation. Explain process step-by-step, practice one thing at a time.",
+      9: "Focus: Post-court support. Review outcomes, plan immediate next step, celebrate progress."
+    };
 
-KEY PRINCIPLES:
-- You provide legal information, NOT legal advice
-- You stay within NSW jurisdiction
-- You prioritize user safety and emotional wellbeing
-- You use clear, simple language without jargon
-- You guide users through the legal journey step-by-step
+    const stageGuidance = STAGE_GUIDANCE[caseMemory?.current_stage || 1] || STAGE_GUIDANCE[1];
+    const profile = caseMemory?.personalization_profile || {};
+    const userName = profile.name || 'this user';
+    const communicationStyle = profile.communication_style || 'concise'; // concise/detailed/balanced
+    const experienceLevel = profile.experience_level || 'first_time'; // first_time/some_experience/experienced
 
-CURRENT USER CONTEXT:
-${caseMemory ? `
-- Primary Goal: ${caseMemory.primary_goal || 'Not yet set'}
-- Journey Stage: ${caseMemory.current_stage || 1}/9
-- Case Readiness: ${caseMemory.case_readiness_status || 'collecting'}
-- Key Facts: ${JSON.stringify(caseMemory.key_facts || [])}
-` : 'New user - no case memory yet'}
+    const systemPrompt = `You are Veronica, a trauma-informed NSW legal assistant. Guide ${userName} step-by-step toward their goal: "${caseMemory?.primary_goal || 'understanding their legal options'}".
 
-${evidenceText}
+CRITICAL RESPONSE RULES:
+1. BREVITY: ${communicationStyle === 'concise' ? 'Maximum 2 short paragraphs' : communicationStyle === 'detailed' ? 'Maximum 3 focused paragraphs' : 'Maximum 2-3 clear points'}
+2. STRUCTURE: Always follow this exact pattern:
+   - Acknowledge what they shared (1 sentence)
+   - Provide 1-2 key insights (directly related to their GOAL)
+   - Ask ONE focused question OR suggest ONE concrete next step
+3. NO LISTS: Avoid bullet points or numbered lists - speak naturally
+4. CITE EVIDENCE: Reference files by name when relevant: "Based on [filename]..."
+5. NSW LAW: Cite sections when applicable: "Under s61EA Crimes Act 1900 (NSW)..."
 
-${legalContext}
+USER CONTEXT:
+- Primary Goal: "${caseMemory?.primary_goal || 'Not set'}"
+- Current Stage: ${caseMemory?.current_stage || 1}/9 - ${stageGuidance}
+- Experience Level: ${experienceLevel}
+- Communication Style: ${communicationStyle}
+- Case Readiness: ${caseMemory?.case_readiness_status || 'collecting'}
 
-When responding:
-1. Acknowledge what the user has shared
-2. Provide clear, actionable information based on NSW law
-3. If you cite legal sections, reference them by their citation
-4. Ask thoughtful follow-up questions
-5. Guide them to the next step in their journey
-6. If you reference their evidence files, cite the specific file name
+${experienceLevel === 'first_time' ? 'EXPLAIN legal terms simply. Avoid jargon.' : experienceLevel === 'experienced' ? 'Be direct and strategic. Assume legal literacy.' : 'Balance explanation with efficiency.'}
 
-Always be warm, professional, and supportive.`;
+USER'S EVIDENCE:
+${evidenceText || 'No evidence uploaded yet'}
+
+RELEVANT NSW LAW:
+${legalContext || 'No specific legal context loaded'}
+
+EXAMPLE GOOD RESPONSE:
+"I can see from [Police Report Sept 2024] that there were three documented incidents. This strengthens your case significantly under NSW coercive control laws. What dates did the other controlling behaviors you mentioned occur?"
+
+EXAMPLE BAD RESPONSE (TOO LONG):
+[Avoid long explanations with multiple points, lists, or information dumps]
+
+Remember: Guide, don't overwhelm. Each response should move ${userName} ONE step closer to: "${caseMemory?.primary_goal}".`;
 
     // 6. Call Lovable AI with Gemini
     console.log('🤖 Calling Lovable AI (google/gemini-2.5-flash)...');
@@ -165,11 +187,13 @@ Always be warm, professional, and supportive.`;
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: trainingDoc },
+          { role: 'system', content: systemPrompt },
           ...conversationHistory,
           { role: 'user', content: message }
         ],
-        stream: true
+        stream: true,
+        temperature: 0.7,
+        max_tokens: communicationStyle === 'concise' ? 300 : communicationStyle === 'detailed' ? 600 : 450
       })
     });
 
