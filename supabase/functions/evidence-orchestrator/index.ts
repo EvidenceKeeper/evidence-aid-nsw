@@ -104,7 +104,8 @@ serve(async (req) => {
       file_name,
       timelineResult.data?.events_extracted || 0,
       strengthResult.data || null,
-      caseMemory
+      caseMemory,
+      legalResult.data || null
     );
 
     console.log('🎉 Evidence orchestration complete!');
@@ -138,7 +139,8 @@ async function generateProactiveAnalysis(
   file_name: string,
   timeline_events: number,
   strengthData: any,
-  caseMemory: any
+  caseMemory: any,
+  legalAnalysisData: any
 ) {
   try {
     // Build context for proactive message
@@ -149,7 +151,8 @@ async function generateProactiveAnalysis(
       new_case_strength: strengthData?.case_strength_score || 0,
       strengths: strengthData?.strengths || [],
       critical_gaps: strengthData?.critical_gaps || [],
-      primary_goal: caseMemory?.primary_goal || 'understanding your legal options'
+      primary_goal: caseMemory?.primary_goal || 'understanding your legal options',
+      legal_connections: legalAnalysisData?.connections_generated || 0
     };
 
     // Call chat-gemini with special evidence_uploaded context
@@ -161,12 +164,37 @@ async function generateProactiveAnalysis(
       }
     });
 
-    // Save the proactive message to messages table
+    // Save the proactive message to messages table with confidence metadata
     if (aiResponse?.content) {
+      // Calculate confidence based on data quality
+      const confidence_score = Math.min(
+        0.6 + // Base for evidence analysis
+        (timeline_events > 0 ? 0.1 : 0) + // Timeline data adds confidence
+        ((legalAnalysisData?.connections_generated || 0) > 0 ? 0.15 : 0) + // Legal connections
+        ((strengthData?.case_strength_score || 0) > 50 ? 0.1 : 0), // Strong case
+        0.85 // Cap proactive messages at 85% (not lawyer-verified)
+      );
+
+      const sourceRefs = [];
+      if (legalAnalysisData?.primary_statutes) {
+        legalAnalysisData.primary_statutes.slice(0, 2).forEach((statute: string) => {
+          sourceRefs.push({
+            type: 'statute',
+            citation: statute,
+            section: 'Relevant to uploaded evidence'
+          });
+        });
+      }
+
       await supabase.from('messages').insert({
         user_id,
         role: 'assistant',
-        content: aiResponse.content
+        content: aiResponse.content,
+        confidence_score,
+        reasoning: `Proactive analysis based on ${timeline_events} timeline event${timeline_events !== 1 ? 's' : ''} and ${legalAnalysisData?.connections_generated || 0} legal connection${(legalAnalysisData?.connections_generated || 0) !== 1 ? 's' : ''} found in "${file_name}". This assessment will improve as you add more evidence.`,
+        verification_status: 'ai_generated' as const,
+        source_references: sourceRefs,
+        is_legal_advice: false
       });
 
       return aiResponse.content;

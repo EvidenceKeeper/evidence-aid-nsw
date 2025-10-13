@@ -1675,30 +1675,45 @@ export type Database = {
       messages: {
         Row: {
           citations: Json
+          confidence_score: number | null
           content: string
           created_at: string
           id: string
+          is_legal_advice: boolean | null
+          reasoning: string | null
           role: string
+          source_references: Json | null
           thread_id: string | null
           user_id: string
+          verification_status: string | null
         }
         Insert: {
           citations?: Json
+          confidence_score?: number | null
           content: string
           created_at?: string
           id?: string
+          is_legal_advice?: boolean | null
+          reasoning?: string | null
           role: string
+          source_references?: Json | null
           thread_id?: string | null
           user_id: string
+          verification_status?: string | null
         }
         Update: {
           citations?: Json
+          confidence_score?: number | null
           content?: string
           created_at?: string
           id?: string
+          is_legal_advice?: boolean | null
+          reasoning?: string | null
           role?: string
+          source_references?: Json | null
           thread_id?: string | null
           user_id?: string
+          verification_status?: string | null
         }
         Relationships: []
       }

@@ -7,6 +7,86 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function to calculate confidence score based on legal sources and evidence
+function calculateConfidence(
+  content: string, 
+  legalSections: any[], 
+  files: any[]
+) {
+  let score = 0.5; // Base score
+  const sourceReferences: any[] = [];
+  let reasoning = '';
+  
+  // Check if response contains legal citations
+  const hasCitations = /\b(s\d+|section\s+\d+|\d{4}\s+[A-Z]+)/i.test(content);
+  const hasAct = /(Act|Crimes|Family Law|Domestic Violence)/i.test(content);
+  
+  // Confidence factors
+  if (legalSections && legalSections.length > 0) {
+    score += 0.2; // Legal sources found
+    legalSections.forEach(section => {
+      if (section.citation_reference) {
+        sourceReferences.push({
+          type: 'statute',
+          citation: section.citation_reference,
+          section: section.title
+        });
+      }
+    });
+  }
+  
+  if (hasCitations) {
+    score += 0.15; // Contains specific citations
+  }
+  
+  if (files && files.length > 0) {
+    score += 0.1; // Has user evidence
+  }
+  
+  if (hasAct) {
+    score += 0.05; // References specific legislation
+  }
+  
+  // Cap at 1.0
+  score = Math.min(score, 1.0);
+  
+  // Determine verification status and reasoning
+  let verification_status: 'ai_generated' | 'requires_review' | 'lawyer_verified' = 'ai_generated';
+  let is_legal_advice = false;
+  
+  // Detect if response gives specific legal advice (not just information)
+  const adviceIndicators = [
+    /you should/i,
+    /you must/i,
+    /you need to/i,
+    /file for/i,
+    /apply for/i,
+    /your case/i,
+    /your situation/i
+  ];
+  
+  const hasAdviceLanguage = adviceIndicators.some(pattern => pattern.test(content));
+  
+  if (hasAdviceLanguage && score < 0.7) {
+    verification_status = 'requires_review';
+    is_legal_advice = true;
+    reasoning = 'This response contains guidance specific to your situation. While based on NSW law, it should be verified by a lawyer before taking action.';
+  } else if (hasAdviceLanguage) {
+    is_legal_advice = true;
+    reasoning = `This guidance is based on ${sourceReferences.length} legal source${sourceReferences.length !== 1 ? 's' : ''} and your uploaded evidence. It provides general information about NSW law applicable to your situation.`;
+  } else {
+    reasoning = 'This is general legal information about NSW law. It is not specific advice for your individual circumstances.';
+  }
+  
+  return {
+    score,
+    reasoning,
+    verification_status,
+    source_references: sourceReferences,
+    is_legal_advice
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -339,12 +419,20 @@ Remember: Guide, don't overwhelm. Each response should move ${userName} ONE step
           }
         }
 
-        // Save complete assistant response to database
+        // Calculate confidence score and metadata
+        const confidenceData = calculateConfidence(assistantContent, legalSections || [], files || []);
+        
+        // Save complete assistant response to database with confidence metadata
         if (assistantContent) {
           await supabase.from('messages').insert({
             user_id: user.id,
             role: 'assistant',
-            content: assistantContent
+            content: assistantContent,
+            confidence_score: confidenceData.score,
+            reasoning: confidenceData.reasoning,
+            verification_status: confidenceData.verification_status,
+            source_references: confidenceData.source_references,
+            is_legal_advice: confidenceData.is_legal_advice
           });
         }
 

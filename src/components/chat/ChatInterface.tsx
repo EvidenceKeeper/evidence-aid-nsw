@@ -113,7 +113,12 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
                 role: newMsg.role as "user" | "assistant",
                 content: newMsg.content,
                 citations: Array.isArray(newMsg.citations) ? (newMsg.citations as unknown as MessageCitation[]) : [],
-                timestamp: new Date(newMsg.created_at)
+                timestamp: new Date(newMsg.created_at),
+                confidence_score: newMsg.confidence_score || undefined,
+                reasoning: newMsg.reasoning || undefined,
+                verification_status: (newMsg.verification_status as 'ai_generated' | 'requires_review' | 'lawyer_verified') || undefined,
+                source_references: (newMsg.source_references as any) || undefined,
+                is_legal_advice: newMsg.is_legal_advice || undefined
               };
               
               console.log('🎯 Proactive assistant message received!');
@@ -169,7 +174,12 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
             role: msg.role as "user" | "assistant",
             content: msg.content,
             citations: Array.isArray(msg.citations) ? (msg.citations as unknown as MessageCitation[]) : [],
-            timestamp: new Date(msg.created_at)
+            timestamp: new Date(msg.created_at),
+            confidence_score: msg.confidence_score || undefined,
+            reasoning: msg.reasoning || undefined,
+            verification_status: (msg.verification_status as 'ai_generated' | 'requires_review' | 'lawyer_verified') || undefined,
+            source_references: (msg.source_references as any) || undefined,
+            is_legal_advice: msg.is_legal_advice || undefined
           }))
           .reverse(); // Reverse to show oldest first in UI
         

@@ -9,6 +9,9 @@ import CitationAwareResponse from "@/components/legal/CitationAwareResponse";
 import { ActionSuggestions } from "./ActionSuggestions";
 import { ConversationOrganizer } from "./ConversationOrganizer";
 import { SearchResultHighlighter } from "./SearchResultHighlighter";
+import { ConfidenceBadge } from "./ConfidenceBadge";
+import { LegalDisclaimerAlert } from "./LegalDisclaimerAlert";
+import { ResponseReasoning } from "./ResponseReasoning";
 
 interface Message {
   id: string;
@@ -43,6 +46,16 @@ interface Message {
   }>;
   userQuery?: string;
   consultationId?: string;
+  confidence_score?: number;
+  reasoning?: string;
+  verification_status?: 'ai_generated' | 'requires_review' | 'lawyer_verified';
+  source_references?: Array<{
+    type: 'statute' | 'case_law' | 'regulation' | 'practice_direction' | 'rule';
+    citation: string;
+    url?: string;
+    section?: string;
+  }>;
+  is_legal_advice?: boolean;
 }
 
 interface ConversationTag {
@@ -237,8 +250,34 @@ export function ChatMessage({
                 onActionClick={onActionClick}
               />
             )}
+
+            {/* Confidence Badge - Only for assistant messages */}
+            {!isUser && (message.confidence_score || message.verification_status) && (
+              <div className="mt-3 pt-3 border-t border-border/50">
+                <ConfidenceBadge 
+                  score={message.confidence_score} 
+                  verificationStatus={message.verification_status}
+                />
+              </div>
+            )}
+
+            {/* Response Reasoning - Only for assistant messages */}
+            {!isUser && (
+              <ResponseReasoning 
+                reasoning={message.reasoning}
+                sourceReferences={message.source_references}
+              />
+            )}
           </CardContent>
         </Card>
+
+        {/* Legal Disclaimer - Only for assistant messages with legal advice */}
+        {!isUser && (
+          <LegalDisclaimerAlert 
+            isLegalAdvice={message.is_legal_advice}
+            verificationStatus={message.verification_status}
+          />
+        )}
         
         <div className={`flex items-center justify-between text-xs text-muted-foreground ${isUser ? "flex-row-reverse" : ""}`}>
           <span>{formatDistanceToNow(message.timestamp, { addSuffix: true })}</span>

@@ -13,6 +13,13 @@ export interface MessageFile {
   status: "uploading" | "processing" | "ready" | "error";
 }
 
+export interface SourceReference {
+  type: 'statute' | 'case_law' | 'regulation' | 'practice_direction' | 'rule';
+  citation: string;
+  url?: string;
+  section?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
@@ -20,6 +27,11 @@ export interface ChatMessage {
   citations?: MessageCitation[];
   timestamp: Date;
   files?: MessageFile[];
+  confidence_score?: number;
+  reasoning?: string;
+  verification_status?: 'ai_generated' | 'requires_review' | 'lawyer_verified';
+  source_references?: SourceReference[];
+  is_legal_advice?: boolean;
 }
 
 export interface ConversationHistory {
