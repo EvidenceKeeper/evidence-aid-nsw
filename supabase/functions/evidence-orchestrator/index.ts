@@ -166,12 +166,7 @@ async function generateProactiveAnalysis(
       await supabase.from('messages').insert({
         user_id,
         role: 'assistant',
-        content: aiResponse.content,
-        meta: {
-          type: 'proactive_evidence_analysis',
-          file_name,
-          generated_at: new Date().toISOString()
-        }
+        content: aiResponse.content
       });
 
       return aiResponse.content;

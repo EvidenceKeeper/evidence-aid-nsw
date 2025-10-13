@@ -1,31 +1,23 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useCaseIntelligence } from "@/components/realtime/CaseIntelligenceProvider";
 import { 
   Calendar,
-  Clock,
-  CheckCircle,
   AlertCircle,
-  TrendingUp,
-  Brain,
-  Activity,
-  Eye,
-  Users,
   MessageSquare,
   Camera,
   FileText,
   Heart,
   DollarSign,
-  Bot,
+  Users,
   Target,
-  Search
+  CheckCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { TimelineGapAnalysis } from "./TimelineGapAnalysis";
 
 interface TimelineEvent {
   id: string;
@@ -43,7 +35,6 @@ interface TimelineEvent {
 export function LiveCaseTimeline() {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userGoal, setUserGoal] = useState<string>('');
   const { intelligence } = useCaseIntelligence();
 
   useEffect(() => {
@@ -57,7 +48,7 @@ export function LiveCaseTimeline() {
         {
           event: '*',
           schema: 'public',
-          table: 'timeline_events'
+          table: 'enhanced_timeline_events'
         },
         () => {
           loadEvents();
@@ -76,28 +67,29 @@ export function LiveCaseTimeline() {
       if (!user) return;
 
       const { data, error } = await supabase
-        .from("timeline_events")
-        .select(`
-          *,
-          files(name)
-        `)
+        .from("enhanced_timeline_events")
+        .select('*')
         .eq('user_id', user.id)
         .order("event_date", { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      setEvents(data || []);
-
-      // Load user's goal for gap analysis
-      const { data: caseMemory } = await supabase
-        .from('case_memory')
-        .select('primary_goal')
-        .eq('user_id', user.id)
-        .maybeSingle();
       
-      if (caseMemory?.primary_goal) {
-        setUserGoal(caseMemory.primary_goal);
-      }
+      // Fetch file names separately
+      const eventsWithFiles = await Promise.all((data || []).map(async (event) => {
+        const { data: file } = await supabase
+          .from('files')
+          .select('name')
+          .eq('id', event.file_id)
+          .single();
+        
+        return {
+          ...event,
+          files: file || { name: 'Unknown' }
+        };
+      }));
+      
+      setEvents(eventsWithFiles);
     } catch (error) {
       console.error("Error loading timeline:", error);
     } finally {
@@ -105,8 +97,28 @@ export function LiveCaseTimeline() {
     }
   };
 
+  const getPatternLabel = (category: string) => {
+    const patterns: Record<string, string> = {
+      'coercive_control': '🚨 Coercive Control',
+      'threat': '⚠️ Threats',
+      'monitoring': '👁️ Monitoring',
+      'isolation': '🔒 Isolation',
+      'financial_control': '💰 Financial Control',
+      'emotional_abuse': '💔 Emotional Abuse',
+      'physical_intimidation': '🤜 Physical Intimidation',
+      'communication': '💬 Communication',
+      'incident': '⚠️ Incident',
+      'medical': '❤️ Medical',
+      'financial': '💰 Financial',
+      'witness': '👥 Witness',
+      'photo': '📸 Photo',
+      'document': '📄 Document',
+    };
+    return patterns[category] || category.replace('_', ' ');
+  };
+
   const getCategoryIcon = (category: string) => {
-    const icons = {
+    const icons: Record<string, any> = {
       communication: MessageSquare,
       incident: AlertCircle,
       medical: Heart,
@@ -115,28 +127,7 @@ export function LiveCaseTimeline() {
       photo: Camera,
       document: FileText,
     };
-    return icons[category as keyof typeof icons] || FileText;
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      communication: "bg-blue-100 text-blue-700",
-      incident: "bg-red-100 text-red-700",
-      medical: "bg-green-100 text-green-700",
-      financial: "bg-yellow-100 text-yellow-700",
-      witness: "bg-purple-100 text-purple-700",
-      photo: "bg-indigo-100 text-indigo-700",
-      document: "bg-gray-100 text-gray-700",
-      coercive_control: "bg-orange-100 text-orange-700",
-      threat: "bg-red-100 text-red-700",
-      monitoring: "bg-purple-100 text-purple-700",
-      isolation: "bg-gray-100 text-gray-700",
-      financial_control: "bg-yellow-100 text-yellow-700",
-      emotional_abuse: "bg-pink-100 text-pink-700",
-      custody_related: "bg-blue-100 text-blue-700",
-      child_welfare: "bg-green-100 text-green-700",
-    };
-    return colors[category as keyof typeof colors] || colors.document;
+    return icons[category] || FileText;
   };
 
   const getStrengthColor = (strength: number) => {
@@ -169,17 +160,12 @@ export function LiveCaseTimeline() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="h-5 w-5 text-primary" />
-          <h2 className="font-semibold">Live Case Analysis</h2>
-        </div>
-        
+      {/* Header with Case Strength */}
+      <div className="p-4 border-b space-y-4">
         {/* Case Strength */}
-        <div className="mb-3">
+        <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Case Strength</span>
+            <span className="text-sm font-medium">📊 Case Strength</span>
             <span className={`text-sm font-bold ${getStrengthColor(intelligence.caseStrength)}`}>
               {Math.round(intelligence.caseStrength)}%
             </span>
@@ -190,11 +176,18 @@ export function LiveCaseTimeline() {
           />
         </div>
 
-        {/* Analysis Status */}
-        {intelligence.isAnalyzing && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Brain className="h-4 w-4 animate-pulse" />
-            <span>AI analyzing new evidence...</span>
+        {/* Priority Actions */}
+        {intelligence.nextSteps.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              Priority Actions
+            </h3>
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {intelligence.nextSteps.slice(0, 3).map((step, i) => (
+                <li key={i}>• {step}</li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
@@ -202,179 +195,69 @@ export function LiveCaseTimeline() {
       {/* Timeline Content */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
-          {/* Timeline Auto-Building System - Always Visible */}
-          <Card className="border-dashed border-2 border-primary/20 bg-primary/5">
-            <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-primary" />
-                <CardTitle className="text-sm">Timeline Auto-Building</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <Target className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground">AI automatically extracts timeline events based on your case goals and evidence</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Search className="h-3 w-3 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground">Gap analysis identifies missing evidence types for stronger case building</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Clock className="h-3 w-3 text-orange-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-xs text-muted-foreground">Real-time confidence scoring helps prioritize verification of AI-extracted events</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Insights */}
-          {intelligence.insights.length > 0 && (
-            <Card className="border-primary/20 bg-primary/5">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <Eye className="h-4 w-4 text-primary" />
-                  <CardTitle className="text-sm">Latest Insights</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-1">
-                  {intelligence.insights.slice(0, 2).map((insight, i) => (
-                    <p key={i} className="text-xs text-muted-foreground">
-                      • {insight}
-                    </p>
-                  ))}
-                </div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            Timeline of Events
+          </h3>
+          
+          {events.length === 0 ? (
+            <Card className="text-center py-8">
+              <CardContent>
+                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <h4 className="text-sm font-medium mb-1">No Events Yet</h4>
+                <p className="text-xs text-muted-foreground">
+                  Upload evidence to begin building your timeline.
+                </p>
               </CardContent>
             </Card>
-          )}
+          ) : (
+            events.map((event) => {
+              const CategoryIcon = getCategoryIcon(event.category);
+              
+              return (
+                <Card 
+                  key={event.id} 
+                  className="p-4 hover:shadow-sm transition-all"
+                >
+                  {/* Date Header - Prominent */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    <span className="font-semibold text-base">
+                      {format(new Date(event.event_date), "dd MMM yyyy")}
+                    </span>
+                    {event.event_time && (
+                      <span className="text-sm text-muted-foreground">
+                        at {event.event_time}
+                      </span>
+                    )}
+                    {event.verified && (
+                      <CheckCircle className="w-4 h-4 text-green-600 ml-auto" />
+                    )}
+                  </div>
 
-          {/* Patterns */}
-          {intelligence.patterns.length > 0 && (
-            <Card className="border-orange-200 bg-orange-50/50">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-orange-600" />
-                  <CardTitle className="text-sm">Key Patterns</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-2">
-                  {intelligence.patterns.slice(0, 2).map((pattern, i) => (
-                    <div key={i} className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="text-xs">
-                          {pattern.type}
-                        </Badge>
-                        <span className={`text-xs font-medium ${getStrengthColor(pattern.strength * 100)}`}>
-                          {Math.round(pattern.strength * 100)}%
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {pattern.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recent Timeline Events */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium">Recent Events</h3>
-            </div>
-            
-            {events.length === 0 ? (
-              <Card className="text-center py-6">
-                <CardContent>
-                  <Calendar className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <h4 className="text-sm font-medium mb-1">No Events Yet</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Upload evidence to begin building your timeline.
+                  {/* What Happened - Plain Language */}
+                  <p className="text-sm mb-3 leading-relaxed">
+                    {event.description}
                   </p>
-                </CardContent>
-              </Card>
-            ) : (
-              events.map((event, index) => {
-                const CategoryIcon = getCategoryIcon(event.category);
-                
-                return (
-                  <Card 
-                    key={event.id} 
-                    className={`transition-all hover:shadow-sm ${
-                      event.verified ? 'bg-green-50/50 border-green-200' : 'bg-card'
-                    }`}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex gap-2">
-                        {/* Date */}
-                        <div className={`w-8 h-8 rounded-full border flex flex-col items-center justify-center text-xs ${
-                          event.verified 
-                            ? 'bg-green-100 border-green-300 text-green-700' 
-                            : 'bg-primary/10 border-primary/30 text-primary'
-                        }`}>
-                          <span className="text-xs font-medium">
-                            {format(new Date(event.event_date), "dd")}
-                          </span>
-                        </div>
 
-                        {/* Event content */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm mb-1 line-clamp-2">{event.title}</h4>
-                          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                            {event.description}
-                          </p>
-                          
-                          <div className="flex items-center gap-2">
-                            <Badge className={`text-xs ${getCategoryColor(event.category)}`}>
-                              <CategoryIcon className="w-2 h-2 mr-1" />
-                              {event.category.replace('_', ' ')}
-                            </Badge>
-                            
-                            {event.verified ? (
-                              <CheckCircle className="w-3 h-3 text-green-600" />
-                            ) : (
-                              <div className="text-xs text-muted-foreground">
-                                AI: {Math.round(event.confidence * 100)}%
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
-            )}
-          </div>
-
-          {/* Gap Analysis */}
-          {events.length > 2 && (
-            <TimelineGapAnalysis events={events} userGoal={userGoal} />
-          )}
-
-          {/* Next Steps */}
-          {intelligence.nextSteps.length > 0 && (
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-blue-600" />
-                  <CardTitle className="text-sm">Recommended Actions</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="space-y-1">
-                  {intelligence.nextSteps.slice(0, 3).map((step, i) => (
-                    <p key={i} className="text-xs text-muted-foreground">
-                      • {step}
-                    </p>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  {/* Pattern Tags + Evidence Source */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge variant="outline" className="text-xs">
+                      {getPatternLabel(event.category)}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      {event.files?.name || 'Evidence'}
+                    </span>
+                    {!event.verified && (
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        AI: {Math.round(event.confidence * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              );
+            })
           )}
         </div>
       </ScrollArea>

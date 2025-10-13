@@ -15,7 +15,7 @@ import { EvidencePreview } from "./EvidencePreview";
 import { CaseShareDialog } from "@/components/case/CaseShareDialog";
 import { CollaborationIndicators } from "@/components/case/CollaborationIndicators";
 import { LiveCaseInsights } from "@/components/case/LiveCaseInsights";
-import { CaseStrengthMonitor } from "@/components/intelligence/CaseStrengthMonitor";
+
 import { useChatOrganization } from "@/hooks/useChatOrganization";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -105,25 +105,26 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           (payload) => {
             console.log('📩 New message received via realtime:', payload.new);
             const newMsg = payload.new as any;
-            const formattedMessage: Message = {
-              id: newMsg.id,
-              role: newMsg.role as "user" | "assistant",
-              content: newMsg.content,
-              citations: Array.isArray(newMsg.citations) ? (newMsg.citations as unknown as MessageCitation[]) : [],
-              timestamp: new Date(newMsg.created_at)
-            };
             
-            // Check if this is a proactive evidence analysis message
-            if (newMsg.meta?.type === 'proactive_evidence_analysis') {
-              console.log('🎯 Proactive evidence analysis received!');
+            // Only show assistant messages (proactive analysis messages)
+            if (newMsg.role === 'assistant') {
+              const formattedMessage: Message = {
+                id: newMsg.id,
+                role: newMsg.role as "user" | "assistant",
+                content: newMsg.content,
+                citations: Array.isArray(newMsg.citations) ? (newMsg.citations as unknown as MessageCitation[]) : [],
+                timestamp: new Date(newMsg.created_at)
+              };
+              
+              console.log('🎯 Proactive assistant message received!');
               toast({
                 title: "Evidence Analyzed",
-                description: `Analysis complete for ${newMsg.meta.file_name}`,
+                description: "AI has analyzed your evidence and provided insights",
               });
+              
+              // Append new message to the end
+              setMessages(prev => [...prev, formattedMessage]);
             }
-            
-            // Append new message to the end
-            setMessages(prev => [...prev, formattedMessage]);
           }
         )
         .subscribe();
@@ -637,7 +638,6 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
 
         {/* Live Case Insights Sidebar - Desktop Only */}
         <div className="hidden lg:block w-80 border-l overflow-y-auto p-4 space-y-4">
-          <CaseStrengthMonitor />
           <LiveCaseInsights />
         </div>
       </div>
