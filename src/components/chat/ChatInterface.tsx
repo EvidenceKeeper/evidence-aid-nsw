@@ -524,53 +524,55 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0 min-w-0 bg-gradient-to-br from-background to-muted/20">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border/10 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Brain className="w-5 h-5 text-primary" />
+    <div className="flex flex-col h-full min-h-0 min-w-0 bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Friendly Header */}
+      <div className="border-b border-border/10 bg-background/95 backdrop-blur-sm px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <Brain className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Your Legal Assistant</h2>
+              <p className="text-sm text-muted-foreground">Here to guide you step-by-step</p>
+            </div>
+            <CollaborationIndicators />
           </div>
-          <div>
-            <h3 className="font-semibold text-foreground">Veronica Legal Assistant</h3>
-            <p className="text-sm text-muted-foreground">NSW Coercive Control Evidence Expert</p>
-          </div>
-          <CollaborationIndicators />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <CaseShareDialog>
-            <Button variant="outline" size="sm" className="gap-2 h-8">
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-          </CaseShareDialog>
           
-          <ConversationExporter 
-            messages={messages} 
-            caseTitle="Case Discussion"
-          />
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowSearch(!showSearch)}
-            className="h-8"
-          >
-            <Search className="w-4 h-4 mr-1" />
-            Search
-          </Button>
-          
-          {isModal && onClose && (
+          <div className="flex items-center gap-2">
+            <CaseShareDialog>
+              <Button variant="outline" size="sm" className="gap-2 h-8 rounded-xl">
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
+            </CaseShareDialog>
+            
+            <ConversationExporter 
+              messages={messages} 
+              caseTitle="Case Discussion"
+            />
+            
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0"
+              onClick={() => setShowSearch(!showSearch)}
+              className="h-8 rounded-xl"
             >
-              ×
+              <Search className="w-4 h-4 mr-1" />
+              Search
             </Button>
-          )}
+            
+            {isModal && onClose && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-8 w-8 p-0"
+              >
+                ×
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -589,8 +591,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       {/* Main Content Area with Sidebar */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Chat Messages */}
-        <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+        <ScrollArea className="flex-1 px-4 md:px-6 py-6">
+        <div className="space-y-6">
           
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
@@ -649,16 +651,16 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       )}
 
       {/* Input Area */}
-      <div className="border-t border-border/10 bg-background/80 backdrop-blur-sm">
-        <div className="p-4">
-          <div className="flex gap-2">
+      <div className="border-t border-border/10 bg-background/95 backdrop-blur-sm">
+        <div className="p-4 md:p-6">
+          <div className="flex gap-3">
             <div className="flex-1 relative">
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about your case, evidence, or legal options..."
-                className="min-h-[60px] max-h-32 resize-none pr-12 border-border/20 bg-background/50"
+                placeholder="Share what's on your mind... I'm here to help 💙"
+                className="min-h-[80px] max-h-32 resize-none rounded-2xl border-border/30 bg-background/80 focus:bg-background text-[15px] leading-relaxed"
                 disabled={loading}
               />
             </div>
@@ -666,32 +668,36 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
               <Button
                 onClick={() => sendMessage()}
                 disabled={loading || !input.trim()}
-                size="sm"
-                className="h-[60px] w-12 p-0"
+                size="lg"
+                className="h-[80px] w-14 rounded-2xl shadow-sm hover:shadow-md transition-all"
               >
                 {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <Send className="w-4 h-4" />
+                  <Send className="w-5 h-5" />
                 )}
-              </Button>
-              <VoiceInput 
-                onTranscription={handleVoiceTranscription}
-                disabled={loading}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFileUpload(!showFileUpload)}
-                className="h-6 w-12 p-0 text-xs"
-              >
-                📎
               </Button>
             </div>
           </div>
           
+          <div className="flex items-center gap-2 mt-3">
+            <VoiceInput 
+              onTranscription={handleVoiceTranscription}
+              disabled={loading}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFileUpload(!showFileUpload)}
+              className="gap-2 rounded-xl"
+            >
+              <Upload className="h-4 w-4" />
+              Upload Evidence
+            </Button>
+          </div>
+          
           {showFileUpload && (
-            <div className="mt-4 p-4 border border-border/20 rounded-lg bg-muted/20">
+            <div className="mt-4 p-4 border border-border/20 rounded-2xl bg-muted/20">
               <FileUpload 
                 onUpload={handleFileUpload} 
                 onClose={() => setShowFileUpload(false)} 

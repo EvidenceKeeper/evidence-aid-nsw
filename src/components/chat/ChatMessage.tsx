@@ -158,8 +158,14 @@ export function ChatMessage({
       )}
       
       <div className={`max-w-[80%] min-w-0 space-y-2 ${isUser ? "items-end" : "items-start"}`}>
-        <Card className={`${isUser ? "bg-primary text-primary-foreground border-primary/20" : "bg-card"}`}>
-          <CardContent className="p-3" id={`message-content-${message.id}`}>
+        <Card className={`
+          ${isUser 
+            ? "bg-primary text-primary-foreground border-primary/20 shadow-sm" 
+            : "bg-card border-border/20 shadow-sm"
+          } 
+          rounded-2xl transition-all hover:shadow-md
+        `}>
+          <CardContent className="p-4 md:p-5" id={`message-content-${message.id}`}>
             {/* Files */}
             {message.files && message.files.length > 0 && (
               <div className="mb-2 space-y-1">
@@ -191,7 +197,7 @@ export function ChatMessage({
               <SearchResultHighlighter 
                 text={message.content}
                 searchTerm={searchQuery}
-                className="whitespace-pre-wrap break-words text-sm block"
+                className="whitespace-pre-wrap break-words text-[15px] leading-relaxed block"
               />
             )}
 
