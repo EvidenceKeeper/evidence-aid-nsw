@@ -87,6 +87,57 @@ function calculateConfidence(
   };
 }
 
+// Intent classification for routing to specialized functions
+async function classifyIntent(message: string, lovableApiKey: string): Promise<{
+  intent: 'general_chat' | 'legal_research' | 'case_strength_analysis',
+  confidence: number,
+  reasoning: string
+}> {
+  const intentPrompt = `Classify the user's intent into one of these categories:
+
+1. "legal_research" - User wants to research specific NSW laws, statutes, case law, or legal definitions
+   Examples: "What does section 61 of the Crimes Act say?", "NSW case law about custody", "Domestic Violence Order legislation"
+
+2. "case_strength_analysis" - User wants to evaluate their case strength or chances of success
+   Examples: "How strong is my case?", "What are my chances?", "Evaluate my evidence", "Is this enough evidence?"
+
+3. "general_chat" - General conversation, advice, questions about process, emotional support
+   Examples: "What should I do next?", "I'm feeling overwhelmed", "How do I file a form?", "Tell me about the court process"
+
+User query: "${message}"
+
+Respond with ONLY a JSON object: {"intent": "...", "confidence": 0.0-1.0, "reasoning": "..."}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${lovableApiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [{ role: 'user', content: intentPrompt }],
+      temperature: 0.1,
+      max_tokens: 150
+    })
+  });
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '{}';
+  
+  try {
+    const result = JSON.parse(content.replace(/```json|```/g, '').trim());
+    return {
+      intent: result.intent || 'general_chat',
+      confidence: result.confidence || 0.5,
+      reasoning: result.reasoning || 'Default classification'
+    };
+  } catch (e) {
+    console.warn('Intent classification failed, defaulting to general_chat:', e);
+    return { intent: 'general_chat', confidence: 0.5, reasoning: 'Parsing error' };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -114,6 +165,112 @@ serve(async (req) => {
 
     const { message, context_type, evidence_context } = await req.json();
     console.log(`💬 Chat request from user: ${user.id}`, { context_type });
+
+    // Intent Classification & Routing
+    const intentResult = await classifyIntent(message, LOVABLE_API_KEY);
+    console.log('🎯 Intent classified:', intentResult);
+
+    // Route to specialized function if confidence is high
+    if (intentResult.confidence > 0.7) {
+      if (intentResult.intent === 'legal_research') {
+        console.log('📚 Routing to NSW RAG Assistant...');
+        const { data: ragData, error: ragError } = await supabase.functions.invoke('nsw-rag-assistant', {
+          body: { 
+            query: message,
+            includeEvidence: true,
+            mode: 'user',
+            jurisdiction: 'NSW',
+            citationMode: false
+          }
+        });
+
+        if (!ragError && ragData) {
+          // Save user message
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            role: 'user',
+            content: message,
+            created_at: new Date().toISOString()
+          });
+
+          // Save assistant response with citations
+          const assistantContent = ragData.answer;
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            role: 'assistant',
+            content: assistantContent,
+            citations: ragData.citations || [],
+            confidence_score: ragData.confidence_score,
+            verification_status: 'ai_generated',
+            source_references: (ragData.citations || []).map((c: any) => ({
+              type: c.citation_type,
+              citation: c.short_citation,
+              url: c.url
+            })),
+            created_at: new Date().toISOString()
+          });
+
+          return new Response(JSON.stringify({ 
+            content: assistantContent,
+            citations: ragData.citations,
+            routed_to: 'nsw-rag-assistant'
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      if (intentResult.intent === 'case_strength_analysis') {
+        console.log('💪 Routing to Case Strength Analyzer...');
+        const { data: strengthData, error: strengthError } = await supabase.functions.invoke('analyze-case-strength', {
+          body: { user_id: user.id }
+        });
+
+        if (!strengthError && strengthData) {
+          // Save user message
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            role: 'user',
+            content: message,
+            created_at: new Date().toISOString()
+          });
+
+          // Generate natural language response from strength data
+          const naturalResponse = `Based on my analysis of your evidence and case details:
+
+**Case Strength: ${Math.round(strengthData.case_strength_score * 100)}%**
+
+${strengthData.strengths?.map((s: string) => `✓ ${s}`).join('\n')}
+
+${strengthData.weaknesses?.length > 0 ? `\n**Areas to strengthen:**\n${strengthData.weaknesses.map((w: string) => `• ${w}`).join('\n')}` : ''}
+
+${strengthData.next_steps?.length > 0 ? `\n**Recommended next steps:**\n${strengthData.next_steps.slice(0, 2).map((n: string) => `1. ${n}`).join('\n')}` : ''}
+
+Would you like me to help you address any of these areas?`;
+
+          // Save assistant response
+          await supabase.from('messages').insert({
+            user_id: user.id,
+            role: 'assistant',
+            content: naturalResponse,
+            confidence_score: 0.9,
+            verification_status: 'ai_generated',
+            reasoning: 'Analysis based on uploaded evidence and case memory',
+            created_at: new Date().toISOString()
+          });
+
+          return new Response(JSON.stringify({ 
+            content: naturalResponse,
+            routed_to: 'analyze-case-strength'
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+    }
+
+    // Fall through to general chat flow if routing didn't work
+    console.log('💬 Using general chat flow (no routing or routing failed)');
 
     // 1. Load conversation history (last 50 messages)
     const { data: historyData } = await supabase

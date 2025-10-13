@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen, Share2 } from "lucide-react";
+import { AlertTriangle, Shield, Eye, Download, Upload, RotateCcw, BookOpen, Share2, User, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import LegalKnowledgeManager from "@/components/legal/LegalKnowledgeManager";
@@ -20,10 +20,12 @@ import EvidenceConnections from "@/components/evidence/EvidenceConnections";
 import { CaseShareDialog } from "@/components/case/CaseShareDialog";
 import { CollaborationActivity } from "@/components/case/CollaborationActivity";
 import { useEvidenceIntegration } from "@/hooks/useEvidenceIntegration";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, exportSettings, importSettings, isLoading } = useWellnessSettings();
   const { settings: evidenceSettings, updateSettings: updateEvidenceSettings, refreshConnections } = useEvidenceIntegration();
+  const { profile: userProfile, updateProfile: updateUserProfile, isLoading: profileLoading } = useUserProfile();
   const { toast } = useToast();
   const [importText, setImportText] = useState("");
 
@@ -84,7 +86,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="privacy" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="privacy" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Privacy & Safety
@@ -92,6 +94,10 @@ export default function Settings() {
             <TabsTrigger value="wellness" className="flex items-center gap-2">
               <Eye className="h-4 w-4" />
               Wellness Front
+            </TabsTrigger>
+            <TabsTrigger value="preferences" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Preferences
             </TabsTrigger>
             <TabsTrigger value="legal" className="flex items-center gap-2">
               <BookOpen className="h-4 w-4" />
@@ -281,6 +287,128 @@ export default function Settings() {
                     {settings.wellnessTheme === 'journaling' && 'Site will appear as "Daily Reflection" with journaling prompts'}
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="preferences" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  AI Assistant Preferences
+                </CardTitle>
+                <CardDescription>
+                  Customize how the AI assistant communicates with you
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                {/* Communication Style */}
+                <div className="space-y-3">
+                  <Label className="text-base">Communication Style</Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    How detailed should the AI's responses be?
+                  </p>
+                  <Select
+                    value={userProfile.communication_style || 'concise'}
+                    onValueChange={(value) => updateUserProfile({ communication_style: value as any })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="concise">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">Concise</span>
+                          <span className="text-xs text-muted-foreground">Short, direct answers (2 paragraphs max)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="balanced">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">Balanced</span>
+                          <span className="text-xs text-muted-foreground">Clear explanations with key details (2-3 points)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="detailed">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">Detailed</span>
+                          <span className="text-xs text-muted-foreground">Thorough explanations (3 focused paragraphs)</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                {/* Experience Level */}
+                <div className="space-y-3">
+                  <Label className="text-base">Legal Experience Level</Label>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    How familiar are you with legal processes?
+                  </p>
+                  <Select
+                    value={userProfile.experience_level || 'first_time'}
+                    onValueChange={(value) => updateUserProfile({ experience_level: value as any })}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="first_time">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">First Time</span>
+                          <span className="text-xs text-muted-foreground">Explain legal terms simply, avoid jargon</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="some_experience">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">Some Experience</span>
+                          <span className="text-xs text-muted-foreground">Balance explanation with efficiency</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="experienced">
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">Experienced</span>
+                          <span className="text-xs text-muted-foreground">Be direct and strategic, assume legal literacy</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Separator />
+
+                {/* Preview Box */}
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-full bg-primary/10 p-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium mb-2">How this affects AI responses:</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li>• <strong>Style:</strong> {
+                          userProfile.communication_style === 'concise' ? 'Short, actionable answers' :
+                          userProfile.communication_style === 'detailed' ? 'Thorough explanations with context' :
+                          'Clear, balanced responses'
+                        }</li>
+                        <li>• <strong>Tone:</strong> {
+                          userProfile.experience_level === 'first_time' ? 'Supportive and educational' :
+                          userProfile.experience_level === 'experienced' ? 'Direct and strategic' :
+                          'Helpful and clear'
+                        }</li>
+                        <li>• <strong>Length:</strong> {
+                          userProfile.communication_style === 'concise' ? '~300 tokens (~150 words)' :
+                          userProfile.communication_style === 'detailed' ? '~600 tokens (~300 words)' :
+                          '~450 tokens (~225 words)'
+                        }</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
               </CardContent>
             </Card>
           </TabsContent>
