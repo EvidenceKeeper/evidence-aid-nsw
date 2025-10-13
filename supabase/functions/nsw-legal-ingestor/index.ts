@@ -48,9 +48,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('Lovable API key not configured');
     }
 
     const {
@@ -97,14 +97,14 @@ serve(async (req) => {
     const structuredSections = await extractLegalStructure(
       content,
       metadata,
-      openaiApiKey
+      lovableApiKey
     );
 
     // Step 5: Intelligent Chunking
     const chunks = await createIntelligentChunks(
       structuredSections,
       chunk_config,
-      openaiApiKey
+      lovableApiKey
     );
 
     // Step 6: Citation Extraction & Linking
@@ -112,13 +112,13 @@ serve(async (req) => {
       chunks,
       documentId,
       supabaseClient,
-      openaiApiKey
+      lovableApiKey
     );
 
     // Step 7: Legal Concept Identification
     const legalConcepts = await identifyLegalConcepts(
       chunks,
-      openaiApiKey
+      lovableApiKey
     );
 
     // Step 8: Embedding Generation & Storage
@@ -126,7 +126,7 @@ serve(async (req) => {
       chunks,
       documentId,
       supabaseClient,
-      openaiApiKey
+      lovableApiKey
     );
 
     // Step 9: Quality Validation
@@ -324,7 +324,7 @@ async function createLegalDocument(
 async function extractLegalStructure(
   content: string,
   metadata: any,
-  openaiApiKey: string
+  lovableApiKey: string
 ) {
   // Enhanced NSW legal structure detection with regex patterns
   const nswLegalPatterns = {
@@ -375,14 +375,14 @@ Return JSON with enhanced NSW structure:
 }`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { 
             role: 'system', 
@@ -395,6 +395,8 @@ Return JSON with enhanced NSW structure:
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI Gateway error:', response.status, errorText);
       throw new Error(`Structure extraction failed: ${response.status}`);
     }
 
@@ -458,7 +460,7 @@ Return JSON with enhanced NSW structure:
 async function createIntelligentChunks(
   sections: any[],
   chunkConfig: any,
-  openaiApiKey: string
+  lovableApiKey: string
 ) {
   const chunks = [];
   let chunkOrder = 0;
@@ -489,7 +491,7 @@ async function createIntelligentChunks(
         section.content,
         chunkConfig,
         section,
-        openaiApiKey
+        lovableApiKey
       );
       
       sectionChunks.forEach((chunk: any) => {
@@ -509,7 +511,7 @@ async function intelligentSplit(
   content: string,
   chunkConfig: any,
   sectionInfo: any,
-  openaiApiKey: string
+  lovableApiKey: string
 ) {
   // For long content, use AI to find natural break points
   const splitPrompt = `Split this legal text into coherent chunks of approximately ${chunkConfig.chunk_size} characters each, respecting:
@@ -523,14 +525,14 @@ Text: ${content}
 Return array of chunks with natural breaks, maintaining legal context.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'google/gemini-2.5-flash-lite',
         messages: [
           { role: 'system', content: 'Split legal text intelligently while preserving legal context and meaning.' },
           { role: 'user', content: splitPrompt }
@@ -578,7 +580,7 @@ async function extractAndStoreCitations(
   chunks: any[],
   documentId: string,
   supabaseClient: any,
-  openaiApiKey: string
+  lovableApiKey: string
 ): Promise<number> {
   let citationsCount = 0;
 
@@ -607,14 +609,14 @@ Return as JSON array:
 }]`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-        model: 'gpt-5-nano-2025-08-07',
+        model: 'google/gemini-2.5-flash-lite',
           messages: [
             { role: 'system', content: 'You are an expert at extracting and formatting Australian legal citations with perfect accuracy.' },
             { role: 'user', content: citationPrompt }
@@ -658,7 +660,7 @@ Return as JSON array:
   return citationsCount;
 }
 
-async function identifyLegalConcepts(chunks: any[], openaiApiKey: string): Promise<string[]> {
+async function identifyLegalConcepts(chunks: any[], lovableApiKey: string): Promise<string[]> {
   const allConcepts = new Set<string>();
 
   const conceptPrompt = `Identify key NSW legal concepts in this text:
@@ -682,14 +684,14 @@ Return array of specific legal concepts, focusing on NSW-specific terms:
 Return as JSON array of strings.`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-nano-2025-08-07',
+        model: 'google/gemini-2.5-flash-lite',
         messages: [
           { role: 'system', content: 'Extract NSW-specific legal concepts with precision.' },
           { role: 'user', content: conceptPrompt }
@@ -718,17 +720,17 @@ async function generateAndStoreEmbeddings(
   chunks: any[],
   documentId: string,
   supabaseClient: any,
-  openaiApiKey: string
+  lovableApiKey: string
 ): Promise<number> {
   let stored = 0;
 
   for (const chunk of chunks) {
     try {
       // Generate embedding
-      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+      const embeddingResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

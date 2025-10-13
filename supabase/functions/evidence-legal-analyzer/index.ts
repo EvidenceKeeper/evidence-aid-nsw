@@ -14,9 +14,9 @@ serve(async (req) => {
   }
 
   try {
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('Lovable API key not configured');
     }
 
     const supabaseClient = createClient(
@@ -118,7 +118,7 @@ serve(async (req) => {
 
     for (const analysisType of analysis_types) {
       try {
-        const analysis = await performAnalysis(fullText, analysisType, fileData.name, openaiApiKey);
+        const analysis = await performAnalysis(fullText, analysisType, fileData.name, lovableApiKey);
         
         // Store analysis in database
         const { error: insertError } = await supabaseClient
@@ -162,7 +162,7 @@ serve(async (req) => {
           fullText,
           fileData.name,
           supabaseClient,
-          openaiApiKey
+          lovableApiKey
         );
         console.log(`Generated ${connectionsCount} legal connections`);
       } catch (error) {
@@ -200,7 +200,7 @@ serve(async (req) => {
   }
 });
 
-async function performAnalysis(text: string, analysisType: string, fileName: string, openaiApiKey: string) {
+async function performAnalysis(text: string, analysisType: string, fileName: string, lovableApiKey: string) {
   const prompts = {
     legal_relevance: `Analyze this evidence document for legal relevance in NSW family law and domestic violence cases.
 
@@ -293,14 +293,14 @@ Look for:
 
   const systemPrompt = (prompts as Record<string, string>)[analysisType] || prompts.legal_relevance;
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${openaiApiKey}`,
+      'Authorization': `Bearer ${lovableApiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-5-2025-08-07',
+      model: 'google/gemini-2.5-flash',
       messages: [
         {
           role: 'system',
@@ -316,7 +316,11 @@ Look for:
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('Lovable AI Gateway error:', response.status, errorText);
+    if (response.status === 429) throw new Error('Rate limit exceeded');
+    if (response.status === 402) throw new Error('AI usage limit reached');
+    throw new Error(`Lovable AI Gateway error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -345,7 +349,7 @@ async function generateLegalConnections(
   text: string, 
   fileName: string,
   supabaseClient: any,
-  openaiApiKey: string
+  lovableApiKey: string
 ): Promise<number> {
   // Get relevant legal sections
   const { data: legalSections, error: sectionsError } = await supabaseClient
@@ -408,14 +412,14 @@ Only include connections with relevance_score > 0.6. Connection types:
 - requirement: This law creates obligations relevant to the evidence`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
+          'Authorization': `Bearer ${lovableApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'gpt-5-2025-08-07',
+          model: 'google/gemini-2.5-flash',
           messages: [
             {
               role: 'system', 

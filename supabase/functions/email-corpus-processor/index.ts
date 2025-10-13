@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 interface ParsedEmail {
   msg_id: string;
@@ -56,7 +56,7 @@ serve(async (req) => {
   }
 
   try {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !OPENAI_API_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !LOVABLE_API_KEY) {
       return new Response(JSON.stringify({ error: "Server configuration missing" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -233,21 +233,25 @@ Return JSON array of messages in chronological order. If timezone unknown, assum
 EMAIL CORPUS:
 ${text.slice(0, 50000)}`; // Limit input size
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-        model: "gpt-5-2025-08-07",
+        model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
         max_completion_tokens: 4000,
       }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('Lovable AI Gateway error:', response.status, errorText);
+    if (response.status === 429) throw new Error('Rate limit exceeded');
+    if (response.status === 402) throw new Error('AI usage limit reached');
+    throw new Error(`Lovable AI Gateway error: ${response.status}`);
   }
 
   const result = await response.json();
@@ -289,21 +293,23 @@ ${emailSummary.slice(0, 40000)}
 
 Return JSON array of incidents:`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'google/gemini-2.5-flash',
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 3000,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('Lovable AI Gateway error:', response.status, errorText);
+    throw new Error(`Lovable AI Gateway error: ${response.status}`);
   }
 
   const result = await response.json();
@@ -341,21 +347,23 @@ ${emailSummary.slice(0, 35000)}
 
 Return JSON array:`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'google/gemini-2.5-flash-lite',
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 2000,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('Lovable AI Gateway error:', response.status, errorText);
+    throw new Error(`Lovable AI Gateway error: ${response.status}`);
   }
 
   const result = await response.json();
@@ -393,21 +401,23 @@ Return JSON:
 EMAILS:
 ${emailSummary.slice(0, 30000)}`;
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${OPENAI_API_KEY}`,
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: 'gpt-5-mini-2025-08-07',
+      model: 'google/gemini-2.5-flash-lite',
       messages: [{ role: "user", content: prompt }],
       max_completion_tokens: 1500,
     }),
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error('Lovable AI Gateway error:', response.status, errorText);
+    throw new Error(`Lovable AI Gateway error: ${response.status}`);
   }
 
   const result = await response.json();

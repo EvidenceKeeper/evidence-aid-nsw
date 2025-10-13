@@ -51,9 +51,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('Lovable API key not configured');
     }
 
     // Get user authentication
@@ -85,11 +85,11 @@ serve(async (req) => {
     }
 
     // Step 1: Determine intent and extract legal concepts
-    const intentAnalysis = await analyzeIntent(query, openaiApiKey);
+    const intentAnalysis = await analyzeIntent(query, lovableApiKey);
     
     // Step 2: Retrieve legal context (dual retrieval)
     const [legalContext, evidenceContext] = await Promise.all([
-      retrieveLegalContext(query, jurisdiction, supabaseClient, openaiApiKey),
+      retrieveLegalContext(query, jurisdiction, supabaseClient, lovableApiKey),
       includeEvidence && userId ? 
         retrieveEvidenceContext(query, userId, supabaseClient) : 
         Promise.resolve([])
@@ -103,7 +103,7 @@ serve(async (req) => {
       intentAnalysis,
       mode,
       citationMode,
-      openaiApiKey
+      lovableApiKey
     );
 
     // Step 4: Track quality metrics
@@ -141,7 +141,7 @@ serve(async (req) => {
   }
 });
 
-async function analyzeIntent(query: string, openaiApiKey: string) {
+async function analyzeIntent(query: string, lovableApiKey: string) {
   const intentPrompt = `Analyze this NSW legal query and identify:
 1. Intent type (statute_lookup, case_principle, procedure, form, deadline, police_process, evidence_analysis)
 2. Key legal concepts (e.g., AVO, parenting orders, coercive control, best interests)
@@ -153,14 +153,14 @@ Query: "${query}"
 Respond in JSON format with: intent_type, legal_concepts[], citation_types[], nsw_specific_elements[]`;
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: 'You are a NSW legal expert analyzing queries for intent and required legal sources.' },
           { role: 'user', content: intentPrompt }
@@ -170,7 +170,9 @@ Respond in JSON format with: intent_type, legal_concepts[], citation_types[], ns
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Lovable AI Gateway error:', response.status, errorText);
+      throw new Error(`Lovable AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -190,14 +192,14 @@ async function retrieveLegalContext(
   query: string, 
   jurisdiction: string, 
   supabaseClient: any, 
-  openaiApiKey: string
+  lovableApiKey: string
 ) {
   try {
     // Generate embedding for semantic search
-    const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+    const embeddingResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -208,6 +210,8 @@ async function retrieveLegalContext(
     });
 
     if (!embeddingResponse.ok) {
+      const errorText = await embeddingResponse.text();
+      console.error('Lovable AI Gateway embedding error:', embeddingResponse.status, errorText);
       throw new Error(`Embedding API error: ${embeddingResponse.status}`);
     }
 
@@ -290,7 +294,7 @@ async function generateGroundedResponse(
   intentAnalysis: any,
   mode: 'user' | 'lawyer',
   citationMode: boolean,
-  openaiApiKey: string
+  lovableApiKey: string
 ): Promise<RAGResponse> {
   
   const systemPrompt = mode === 'lawyer' ? 
@@ -300,14 +304,14 @@ async function generateGroundedResponse(
   const contextPrompt = buildContextPrompt(query, legalContext, evidenceContext, intentAnalysis, mode);
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-2025-08-07',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: contextPrompt }
@@ -317,6 +321,8 @@ async function generateGroundedResponse(
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI Gateway error:', response.status, errorText);
       throw new Error(`Response generation failed: ${response.status}`);
     }
 
