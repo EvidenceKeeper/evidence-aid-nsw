@@ -107,21 +107,29 @@ serve(async (req) => {
 
     console.log(`✅ File processed successfully: ${fileName}`);
 
-    // Auto-extract timeline events from the uploaded file
-    console.log('📅 Triggering timeline extraction...');
+    // Trigger comprehensive evidence orchestration
+    console.log('🚀 Triggering comprehensive evidence analysis...');
     try {
-      const { data: timelineData, error: timelineError } = await supabase.functions.invoke('extract-timeline', {
-        body: { file_id: fileData.id }
+      const { data: orchestrationData, error: orchestrationError } = await supabase.functions.invoke('evidence-orchestrator', {
+        body: { 
+          file_id: fileData.id,
+          file_name: fileName,
+          user_id: user.id
+        }
       });
       
-      if (timelineError) {
-        console.warn('⚠️ Timeline extraction failed:', timelineError);
-        // Don't fail the whole upload - timeline is optional
+      if (orchestrationError) {
+        console.warn('⚠️ Evidence orchestration failed:', orchestrationError);
+        // Don't fail the whole upload - analysis is optional
       } else {
-        console.log(`✅ Extracted ${timelineData?.events_extracted || 0} timeline events`);
+        console.log(`✅ Evidence orchestration complete:`, {
+          timeline_events: orchestrationData?.timeline_events || 0,
+          legal_connections: orchestrationData?.legal_connections || 0,
+          case_strength: orchestrationData?.case_strength_score || 0
+        });
       }
     } catch (e) {
-      console.warn('⚠️ Timeline extraction error:', e);
+      console.warn('⚠️ Evidence orchestration error:', e);
     }
 
     return new Response(JSON.stringify({

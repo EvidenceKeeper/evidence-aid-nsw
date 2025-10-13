@@ -32,8 +32,8 @@ serve(async (req) => {
       });
     }
 
-    const { message } = await req.json();
-    console.log(`💬 Chat request from user: ${user.id}`);
+    const { message, context_type, evidence_context } = await req.json();
+    console.log(`💬 Chat request from user: ${user.id}`, { context_type });
 
     // 1. Load conversation history (last 50 messages)
     const { data: historyData } = await supabase
@@ -141,6 +141,73 @@ serve(async (req) => {
     const communicationStyle = profile.communication_style || 'concise'; // concise/detailed/balanced
     const experienceLevel = profile.experience_level || 'first_time'; // first_time/some_experience/experienced
 
+    // Special handling for evidence upload context
+    if (context_type === 'evidence_uploaded' && evidence_context) {
+      const systemPrompt = `You just analyzed new evidence for ${userName}: "${evidence_context.file_name}"
+
+ANALYSIS RESULTS:
+- Timeline Events Extracted: ${evidence_context.timeline_events}
+- Case Strength Impact: ${evidence_context.case_strength_change > 0 ? '+' : ''}${evidence_context.case_strength_change} points
+- New Case Strength: ${evidence_context.new_case_strength}%
+- Primary Goal: "${evidence_context.primary_goal}"
+
+KEY FINDINGS:
+${evidence_context.strengths?.map((s: string) => `✓ ${s}`).join('\n') || 'Analysis in progress'}
+
+${evidence_context.critical_gaps?.length > 0 ? `EVIDENCE GAPS IDENTIFIED:\n${evidence_context.critical_gaps.map((g: string) => `• ${g}`).join('\n')}` : ''}
+
+YOUR TASK:
+1. Acknowledge the evidence they uploaded (mention "${evidence_context.file_name}" by name)
+2. Highlight the 1-2 MOST IMPORTANT findings from this evidence
+3. Connect it directly to their goal: "${evidence_context.primary_goal}"
+4. If case strength improved, celebrate their progress briefly
+5. Ask ONE focused question about the NEXT most important piece of evidence they should gather
+6. Keep it warm and encouraging - they're making real progress
+
+TONE: Proactive, strategic, encouraging, trauma-informed
+LENGTH: 2-3 short paragraphs maximum (under 200 words total)
+STRUCTURE: Natural conversation, not lists
+
+EXAMPLE GOOD RESPONSE:
+"I've just analyzed the Police Report from September 2024. This is really valuable evidence - it documents three separate incidents where Peter displayed controlling behavior. The officer's notes about Dylan being afraid directly support your case for sole parental responsibility under s60CC.
+
+This evidence strengthens your case by 15%, bringing you to 73% overall. You're building a solid foundation.
+
+To make this even stronger: do you have any text messages or emails from Peter around the dates of these incidents? Messages before or after often show the pattern of escalation that courts look for."
+
+DO NOT write lists or multiple options. Write naturally as if speaking directly to them.`;
+
+      // Generate proactive response
+      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Generate a proactive analysis message for the evidence upload.` }
+          ],
+          temperature: 0.8,
+          max_tokens: 300
+        })
+      });
+
+      if (!aiResponse.ok) {
+        throw new Error('Failed to generate proactive message');
+      }
+
+      const aiData = await aiResponse.json();
+      const content = aiData.choices?.[0]?.message?.content || 'Evidence analyzed successfully.';
+
+      return new Response(JSON.stringify({ content }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Regular chat flow
     const systemPrompt = `You are Veronica, a trauma-informed NSW legal assistant. Guide ${userName} step-by-step toward their goal: "${caseMemory?.primary_goal || 'understanding their legal options'}".
 
 CRITICAL RESPONSE RULES:
