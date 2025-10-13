@@ -15,6 +15,46 @@ interface ActionSuggestionsProps {
 }
 
 export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsProps) {
+  // Condense verbose AI text to fit compact buttons
+  const condenseText = (text: string): string => {
+    // Remove markdown asterisks
+    text = text.replace(/\*\*/g, '').replace(/\*/g, '');
+    
+    // Remove verbose prefixes and filler words
+    text = text.replace(/^(Yes,?\s*|Sure,?\s*|I can\s*|Let me\s*|I will\s*|I would\s*|We can\s*|Let's\s*)/i, '');
+    text = text.replace(/^(Delve deeper into|Explore|Discuss|Review|Analyze|Consider|Examine)\s+/i, '');
+    
+    // Remove redundant phrases
+    text = text.replace(/\s*would you like( me)? to\s*/gi, ' ');
+    text = text.replace(/\s*I can help you( with)?\s*/gi, ' ');
+    text = text.replace(/\s*we should focus on\s*/gi, ' ');
+    text = text.replace(/\s*it would be important to\s*/gi, ' ');
+    
+    // Shorten common legal phrases
+    text = text.replace(/parental responsibility order/gi, 'parental responsibility');
+    text = text.replace(/communications with/gi, 'comms with');
+    text = text.replace(/additional evidence/gi, 'more evidence');
+    text = text.replace(/described in the/gi, 'in');
+    
+    // Remove qualifying phrases at the end
+    text = text.replace(/,?\s*(given|considering|taking into account).+$/i, '');
+    
+    // Clean up multiple spaces and trim
+    text = text.replace(/\s+/g, ' ').trim();
+    
+    // Capitalize first letter
+    if (text.length > 0) {
+      text = text.charAt(0).toUpperCase() + text.slice(1);
+    }
+    
+    // Hard limit to 50 characters for extreme cases
+    if (text.length > 50) {
+      text = text.substring(0, 47) + '...';
+    }
+    
+    return text;
+  };
+
   // Extract structured action suggestions from assistant content
   const extractActions = (content: string): SuggestedAction[] => {
     const actions: SuggestedAction[] = [];
@@ -31,6 +71,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
           let text = match.replace(/^\d+\.\s*\*?\*?/, '').replace(/\*?\*?$/, '').trim();
           // Remove the option number from the text itself
           text = text.replace(/^Option \d+:\s*/i, '');
+          text = condenseText(text);
           
           if (text.length > 10) {
             actions.push({
@@ -51,7 +92,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
         const optionMatches = parenListMatch[1].match(/\d+\)\s*(.+?)(?=\d+\)|$)/gs);
         if (optionMatches && optionMatches.length >= 2) {
           optionMatches.forEach((match, index) => {
-            const text = match.replace(/^\d+\)\s*/, '').trim();
+            const text = condenseText(match.replace(/^\d+\)\s*/, '').trim());
             if (text.length > 10) {
               actions.push({
                 id: `paren-${index}`,
@@ -72,7 +113,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
         const optionMatches = standaloneListMatch[1].match(/\d+\.\s*(.+?)(?=\d+\.|$)/gs);
         if (optionMatches && optionMatches.length >= 2) {
           optionMatches.forEach((match, index) => {
-            const text = match.replace(/^\d+\.\s*/, '').trim();
+            const text = condenseText(match.replace(/^\d+\.\s*/, '').trim());
             if (text.length > 10) {
               actions.push({
                 id: `standalone-${index}`,
@@ -96,7 +137,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
         const actionMatches = stepsText.match(/(?:^\s*(?:\d+\.|\-|\•)\s*)(.+?)(?=\n|$)/gm);
         if (actionMatches) {
           actionMatches.forEach((match, index) => {
-            const text = match.replace(/^\s*(?:\d+\.|\-|\•)\s*/, '').trim();
+            const text = condenseText(match.replace(/^\s*(?:\d+\.|\-|\•)\s*/, '').trim());
             if (text.length > 10) {
               actions.push({
                 id: `action-${index}`,
@@ -115,7 +156,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
       const buttonMatches = content.match(/–\s*(.+?)(?=\n|$)/gm);
       if (buttonMatches) {
         buttonMatches.forEach((match, index) => {
-          const text = match.replace(/^–\s*/, '').trim();
+          const text = condenseText(match.replace(/^–\s*/, '').trim());
           if (text.length > 10) {
             actions.push({
               id: `button-${index}`,
@@ -148,12 +189,12 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   
   const getActionIcon = (type: SuggestedAction['action_type']) => {
     switch (type) {
-      case 'timeline': return <Calendar className="h-5 w-5" />;
-      case 'analysis': return <FileSearch className="h-5 w-5" />;
-      case 'evidence': return <Zap className="h-5 w-5" />;
-      case 'summary': return <BarChart3 className="h-5 w-5" />;
-      case 'strategy': return <Target className="h-5 w-5" />;
-      default: return <ChevronRight className="h-5 w-5" />;
+      case 'timeline': return <Calendar className="h-3.5 w-3.5" />;
+      case 'analysis': return <FileSearch className="h-3.5 w-3.5" />;
+      case 'evidence': return <Zap className="h-3.5 w-3.5" />;
+      case 'summary': return <BarChart3 className="h-3.5 w-3.5" />;
+      case 'strategy': return <Target className="h-3.5 w-3.5" />;
+      default: return <ChevronRight className="h-3.5 w-3.5" />;
     }
   };
 
@@ -186,14 +227,14 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   }
   
   return (
-    <div className="mt-4 pt-4 border-t border-border/20 space-y-3" role="region" aria-label="Suggested actions">
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="h-4 w-4 text-primary animate-pulse" aria-hidden="true" />
-        <p className="text-sm font-semibold text-foreground/90">
-          {actions.length === 2 ? 'Choose one:' : 'Choose your next step:'}
+    <div className="mt-4 pt-4 border-t border-border/20 space-y-2" role="region" aria-label="Suggested actions">
+      <div className="flex items-center gap-1.5 mb-2">
+        <Sparkles className="h-3 w-3 text-primary animate-pulse" aria-hidden="true" />
+        <p className="text-xs font-semibold text-foreground/90">
+          {actions.length === 2 ? 'Pick one:' : 'Quick options:'}
         </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list">
+      <div className="flex flex-col gap-1.5" role="list">
         {actions.map((action, index) => (
           <Card
             key={action.id}
@@ -201,12 +242,12 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
             tabIndex={0}
             className={`
               group cursor-pointer transition-all duration-200 
-              border-2 rounded-xl
+              border rounded-lg
               bg-gradient-to-br ${getActionGradient(action.action_type)} 
-              hover:scale-[1.02] hover:shadow-md active:scale-[0.98]
+              hover:shadow-md active:scale-[0.98]
               focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2
               animate-in fade-in slide-in-from-bottom-2 duration-500
-              ${action.priority === 'high' ? 'ring-2 ring-primary/30' : ''}
+              ${action.priority === 'high' ? 'ring-1 ring-primary/30' : ''}
             `}
             style={{ animationDelay: `${index * 75}ms` }}
             onClick={() => onActionClick(action.text)}
@@ -218,25 +259,30 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
             }}
             aria-label={`Suggested action ${index + 1}: ${action.text}${action.priority === 'high' ? ' (Recommended)' : ''}`}
           >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
+            <CardContent className="p-2">
+              <div className="flex items-center gap-2">
                 <div className={`
-                  p-2.5 rounded-xl bg-background/90 backdrop-blur-sm 
+                  p-1.5 rounded-lg bg-background/90 backdrop-blur-sm 
                   ${getActionIconColor(action.action_type)} 
                   group-hover:scale-110 transition-transform duration-200
                 `} aria-hidden="true">
                   {getActionIcon(action.action_type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-medium leading-relaxed line-clamp-2 group-hover:text-primary transition-colors">
+                  <p className="text-xs font-medium leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                     {action.text}
                   </p>
                 </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" aria-hidden="true" />
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all flex-shrink-0" aria-hidden="true" />
               </div>
             </CardContent>
           </Card>
         ))}
+      </div>
+      <div className="mt-2 px-1">
+        <p className="text-xs text-muted-foreground/70 text-center">
+          Or type <span className="font-medium text-foreground/80">"something else"</span> below
+        </p>
       </div>
     </div>
   );
