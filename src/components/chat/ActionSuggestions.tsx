@@ -19,8 +19,8 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
   const extractActions = (content: string): SuggestedAction[] => {
     const actions: SuggestedAction[] = [];
     
-    // NEW: Detect "Would you prefer to:" or "You can:" with numbered options
-    const preferenceMatch = content.match(/(?:Would you prefer to|You can|Let me know which|Choose one):\s*\n((?:\d+\.\s*\*?\*?[^\n]+\n?)+)/i);
+    // Pattern 1: "Would you prefer/Which would you like to focus on" with numbered options
+    const preferenceMatch = content.match(/(?:Would you prefer to|You can|Let me know which|Choose one|Which would you like to focus on|What would you like to focus on|Which option).*?:\s*\n((?:\d+\.\s*\*?\*?[^\n]+\n?)+)/is);
     if (preferenceMatch) {
       const optionsText = preferenceMatch[1];
       const optionMatches = optionsText.match(/\d+\.\s*\*?\*?(.+?)(?=\d+\.|$)/gs);
@@ -44,7 +44,49 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
       }
     }
     
-    // Fallback: Look for "Next steps" or similar sections
+    // Pattern 2: Parenthesis format "1) Option"
+    if (actions.length === 0) {
+      const parenListMatch = content.match(/(?:^|\n)(\d+\)\s*.+(?:\n\d+\)\s*.+)+)/m);
+      if (parenListMatch) {
+        const optionMatches = parenListMatch[1].match(/\d+\)\s*(.+?)(?=\d+\)|$)/gs);
+        if (optionMatches && optionMatches.length >= 2) {
+          optionMatches.forEach((match, index) => {
+            const text = match.replace(/^\d+\)\s*/, '').trim();
+            if (text.length > 10) {
+              actions.push({
+                id: `paren-${index}`,
+                text: text,
+                action_type: determineActionType(text),
+                priority: index === 0 ? 'high' : 'medium'
+              });
+            }
+          });
+        }
+      }
+    }
+    
+    // Pattern 3: Standalone numbered lists (at least 2 consecutive items)
+    if (actions.length === 0) {
+      const standaloneListMatch = content.match(/(?:^|\n)(\d+\.\s*.+(?:\n\d+\.\s*.+)+)/m);
+      if (standaloneListMatch) {
+        const optionMatches = standaloneListMatch[1].match(/\d+\.\s*(.+?)(?=\d+\.|$)/gs);
+        if (optionMatches && optionMatches.length >= 2) {
+          optionMatches.forEach((match, index) => {
+            const text = match.replace(/^\d+\.\s*/, '').trim();
+            if (text.length > 10) {
+              actions.push({
+                id: `standalone-${index}`,
+                text: text,
+                action_type: determineActionType(text),
+                priority: index === 0 ? 'high' : 'medium'
+              });
+            }
+          });
+        }
+      }
+    }
+    
+    // Pattern 4: "Next steps" sections
     if (actions.length === 0) {
       const nextStepsMatch = content.match(/Next steps.*?:(.*?)(?:\n\n|$)/is);
       if (nextStepsMatch) {
@@ -68,7 +110,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
       }
     }
     
-    // Look for button-style suggestions (like "– Yes, add incidents to my timeline")
+    // Pattern 5: Button-style suggestions (like "– Yes, add incidents to my timeline")
     if (actions.length === 0) {
       const buttonMatches = content.match(/–\s*(.+?)(?=\n|$)/gm);
       if (buttonMatches) {
@@ -86,7 +128,7 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
       }
     }
     
-    return actions.slice(0, 4); // Limit to 4 actions max
+    return actions.slice(0, 6); // Allow up to 6 actions
   };
   
   const determineActionType = (text: string): SuggestedAction['action_type'] => {
@@ -147,7 +189,9 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
     <div className="mt-4 pt-4 border-t border-border/20 space-y-3" role="region" aria-label="Suggested actions">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-primary animate-pulse" aria-hidden="true" />
-        <p className="text-sm font-semibold text-foreground/90">Choose your next step:</p>
+        <p className="text-sm font-semibold text-foreground/90">
+          {actions.length === 2 ? 'Choose one:' : 'Choose your next step:'}
+        </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list">
         {actions.map((action, index) => (
@@ -161,8 +205,10 @@ export function ActionSuggestions({ content, onActionClick }: ActionSuggestionsP
               bg-gradient-to-br ${getActionGradient(action.action_type)} 
               hover:scale-[1.02] hover:shadow-md active:scale-[0.98]
               focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2
+              animate-in fade-in slide-in-from-bottom-2 duration-500
               ${action.priority === 'high' ? 'ring-2 ring-primary/30' : ''}
             `}
+            style={{ animationDelay: `${index * 75}ms` }}
             onClick={() => onActionClick(action.text)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

@@ -339,6 +339,10 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     }
   };
 
+  const handleActionClick = (actionText: string) => {
+    sendMessage(actionText);
+  };
+
   const handleFileUpload = async (files: File[]) => {
     if (!files.length) return;
 
@@ -631,6 +635,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
               <ChatMessage 
                 key={message.id} 
                 message={message}
+                onActionClick={handleActionClick}
                 searchQuery={searchQuery}
                 organization={getMessageOrganization(message.id)}
                 onBookmarkToggle={toggleBookmark}
