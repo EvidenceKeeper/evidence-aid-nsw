@@ -139,7 +139,14 @@ Respond with ONLY a JSON object: {"intent": "...", "confidence": 0.0-1.0, "reaso
 }
 
 serve(async (req) => {
+  console.log('🚀 chat-gemini function invoked', { 
+    method: req.method, 
+    url: req.url,
+    timestamp: new Date().toISOString() 
+  });
+
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -148,7 +155,13 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
 
     // Get authenticated user
+    console.log('🔐 Authenticating user...');
     const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
+      console.error('❌ Missing Authorization header');
+      throw new Error('No authorization header');
+    }
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -157,21 +170,26 @@ serve(async (req) => {
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
+      console.error('❌ Authentication failed:', userError);
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
+    console.log(`✅ Authenticated user: ${user.id}`);
     const { message, context_type, evidence_context } = await req.json();
-    console.log(`💬 Chat request from user: ${user.id}`, { context_type });
+    console.log(`💬 Chat request`, { context_type, message_length: message.length });
 
     // Intent Classification & Routing
+    console.log('🎯 Classifying intent...');
     const intentResult = await classifyIntent(message, LOVABLE_API_KEY);
     console.log('🎯 Intent classified:', intentResult);
 
     // Route to specialized function if confidence is high
     if (intentResult.confidence > 0.7) {
+      console.log(`📍 High confidence routing (${intentResult.confidence}) to ${intentResult.intent}`);
+      
       if (intentResult.intent === 'legal_research') {
         console.log('📚 Routing to NSW RAG Assistant...');
         const { data: ragData, error: ragError } = await supabase.functions.invoke('nsw-rag-assistant', {
@@ -270,7 +288,11 @@ Would you like me to help you address any of these areas?`;
     }
 
     // Fall through to general chat flow if routing didn't work
-    console.log('💬 Using general chat flow (no routing or routing failed)');
+    console.log('💬 Using general chat flow', { 
+      reason: intentResult.confidence <= 0.7 ? 'low_confidence' : 'default',
+      intent: intentResult.intent,
+      confidence: intentResult.confidence 
+    });
 
     // 1. Load conversation history (last 50 messages)
     const { data: historyData } = await supabase

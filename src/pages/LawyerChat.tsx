@@ -8,6 +8,9 @@ import { LegalTrainingLink } from "@/components/legal/LegalTrainingLink";
 import { LawyerChatOnboarding } from "@/components/onboarding/LawyerChatOnboarding";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function LawyerChat() {
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -83,7 +86,22 @@ export default function LawyerChat() {
             </div>
             
             <div className="flex-1 min-h-0">
-              <ChatInterface />
+              <ErrorBoundary
+                fallback={
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Chat Temporarily Unavailable</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      An error occurred while loading the chat interface.
+                    </p>
+                    <Button onClick={() => window.location.reload()}>
+                      Refresh Page
+                    </Button>
+                  </div>
+                }
+              >
+                <ChatInterface />
+              </ErrorBoundary>
             </div>
           </div>
         ) : (
@@ -95,7 +113,22 @@ export default function LawyerChat() {
                 <LegalTrainingLink />
               </div>
               <div className="h-[calc(100%-3rem)]">
-                <ChatInterface />
+                <ErrorBoundary
+                  fallback={
+                    <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                      <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">Chat Temporarily Unavailable</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        An error occurred while loading the chat interface.
+                      </p>
+                      <Button onClick={() => window.location.reload()}>
+                        Refresh Page
+                      </Button>
+                    </div>
+                  }
+                >
+                  <ChatInterface />
+                </ErrorBoundary>
               </div>
             </ResizablePanel>
             
