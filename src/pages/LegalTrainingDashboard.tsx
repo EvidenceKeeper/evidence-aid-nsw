@@ -184,23 +184,27 @@ export default function LegalTrainingDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+            <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
               <input
                 type="file"
                 multiple
                 accept=".pdf,.txt"
                 onChange={handleFileUpload}
                 disabled={isUploading}
-                className="w-full"
+                className="hidden"
                 id="file-upload"
               />
-              <label htmlFor="file-upload" className="cursor-pointer">
-                <div className="text-center">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    {isUploading ? "Uploading..." : "Click to select or drag and drop PDF files"}
-                  </p>
-                </div>
+              <label htmlFor="file-upload" className="cursor-pointer block">
+                <Upload className={`h-12 w-12 mx-auto mb-4 ${isUploading ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                <p className="text-base font-medium mb-1">
+                  {isUploading ? "Uploading files..." : "Upload Legal Documents"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  PDF or TXT files • NSW Acts, Regulations, Case Law, Practice Directions
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Files are automatically queued and ready for AI training
+                </p>
               </label>
             </div>
           </CardContent>

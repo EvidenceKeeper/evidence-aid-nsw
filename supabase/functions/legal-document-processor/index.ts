@@ -57,7 +57,9 @@ serve(async (req) => {
 
         console.log(`Processing document: ${doc.file_name}`);
 
-        // Call nsw-legal-ingestor function
+        // Call nsw-legal-ingestor function with enhanced logging
+        console.log(`Invoking nsw-legal-ingestor for: ${doc.file_name} at path: ${doc.file_path}`);
+        
         const { data: ingestionResult, error: ingestionError } = await supabaseClient.functions
           .invoke('nsw-legal-ingestor', {
             body: {
@@ -78,6 +80,12 @@ serve(async (req) => {
               }
             }
           });
+        
+        console.log(`Ingestor response for ${doc.file_name}:`, { 
+          hasData: !!ingestionResult, 
+          hasError: !!ingestionError,
+          error: ingestionError ? JSON.stringify(ingestionError) : null
+        });
 
         if (ingestionError) {
           console.error(`Ingestion error for ${doc.file_name}:`, ingestionError);
