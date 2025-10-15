@@ -44,6 +44,10 @@ serve(async (req) => {
 
   try {
     console.log('=== NSW Legal Ingestor Starting ===');
+    console.log('Environment variables check:');
+    console.log('- SUPABASE_URL:', Deno.env.get('SUPABASE_URL') ? '✓ Set' : '✗ MISSING');
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? '✓ Set' : '✗ MISSING');
+    console.log('- LOVABLE_API_KEY:', Deno.env.get('LOVABLE_API_KEY') ? '✓ Set' : '✗ MISSING');
     
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -53,10 +57,10 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
       console.error('CRITICAL: Lovable API key not configured');
-      throw new Error('Lovable API key not configured');
+      throw new Error('Lovable API key not configured - check edge function secrets');
     }
     
-    console.log('Environment check passed - API keys present');
+    console.log('✓ Environment check passed');
 
     const requestBody = await req.json();
     console.log('Request received:', JSON.stringify({
@@ -86,23 +90,21 @@ serve(async (req) => {
     let content = rawContent;
 
     // Step 1: Content Acquisition
+    console.log('=== STEP 1: Content Acquisition ===');
     if (file_path) {
-      console.log(`Step 1: Processing file from storage: ${file_path}`);
-      try {
-        content = await processStoredFile(file_path, supabaseClient);
-        console.log(`✓ File processed successfully. Content length: ${content?.length || 0} chars`);
-      } catch (fileError) {
-        console.error(`✗ File processing failed:`, fileError);
-        throw new Error(`File processing failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`);
-      }
+      console.log(`Processing file from storage: ${file_path}`);
+      content = await processStoredFile(file_path, supabaseClient);
+      console.log(`✓ File processed. Content length: ${content?.length || 0} chars`);
+      console.log(`✓ Content preview: ${content?.substring(0, 200)}...`);
     } else if (source_url && !content) {
-      console.log(`Step 1: Fetching content from URL: ${source_url}`);
+      console.log(`Fetching content from URL: ${source_url}`);
       content = await fetchContent(source_url, source_type);
     }
 
     if (!content) {
       throw new Error('No content provided or fetchable');
     }
+    console.log(`✓ Step 1 complete: ${content.length} characters acquired`);
 
     // Step 2: Content Validation & Compliance Check
     await validateContentCompliance(source_url, source_type);
@@ -173,11 +175,16 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('NSW Legal Ingestor error:', error);
+    console.error('=== NSW Legal Ingestor FAILED ===');
+    console.error('Error type:', error?.constructor?.name);
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
     return new Response(
       JSON.stringify({ 
         error: 'Ingestion failed', 
         details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         status: 'failed'
       }),
       {
