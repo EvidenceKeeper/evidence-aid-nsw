@@ -455,7 +455,16 @@ DO NOT write lists or multiple options. Write naturally as if speaking directly 
       });
 
       if (!aiResponse.ok) {
-        throw new Error('Failed to generate proactive message');
+        const errorText = await aiResponse.text();
+        console.error('❌ AI gateway error:', aiResponse.status, errorText);
+        return new Response(JSON.stringify({
+          error: `AI gateway error: ${errorText}`,
+          code: 'AI_GATEWAY_ERROR',
+          timestamp: new Date().toISOString()
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
 
       const aiData = await aiResponse.json();
@@ -528,7 +537,8 @@ Remember: Guide, don't overwhelm. Each response should move ${userName} ONE step
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ 
           error: 'Rate limit exceeded. Please wait 30 seconds and try again.',
-          code: 'RATE_LIMIT'
+          code: 'RATE_LIMIT',
+          timestamp: new Date().toISOString()
         }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -537,7 +547,8 @@ Remember: Guide, don't overwhelm. Each response should move ${userName} ONE step
       if (aiResponse.status === 402) {
         return new Response(JSON.stringify({ 
           error: 'AI credits depleted. Please add credits in Settings > Workspace > Usage.',
-          code: 'CREDITS_REQUIRED'
+          code: 'CREDITS_REQUIRED',
+          timestamp: new Date().toISOString()
         }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -545,7 +556,14 @@ Remember: Guide, don't overwhelm. Each response should move ${userName} ONE step
       }
       const errorText = await aiResponse.text();
       console.error('❌ Lovable AI error:', aiResponse.status, errorText);
-      throw new Error(`AI gateway error: ${errorText}`);
+      return new Response(JSON.stringify({
+        error: `AI gateway error: ${errorText}`,
+        code: 'AI_GATEWAY_ERROR',
+        timestamp: new Date().toISOString()
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // 7. Save user message to database
@@ -633,10 +651,23 @@ Remember: Guide, don't overwhelm. Each response should move ${userName} ONE step
     });
 
   } catch (error: any) {
-    console.error('❌ Chat error:', error);
-    return new Response(JSON.stringify({ 
-      error: error.message || 'An unexpected error occurred',
-      code: 'INTERNAL_ERROR'
+    const timestamp = new Date().toISOString();
+    const errorMessage = error?.message || 'An internal error occurred';
+    const errorCode = error?.code || 'INTERNAL_ERROR';
+
+    console.error('❌ Chat error details:', {
+      timestamp,
+      errorMessage,
+      errorCode,
+      name: error?.name,
+      stack: error?.stack,
+      cause: error?.cause,
+    });
+
+    return new Response(JSON.stringify({
+      error: errorMessage,
+      code: errorCode,
+      timestamp
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

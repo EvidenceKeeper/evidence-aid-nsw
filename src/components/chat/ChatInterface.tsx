@@ -144,7 +144,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         supabase.removeChannel(channel);
       }
     };
-  }, [toast]);
+  }, []);
 
   const loadChatHistory = async () => {
     try {
@@ -232,7 +232,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       console.log('🤖 Calling chat-gemini with streaming...');
 
       // Call new streaming edge function
-      const response = await fetch(
+      let response = await fetch(
         `https://kwsbzfvvmazyhmjgxryo.supabase.co/functions/v1/chat-gemini`,
         {
           method: 'POST',
@@ -244,17 +244,63 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         }
       );
 
+      // Helper to build structured error
+      const buildErr = async (resp: Response) => {
+        let code = 'UNKNOWN';
+        let msg = `Request failed with status ${resp.status}`;
+        let ts: string | undefined;
+
+        try {
+          const j = await resp.json();
+          msg = j?.error || msg;
+          code = j?.code || code;
+          ts = j?.timestamp;
+        } catch {
+          try {
+            const t = await resp.text();
+            if (t) msg = t.slice(0, 500);
+          } catch { /* ignore */ }
+        }
+
+        const ref = ts ? new Date(ts).toLocaleTimeString() : new Date().toLocaleTimeString();
+        return new Error(`${msg}\n\nError Code: ${code}\nRef: ${ref}`);
+      };
+
       // Handle error responses with specific messages
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        
         if (response.status === 429) {
           throw new Error('⏱️ Rate limit exceeded. Please wait 30 seconds and try again.');
         }
         if (response.status === 402) {
           throw new Error('💳 AI credits depleted. Add credits in Settings → Workspace → Usage.');
         }
-        throw new Error(errorData.error || `Request failed with status ${response.status}`);
+
+        // Single retry for transient 500-class errors
+        if (response.status >= 500) {
+          console.log('⚠️ 500 error detected, retrying once...');
+          await new Promise(r => setTimeout(r, 800));
+          
+          const retry = await fetch(
+            `https://kwsbzfvvmazyhmjgxryo.supabase.co/functions/v1/chat-gemini`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ message: textToSend })
+            }
+          );
+          
+          if (retry.ok) {
+            console.log('✅ Retry succeeded');
+            response = retry; // Use the retry response for streaming
+          } else {
+            throw await buildErr(retry);
+          }
+        } else {
+          throw await buildErr(response);
+        }
       }
 
       // Stream response token by token
@@ -311,7 +357,16 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       
       toast({
         title: "Chat Error",
-        description: error.message || "Failed to send message. Please try again.",
+        description: (
+          <div className="space-y-1">
+            <p>{(error?.message || 'Failed to send message').split('\n')[0]}</p>
+            {error?.message?.includes('Error Code:') && (
+              <p className="text-xs opacity-70 mt-1 font-mono">
+                {error.message.split('\n').slice(1).join(' · ')}
+              </p>
+            )}
+          </div>
+        ),
         variant: "destructive",
       });
       
