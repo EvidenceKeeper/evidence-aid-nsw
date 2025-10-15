@@ -39,9 +39,11 @@ interface EnhancedChatInterfaceProps {
 }
 
 export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfaceProps) {
+  const MAX_INPUT_LENGTH = 2000;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<'sending' | 'waiting' | 'streaming' | null>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [typingMessage, setTypingMessage] = useState("");
   const [showSearch, setShowSearch] = useState(false);
@@ -74,6 +76,10 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
   useEffect(() => {
     let mounted = true;
     let channel: ReturnType<typeof supabase.channel> | null = null;
+    
+    // Load draft from localStorage
+    const draft = localStorage.getItem('chat-draft');
+    if (draft) setInput(draft);
     
     const initializeChat = async () => {
       setLoading(true);
@@ -146,6 +152,15 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     };
   }, []);
 
+  // Save draft to localStorage
+  useEffect(() => {
+    if (input) {
+      localStorage.setItem('chat-draft', input);
+    } else {
+      localStorage.removeItem('chat-draft');
+    }
+  }, [input]);
+
   const loadChatHistory = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -196,11 +211,56 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
     }
   };
 
+  // Exponential backoff retry helper
+  const retryWithBackoff = async (
+    fn: () => Promise<Response>,
+    maxRetries: number = 3
+  ): Promise<Response> => {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const result = await fn();
+        
+        // Success or non-429 error - return immediately
+        if (result.ok || result.status !== 429) {
+          return result;
+        }
+        
+        // Rate limit hit - calculate backoff
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        console.log(`⏱️ Rate limited, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`);
+        await new Promise(r => setTimeout(r, delay));
+        lastError = new Error('Rate limit exceeded');
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        
+        // Network error - don't retry
+        if (error instanceof TypeError && error.message.includes('fetch')) {
+          throw new Error('🌐 Network error. Check your connection and try again.');
+        }
+        
+        // Last attempt - throw the error
+        if (attempt === maxRetries - 1) throw lastError;
+        
+        // Wait before retry
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        console.log(`⚠️ Error on attempt ${attempt + 1}, retrying in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+    
+    throw lastError || new Error('⏱️ Rate limit persists. Please wait a few minutes.');
+  };
+
   const sendMessage = async (text?: string) => {
     const textToSend = text || input.trim();
     if (!textToSend && !showFileUpload) return;
 
-    // Show user message immediately
+    // Clear draft when sending
+    localStorage.removeItem('chat-draft');
+
+    // Optimistic UI: Show user message immediately
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
@@ -212,7 +272,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
 
     setInput("");
     setLoading(true);
-    setTypingMessage("Veronica is thinking...");
+    setLoadingState('sending');
+    setTypingMessage("Sending message...");
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -227,21 +288,24 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMessage]);
-      setTypingMessage("");
+      setLoadingState('waiting');
+      setTypingMessage("Waiting for response...");
 
       console.log('🤖 Calling chat-gemini with streaming...');
 
-      // Call new streaming edge function
-      let response = await fetch(
-        `https://kwsbzfvvmazyhmjgxryo.supabase.co/functions/v1/chat-gemini`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ message: textToSend })
-        }
+      // Call with exponential backoff for rate limits
+      let response = await retryWithBackoff(
+        () => fetch(
+          `https://kwsbzfvvmazyhmjgxryo.supabase.co/functions/v1/chat-gemini`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: textToSend })
+          }
+        )
       );
 
       // Helper to build structured error
@@ -302,6 +366,9 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
           throw await buildErr(response);
         }
       }
+
+      setLoadingState('streaming');
+      setTypingMessage("Streaming response...");
 
       // Stream response token by token
       const reader = response.body?.getReader();
@@ -376,6 +443,7 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       );
     } finally {
       setLoading(false);
+      setLoadingState(null);
       setTypingMessage("");
     }
   };
@@ -700,7 +768,14 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
             ))}
           
           {loading && (
-            <TypingIndicator message={typingMessage} />
+            <TypingIndicator 
+              message={
+                loadingState === 'sending' ? 'Sending message...' :
+                loadingState === 'waiting' ? 'Waiting for response...' :
+                loadingState === 'streaming' ? 'Receiving response...' :
+                typingMessage || 'Veronica is thinking...'
+              } 
+            />
           )}
         </div>
         <div ref={messagesEndRef} />
@@ -738,12 +813,19 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
             <div className="flex-1 relative">
               <Textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= MAX_INPUT_LENGTH) {
+                    setInput(e.target.value);
+                  }
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder="Share what's on your mind... I'm here to help 💙"
                 className="min-h-[80px] max-h-32 resize-none rounded-2xl border-border/30 bg-background/80 focus:bg-background text-[15px] leading-relaxed"
                 disabled={loading}
               />
+              <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                {input.length}/{MAX_INPUT_LENGTH}
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <Button
