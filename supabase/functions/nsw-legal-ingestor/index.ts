@@ -43,6 +43,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('=== NSW Legal Ingestor Starting ===');
+    
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -50,8 +52,21 @@ serve(async (req) => {
 
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     if (!lovableApiKey) {
+      console.error('CRITICAL: Lovable API key not configured');
       throw new Error('Lovable API key not configured');
     }
+    
+    console.log('Environment check passed - API keys present');
+
+    const requestBody = await req.json();
+    console.log('Request received:', JSON.stringify({
+      source_type: requestBody.source_type,
+      has_file_path: !!requestBody.file_path,
+      file_path: requestBody.file_path,
+      has_content: !!requestBody.content,
+      has_source_url: !!requestBody.source_url,
+      metadata: requestBody.metadata
+    }));
 
     const {
       source_type,
@@ -64,7 +79,7 @@ serve(async (req) => {
         overlap: 100,
         respect_boundaries: true
       }
-    }: IngestionRequest = await req.json();
+    }: IngestionRequest = requestBody;
 
     console.log('NSW Legal Ingestor request:', { source_type, metadata, source_url, file_path });
 
@@ -72,9 +87,16 @@ serve(async (req) => {
 
     // Step 1: Content Acquisition
     if (file_path) {
-      // Handle file upload from storage
-      content = await processStoredFile(file_path, supabaseClient);
+      console.log(`Step 1: Processing file from storage: ${file_path}`);
+      try {
+        content = await processStoredFile(file_path, supabaseClient);
+        console.log(`✓ File processed successfully. Content length: ${content?.length || 0} chars`);
+      } catch (fileError) {
+        console.error(`✗ File processing failed:`, fileError);
+        throw new Error(`File processing failed: ${fileError instanceof Error ? fileError.message : String(fileError)}`);
+      }
     } else if (source_url && !content) {
+      console.log(`Step 1: Fetching content from URL: ${source_url}`);
       content = await fetchContent(source_url, source_type);
     }
 
@@ -209,23 +231,42 @@ async function fetchContent(url: string, sourceType: string): Promise<string> {
 async function processStoredFile(filePath: string, supabaseClient: any): Promise<string> {
   console.log(`Processing stored file: ${filePath}`);
   
-  // Get file from Supabase Storage - Use legal-training bucket
-  const { data, error } = await supabaseClient.storage
-    .from('legal-training')
-    .download(filePath);
+  try {
+    // Get file from Supabase Storage - Use legal-training bucket
+    console.log(`Downloading from legal-training bucket...`);
+    const { data, error } = await supabaseClient.storage
+      .from('legal-training')
+      .download(filePath);
+      
+    if (error) {
+      console.error(`Storage download error:`, error);
+      throw new Error(`Failed to download file: ${error.message}`);
+    }
     
-  if (error) throw new Error(`Failed to download file: ${error.message}`);
-  
-  // Convert to ArrayBuffer
-  const arrayBuffer = await data.arrayBuffer();
-  const fileData = new Uint8Array(arrayBuffer);
-  
-  // Check if it's a PDF by examining file extension and magic bytes
-  if (filePath.toLowerCase().endsWith('.pdf') || isPdfFile(fileData)) {
-    return await extractPdfText(fileData);
-  } else {
-    // Assume it's text content
-    return new TextDecoder().decode(fileData);
+    if (!data) {
+      throw new Error('No data returned from storage download');
+    }
+    
+    console.log(`File downloaded successfully. Size: ${data.size} bytes`);
+    
+    // Convert to ArrayBuffer
+    const arrayBuffer = await data.arrayBuffer();
+    const fileData = new Uint8Array(arrayBuffer);
+    
+    console.log(`Checking file type... Extension: ${filePath.toLowerCase().endsWith('.pdf') ? 'PDF' : 'TEXT'}`);
+    
+    // Check if it's a PDF by examining file extension and magic bytes
+    if (filePath.toLowerCase().endsWith('.pdf') || isPdfFile(fileData)) {
+      console.log(`Extracting PDF text...`);
+      return await extractPdfText(fileData);
+    } else {
+      console.log(`Processing as text file...`);
+      // Assume it's text content
+      return new TextDecoder().decode(fileData);
+    }
+  } catch (error) {
+    console.error(`processStoredFile failed:`, error);
+    throw error;
   }
 }
 

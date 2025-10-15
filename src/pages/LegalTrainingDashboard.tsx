@@ -293,16 +293,32 @@ export default function LegalTrainingDashboard() {
             ) : queueItems && queueItems.length > 0 ? (
               <div className="space-y-3">
                 {queueItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
+                  <div key={item.id} className="flex items-start justify-between p-4 border rounded-lg bg-card">
+                    <div className="flex items-start gap-3 flex-1">
                       {getStatusIcon(item.status)}
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{item.file_name}</p>
                         <p className="text-sm text-muted-foreground">
                           Uploaded: {new Date(item.created_at).toLocaleString()}
                         </p>
+                        {item.started_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Started: {new Date(item.started_at).toLocaleString()}
+                          </p>
+                        )}
+                        {item.completed_at && (
+                          <p className="text-xs text-muted-foreground">
+                            Completed: {new Date(item.completed_at).toLocaleString()}
+                          </p>
+                        )}
                         {item.error_message && (
-                          <p className="text-sm text-red-500 mt-1">{item.error_message}</p>
+                          <div className="mt-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-sm">
+                            <p className="text-destructive font-medium">Error Details:</p>
+                            <p className="text-destructive/90 text-xs mt-1">{item.error_message}</p>
+                            <p className="text-muted-foreground text-xs mt-1">
+                              Check Edge Function logs for full error trace
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -312,7 +328,7 @@ export default function LegalTrainingDashboard() {
                         {item.status}
                       </Badge>
                       {item.processing_metadata?.ingestion_result && (
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="bg-green-50">
                           {item.processing_metadata.ingestion_result.chunks_created} chunks
                         </Badge>
                       )}
