@@ -38,12 +38,18 @@ interface IngestionResult {
 }
 
 serve(async (req) => {
+  // Immediate logging to prove function is running
+  console.log('[INGESTOR] === Function invoked ===');
+  console.log('[INGESTOR] Method:', req.method);
+  console.log('[INGESTOR] URL:', req.url);
+  
   if (req.method === 'OPTIONS') {
+    console.log('[INGESTOR] Handling CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('=== NSW Legal Ingestor Starting ===');
+    console.log('[INGESTOR] === NSW Legal Ingestor Starting ===');
     console.log('Environment variables check:');
     console.log('- SUPABASE_URL:', Deno.env.get('SUPABASE_URL') ? '✓ Set' : '✗ MISSING');
     console.log('- SUPABASE_SERVICE_ROLE_KEY:', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ? '✓ Set' : '✗ MISSING');
