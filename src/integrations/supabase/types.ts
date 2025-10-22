@@ -382,7 +382,7 @@ export type Database = {
           meta: Json
           seq: number
           text: string
-          tsv: unknown | null
+          tsv: unknown
         }
         Insert: {
           created_at?: string
@@ -391,7 +391,7 @@ export type Database = {
           meta?: Json
           seq: number
           text: string
-          tsv?: unknown | null
+          tsv?: unknown
         }
         Update: {
           created_at?: string
@@ -400,7 +400,7 @@ export type Database = {
           meta?: Json
           seq?: number
           text?: string
-          tsv?: unknown | null
+          tsv?: unknown
         }
         Relationships: [
           {
@@ -1516,7 +1516,7 @@ export type Database = {
           source_checksum: string | null
           source_url: string | null
           title: string
-          tsv: unknown | null
+          tsv: unknown
           updated_at: string
           user_id: string | null
         }
@@ -1542,7 +1542,7 @@ export type Database = {
           source_checksum?: string | null
           source_url?: string | null
           title: string
-          tsv?: unknown | null
+          tsv?: unknown
           updated_at?: string
           user_id?: string | null
         }
@@ -1568,7 +1568,7 @@ export type Database = {
           source_checksum?: string | null
           source_url?: string | null
           title?: string
-          tsv?: unknown | null
+          tsv?: unknown
           updated_at?: string
           user_id?: string | null
         }
@@ -2049,7 +2049,7 @@ export type Database = {
           reference: string | null
           tags: string[] | null
           title: string
-          tsv: unknown | null
+          tsv: unknown
           updated_at: string
           url: string | null
         }
@@ -2061,7 +2061,7 @@ export type Database = {
           reference?: string | null
           tags?: string[] | null
           title: string
-          tsv?: unknown | null
+          tsv?: unknown
           updated_at?: string
           url?: string | null
         }
@@ -2073,7 +2073,7 @@ export type Database = {
           reference?: string | null
           tags?: string[] | null
           title?: string
-          tsv?: unknown | null
+          tsv?: unknown
           updated_at?: string
           url?: string | null
         }
@@ -2735,10 +2735,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_share_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      generate_share_token: { Args: never; Returns: string }
       get_evidence_informed_advice: {
         Args: { _include_evidence?: boolean; _query: string; _user_id: string }
         Returns: {
