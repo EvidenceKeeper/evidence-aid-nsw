@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useCaseIntelligence } from "@/components/realtime/CaseIntelligenceProvider";
+import { MilestoneProgress } from "@/components/case/MilestoneProgress";
 import { 
   Calendar,
   AlertCircle,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface TimelineEvent {
   id: string;
@@ -160,8 +162,15 @@ export function LiveCaseTimeline() {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Milestone Progress Section */}
+      <div className="p-4 border-b">
+        <MilestoneProgress />
+      </div>
+
+      <Separator />
+
       {/* Header with Case Strength */}
-      <div className="p-4 border-b space-y-4">
+      <div className="p-4 border-b space-y-4">'
         {/* Case Strength */}
         <div>
           <div className="flex items-center justify-between mb-2">

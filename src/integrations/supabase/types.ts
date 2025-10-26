@@ -247,6 +247,7 @@ export type Database = {
       }
       case_memory: {
         Row: {
+          active_case_plan_id: string | null
           case_readiness_status: string | null
           case_strength_reasons: Json | null
           case_strength_score: number | null
@@ -273,6 +274,7 @@ export type Database = {
           user_journey_data: Json | null
         }
         Insert: {
+          active_case_plan_id?: string | null
           case_readiness_status?: string | null
           case_strength_reasons?: Json | null
           case_strength_score?: number | null
@@ -299,6 +301,7 @@ export type Database = {
           user_journey_data?: Json | null
         }
         Update: {
+          active_case_plan_id?: string | null
           case_readiness_status?: string | null
           case_strength_reasons?: Json | null
           case_strength_score?: number | null
@@ -324,7 +327,15 @@ export type Database = {
           user_id?: string
           user_journey_data?: Json | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "case_memory_active_case_plan_id_fkey"
+            columns: ["active_case_plan_id"]
+            isOneToOne: false
+            referencedRelation: "case_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       case_patterns: {
         Row: {
@@ -370,6 +381,42 @@ export type Database = {
           timeline_end?: string | null
           timeline_start?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      case_plans: {
+        Row: {
+          created_at: string
+          current_milestone_index: number
+          id: string
+          milestones: Json
+          overall_progress_percentage: number
+          primary_goal: string
+          updated_at: string
+          urgency_level: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_milestone_index?: number
+          id?: string
+          milestones?: Json
+          overall_progress_percentage?: number
+          primary_goal: string
+          updated_at?: string
+          urgency_level?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_milestone_index?: number
+          id?: string
+          milestones?: Json
+          overall_progress_percentage?: number
+          primary_goal?: string
+          updated_at?: string
+          urgency_level?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1716,6 +1763,53 @@ export type Database = {
           verification_status?: string | null
         }
         Relationships: []
+      }
+      milestone_progress: {
+        Row: {
+          case_plan_id: string
+          completed_at: string | null
+          completion_percentage: number
+          created_at: string
+          evidence_collected: Json | null
+          id: string
+          milestone_index: number
+          notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          case_plan_id: string
+          completed_at?: string | null
+          completion_percentage?: number
+          created_at?: string
+          evidence_collected?: Json | null
+          id?: string
+          milestone_index: number
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          case_plan_id?: string
+          completed_at?: string | null
+          completion_percentage?: number
+          created_at?: string
+          evidence_collected?: Json | null
+          id?: string
+          milestone_index?: number
+          notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestone_progress_case_plan_id_fkey"
+            columns: ["case_plan_id"]
+            isOneToOne: false
+            referencedRelation: "case_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       nsw_case_law: {
         Row: {

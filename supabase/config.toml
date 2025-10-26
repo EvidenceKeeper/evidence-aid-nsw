@@ -50,3 +50,9 @@ verify_jwt = true
 
 [functions.find-nsw-resources]
 verify_jwt = false
+
+[functions.generate-case-plan]
+verify_jwt = true
+
+[functions.update-milestone-progress]
+verify_jwt = true

@@ -5,7 +5,7 @@ import { LiveCaseTimeline } from "@/components/timeline/LiveCaseTimeline";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { CaseIntelligenceProvider } from "@/components/realtime/CaseIntelligenceProvider";
 import { LegalTrainingLink } from "@/components/legal/LegalTrainingLink";
-import { LawyerChatOnboarding } from "@/components/onboarding/LawyerChatOnboarding";
+import { CasePlanOnboarding } from "@/components/onboarding/CasePlanOnboarding";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -28,12 +28,12 @@ export default function LawyerChat() {
 
         const { data: caseMemory } = await supabase
           .from('case_memory')
-          .select('id, primary_goal')
+          .select('id, active_case_plan_id')
           .eq('user_id', user.id)
           .single();
 
-        // If user has case memory with a goal, consider onboarding complete
-        setShowOnboarding(!caseMemory?.primary_goal);
+        // Show onboarding if no active case plan
+        setShowOnboarding(!caseMemory?.active_case_plan_id);
       } catch (error) {
         console.error('Error checking onboarding status:', error);
       } finally {
@@ -57,7 +57,7 @@ export default function LawyerChat() {
 
   if (showOnboarding) {
     return (
-      <LawyerChatOnboarding 
+      <CasePlanOnboarding 
         onComplete={() => setShowOnboarding(false)}
         onSkip={() => setShowOnboarding(false)}
       />

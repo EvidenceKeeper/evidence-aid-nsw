@@ -475,8 +475,75 @@ DO NOT write lists or multiple options. Write naturally as if speaking directly 
       });
     }
 
+    // Load active case plan if exists
+    let casePlan = null;
+    let currentMilestone = null;
+    let milestoneProgress = null;
+    let milestoneContext = '';
+
+    if (caseMemory?.active_case_plan_id) {
+      const { data: planData } = await supabaseClient
+        .from('case_plans')
+        .select('*')
+        .eq('id', caseMemory.active_case_plan_id)
+        .single();
+
+      if (planData) {
+        casePlan = planData;
+        const milestones = planData.milestones as any[];
+        currentMilestone = milestones[planData.current_milestone_index];
+
+        const { data: progressData } = await supabaseClient
+          .from('milestone_progress')
+          .select('*')
+          .eq('case_plan_id', planData.id)
+          .eq('milestone_index', planData.current_milestone_index)
+          .single();
+
+        milestoneProgress = progressData;
+
+        milestoneContext = `
+🎯 ACTIVE CASE PLAN - THIS IS YOUR PRIMARY FOCUS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Goal: "${planData.primary_goal}"
+Overall Progress: ${planData.overall_progress_percentage}% (Milestone ${planData.current_milestone_index + 1}/${milestones.length})
+
+📋 CURRENT MILESTONE (${planData.current_milestone_index + 1}/${milestones.length}):
+"${currentMilestone.title}"
+
+Description: ${currentMilestone.description}
+Progress: ${progressData?.completion_percentage || 0}% complete
+Status: ${progressData?.status || 'not_started'}
+
+✅ SUCCESS CRITERIA FOR THIS MILESTONE:
+${currentMilestone.success_criteria.map((c: string, i: number) => `   ${i + 1}. ${c}`).join('\n')}
+
+📝 WHAT'S BEEN COLLECTED:
+${progressData?.evidence_collected?.length > 0 ? 
+  JSON.stringify(progressData.evidence_collected).slice(0, 200) : 
+  'Nothing yet - help them start!'}
+
+💡 YOUR PRIMARY JOB:
+Every response MUST:
+1. Connect directly to completing THIS milestone
+2. Reference the specific success criteria above
+3. Move ${userName} closer to completing these criteria
+4. Be specific about what they need next for THIS milestone
+
+When all success criteria are met, celebrate completion and explicitly ask if they want to move to the next milestone.
+
+🚀 NEXT MILESTONE PREVIEW:
+${planData.current_milestone_index < milestones.length - 1 ? 
+  `"${milestones[planData.current_milestone_index + 1].title}"` : 
+  'This is the final milestone!'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+      }
+    }
+
     // Regular chat flow
     const systemPrompt = `You are Veronica, a trauma-informed NSW legal assistant. Guide ${userName} step-by-step toward their goal: "${caseMemory?.primary_goal || 'understanding their legal options'}".
+${milestoneContext}
 
 CRITICAL RESPONSE RULES:
 1. BREVITY: ${communicationStyle === 'concise' ? 'Maximum 2 short paragraphs' : communicationStyle === 'detailed' ? 'Maximum 3 focused paragraphs' : 'Maximum 2-3 clear points'}
