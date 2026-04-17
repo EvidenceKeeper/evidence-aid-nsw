@@ -30,7 +30,7 @@ export default function LawyerChat() {
           .from('case_memory')
           .select('id, active_case_plan_id')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
 
         // Show onboarding if no active case plan
         setShowOnboarding(!caseMemory?.active_case_plan_id);

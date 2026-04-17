@@ -50,7 +50,7 @@ export function useCasePlan() {
         .from('case_memory')
         .select('active_case_plan_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!memory?.active_case_plan_id) {
         setLoading(false);
@@ -58,11 +58,11 @@ export function useCasePlan() {
       }
 
       // Load case plan
-      const { data: plan, error: planError } = await supabase
-        .from('case_plans')
-        .select('*')
-        .eq('id', memory.active_case_plan_id)
-        .single();
+        const { data: plan, error: planError } = await supabase
+          .from('case_plans')
+          .select('*')
+          .eq('id', memory.active_case_plan_id)
+          .maybeSingle();
 
       if (planError) throw planError;
 
