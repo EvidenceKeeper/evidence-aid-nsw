@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 export default function LawyerChat() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showMobileTimeline, setShowMobileTimeline] = useState(false);
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -78,13 +79,19 @@ export default function LawyerChat() {
             <div className="flex items-center justify-between p-2 border-b border-border/20 bg-background/80">
               <LegalTrainingLink />
               <button 
-                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded"
-                onClick={() => {/* TODO: Toggle timeline */}}
+                className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border/40"
+                onClick={() => setShowMobileTimeline(v => !v)}
               >
-                Timeline
+                {showMobileTimeline ? 'Hide Timeline' : 'Show Timeline'}
               </button>
             </div>
             
+            {showMobileTimeline && (
+              <div className="border-b border-border/20 max-h-[40vh] overflow-y-auto">
+                <LiveCaseTimeline />
+              </div>
+            )}
+
             <div className="flex-1 min-h-0">
               <ErrorBoundary
                 fallback={

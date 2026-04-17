@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.75.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,30 +12,42 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // Auth client (verifies the user's JWT)
+    const authClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
-      throw new Error('Unauthorized');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
+    // Service role client for cross-table writes
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
     const { primary_goal, case_type, context } = await req.json();
-    console.log('Generating case plan for:', { primary_goal, case_type });
+    console.log('Generating case plan for:', { user_id: user.id, primary_goal, case_type });
+
+    // Dedupe: archive any existing active plan so we don't pile up
+    const { data: existingMemory } = await supabaseClient
+      .from('case_memory')
+      .select('active_case_plan_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    // Use AI to generate milestone plan
     const systemPrompt = `You are a legal case planning expert specializing in NSW, Australia family law and domestic violence cases.
 
 Given a user's primary legal goal, generate 5-7 specific, actionable milestones that will help them achieve that goal.
@@ -88,10 +100,7 @@ Generate a strategic milestone plan that will help this person achieve their goa
                     properties: {
                       title: { type: 'string' },
                       description: { type: 'string' },
-                      success_criteria: {
-                        type: 'array',
-                        items: { type: 'string' }
-                      },
+                      success_criteria: { type: 'array', items: { type: 'string' } },
                       estimated_days: { type: 'number' },
                       priority: { type: 'string', enum: ['urgent', 'high', 'medium', 'low'] },
                       category: { type: 'string', enum: ['evidence', 'legal', 'safety', 'documentation', 'preparation'] }
@@ -115,16 +124,12 @@ Generate a strategic milestone plan that will help this person achieve their goa
     }
 
     const aiResponse = await response.json();
-    console.log('AI Response:', JSON.stringify(aiResponse, null, 2));
-
     const toolCall = aiResponse.choices[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      throw new Error('No tool call in AI response');
-    }
+    if (!toolCall) throw new Error('No tool call in AI response');
 
     const milestones = JSON.parse(toolCall.function.arguments).milestones;
 
-    // Create case plan in database
+    // Create case plan
     const { data: casePlan, error: planError } = await supabaseClient
       .from('case_plans')
       .insert({
@@ -164,11 +169,21 @@ Generate a strategic milestone plan that will help this person achieve their goa
         primary_goal,
         goal_status: 'active',
         goal_established_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      });
+      }, { onConflict: 'user_id' });
 
     if (memoryError) throw memoryError;
+
+    // Clean up old plan + its progress rows if we replaced one
+    if (existingMemory?.active_case_plan_id && existingMemory.active_case_plan_id !== casePlan.id) {
+      await supabaseClient
+        .from('milestone_progress')
+        .delete()
+        .eq('case_plan_id', existingMemory.active_case_plan_id);
+      await supabaseClient
+        .from('case_plans')
+        .delete()
+        .eq('id', existingMemory.active_case_plan_id);
+    }
 
     return new Response(
       JSON.stringify({
@@ -179,7 +194,7 @@ Generate a strategic milestone plan that will help this person achieve their goa
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating case plan:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
