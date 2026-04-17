@@ -424,7 +424,8 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       }).then(({ error }) => {
         if (error) console.warn('Milestone progress update failed:', error);
       });
-      
+
+    } catch (error: any) {
       console.error('❌ Chat error:', error);
       
       // Remove placeholder assistant message on error
