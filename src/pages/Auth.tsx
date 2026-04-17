@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useWellnessSettings } from "@/hooks/useWellnessSettings";
 import { Heart, Shield } from "lucide-react";
-import { LawyerChatOnboarding } from "@/components/onboarding/LawyerChatOnboarding";
+
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showGoalOnboarding, setShowGoalOnboarding] = useState(false);
+  
   
   const { settings, isLoading: settingsLoading } = useWellnessSettings();
 
@@ -26,26 +26,9 @@ export default function AuthPage() {
   const isCamouflaged = settings?.enableWellnessFront ?? false;
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        // For new signups, show goal onboarding first
-        if (event === 'SIGNED_IN' && session.user.email_confirmed_at) {
-          // Check if this is a new user by checking if they have case_memory
-          supabase
-            .from('case_memory')
-            .select('id')
-            .eq('user_id', session.user.id)
-            .single()
-            .then(({ data }) => {
-              if (!data) {
-                setShowGoalOnboarding(true);
-              } else {
-                navigate("/", { replace: true });
-              }
-            });
-        } else if (event === 'SIGNED_IN') {
-          navigate("/", { replace: true });
-        }
+        navigate("/", { replace: true });
       }
     });
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -75,14 +58,6 @@ export default function AuthPage() {
     toast({ title: "Check your email", description: "Confirm your address to complete signup." });
   };
 
-  if (showGoalOnboarding) {
-    return (
-      <LawyerChatOnboarding 
-        onComplete={() => navigate("/", { replace: true })}
-        onSkip={() => navigate("/", { replace: true })}
-      />
-    );
-  }
 
   if (settingsLoading) {
     return (

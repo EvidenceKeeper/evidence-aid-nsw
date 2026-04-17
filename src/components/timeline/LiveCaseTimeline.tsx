@@ -170,7 +170,7 @@ export function LiveCaseTimeline() {
       <Separator />
 
       {/* Header with Case Strength */}
-      <div className="p-4 border-b space-y-4">'
+      <div className="p-4 border-b space-y-4">
         {/* Case Strength */}
         <div>
           <div className="flex items-center justify-between mb-2">
