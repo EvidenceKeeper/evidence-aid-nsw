@@ -415,8 +415,16 @@ export function ChatInterface({ isModal = false, onClose }: EnhancedChatInterfac
       }
 
       console.log('✅ Streaming complete');
+
+      // Fire-and-forget milestone progress update based on this exchange
+      supabase.functions.invoke('update-milestone-progress', {
+        body: {
+          conversation_summary: `User: ${textToSend}\n\nAssistant: ${assistantContent.slice(0, 1500)}`
+        }
+      }).then(({ error }) => {
+        if (error) console.warn('Milestone progress update failed:', error);
+      });
       
-    } catch (error: any) {
       console.error('❌ Chat error:', error);
       
       // Remove placeholder assistant message on error

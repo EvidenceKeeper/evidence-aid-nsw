@@ -96,8 +96,21 @@ serve(async (req) => {
         .eq('user_id', user_id);
     }
 
-    // Phase 5: Generate proactive AI summary
-    console.log('🤖 Step 5/5: Generating proactive analysis...');
+    // Phase 5: Update milestone progress based on the new evidence
+    console.log('📈 Step 5/6: Updating milestone progress...');
+    try {
+      await supabase.functions.invoke('update-milestone-progress', {
+        body: {
+          new_evidence_ids: [file_id],
+          conversation_summary: `New evidence uploaded: ${file_name}`
+        }
+      });
+    } catch (err) {
+      console.warn('Milestone progress update failed:', err);
+    }
+
+    // Phase 6: Generate proactive AI summary
+    console.log('🤖 Step 6/6: Generating proactive analysis...');
     const proactiveMessage = await generateProactiveAnalysis(
       supabase,
       user_id,
